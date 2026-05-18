@@ -50,7 +50,6 @@ hostinger/*.zip
 
 # Python debug scripts
 *.py
-!**/*.py
 
 # Root-level debug scripts
 backend/test-server.js
