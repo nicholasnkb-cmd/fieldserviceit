@@ -41,6 +41,22 @@ hostinger/dist-backend.tar.gz
 hostinger/dist-backend.zip
 hostinger/dist-frontend.zip
 
+# Hostinger debug scripts
+hostinger/*.js
+hostinger/*.ps1
+hostinger/*.tar.gz
+hostinger/*.zip
+!hostinger/.gitkeep
+
+# Python debug scripts
+*.py
+!**/*.py
+
+# Root-level debug scripts
+backend/test-server.js
+backend/start.sh
+backend/schema.sql
+
 # Prisma local schema (generated)
 backend/prisma/schema.local.prisma
 
