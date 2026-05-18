@@ -21,7 +21,7 @@ function ResetForm() {
     if (!token) { setError('Missing reset token'); return; }
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
       const res = await fetch(`${apiUrl}/v1/auth/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

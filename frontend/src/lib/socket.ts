@@ -1,6 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
 let socket: Socket | null = null;
 let currentCompanyId: string | null = null;

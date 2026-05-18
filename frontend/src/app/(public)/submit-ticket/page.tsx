@@ -50,7 +50,7 @@ export default function SubmitTicketPage() {
 
     try {
       const token = localStorage.getItem('accessToken');
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
       const body: any = {
         title, description, priority, type,
         contactName, contactEmail, contactPhone,

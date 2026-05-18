@@ -89,7 +89,7 @@ export default function DispatchPage() {
     try {
       const formData = new FormData();
       Array.from(files).forEach((f) => formData.append('photos', f));
-      const uploadRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/v1/uploads/photo`, {
+      const uploadRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/v1/uploads/photo`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${localStorage.getItem('accessToken')}` },
         body: formData,
@@ -136,7 +136,7 @@ export default function DispatchPage() {
     formData.append('signature', blob, 'signature.png');
 
     try {
-      const uploadRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/v1/uploads/signature`, {
+      const uploadRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/v1/uploads/signature`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${localStorage.getItem('accessToken')}` },
         body: formData,

@@ -22,7 +22,7 @@ export default function RegisterBusinessPage() {
     const domain = email.split('@')[1];
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
       const res = await fetch(`${apiUrl}/v1/auth/register-business`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
