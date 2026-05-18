@@ -44,8 +44,11 @@ hostinger/dist-frontend.zip
 # Hostinger debug scripts
 hostinger/*.js
 hostinger/*.ps1
+hostinger/*.json
+hostinger/*.lock
 hostinger/*.tar.gz
 hostinger/*.zip
+hostinger/node_modules/
 !hostinger/.gitkeep
 
 # Python debug scripts
@@ -55,6 +58,9 @@ hostinger/*.zip
 backend/test-server.js
 backend/start.sh
 backend/schema.sql
+
+# Handoff doc
+HANDOFF.md
 
 # Prisma local schema (generated)
 backend/prisma/schema.local.prisma
