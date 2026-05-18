@@ -50,6 +50,14 @@ export default function DashboardPage() {
 
   const { user } = useAuthStore();
 
+  useEffect(() => {
+    if (!user) return;
+    if (user.userType === 'PUBLIC') {
+      router.push('/my-tickets');
+      return;
+    }
+  }, [user, router]);
+
   const fetchSummary = useCallback(() => {
     const token = localStorage.getItem('accessToken');
     if (!token) { router.push('/login'); return; }
@@ -63,7 +71,7 @@ export default function DashboardPage() {
         return res.json();
       })
       .then(setSummary)
-      .catch(() => router.push('/login'))
+      .catch(() => { /* stay on page, show empty */ })
       .finally(() => setLoading(false));
   }, [router]);
 
