@@ -1,12 +1,14 @@
 'use client';
 
 import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuthStore } from '../stores/authStore';
 import { api } from '../lib/api';
 import { ToastProvider } from '../components/ui/Toast';
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
-  const { setUser } = useAuthStore();
+  const { setUser, logout } = useAuthStore();
+  const router = useRouter();
 
   useEffect(() => {
     try {
@@ -28,18 +30,18 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
           api.get('/users/me').then((u) => {
             if (u) setUser(u);
           }).catch(() => {
-            localStorage.removeItem('accessToken');
-            localStorage.removeItem('refreshToken');
+            logout();
+            router.push('/login');
           });
         } catch {
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('refreshToken');
+          logout();
+          router.push('/login');
         }
       }
     } catch {
       // localStorage not available
     }
-  }, [setUser]);
+  }, [setUser, logout, router]);
 
   return <ToastProvider>{children}</ToastProvider>;
 }
