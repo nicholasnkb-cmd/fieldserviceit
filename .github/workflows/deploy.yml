@@ -65,12 +65,6 @@ jobs:
         working-directory: frontend
         run: npm run build
 
-      - name: Copy standalone static assets
-        working-directory: frontend
-        run: |
-          cp -r .next/static .next/standalone/.next/static 2>/dev/null; true
-          cp -r public .next/standalone/ 2>/dev/null; true
-
       - name: Install hostinger script dependencies
         working-directory: hostinger
         run: npm ci
