@@ -3,7 +3,7 @@ const tus = require("tus-js-client");
 const fs = require("fs");
 const path = require("path");
 
-const API_TOKEN = "SSqDpeMneyXmAtJWIVh5k1xSPOrxvVSm9hx0zpcb29dfa455";
+const API_TOKEN = process.env.HOSTINGER_API_TOKEN || "SSqDpeMneyXmAtJWIVh5k1xSPOrxvVSm9hx0zpcb29dfa455";
 const BASE = "https://developers.hostinger.com";
 const DOMAIN = "fieldserviceit.com";
 const USERNAME = "u209468809";

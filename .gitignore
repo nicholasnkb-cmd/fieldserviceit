@@ -55,6 +55,7 @@ hostinger/node_modules/
 !hostinger/deploy-backend.js
 !hostinger/deploy-frontend.js
 !hostinger/create-backend-archive.js
+!hostinger/create-frontend-archive.js
 !hostinger/package.json
 !hostinger/package-lock.json
 
