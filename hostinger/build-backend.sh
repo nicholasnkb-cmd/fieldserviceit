@@ -11,4 +11,4 @@ npx prisma generate
 npx prisma migrate deploy 2>/dev/null || npx prisma db push
 npx nest build
 
-echo "Backend build complete. Entry: dist/src/main.js"
+echo "Backend build complete. Entry: dist/main.js"

@@ -26,7 +26,7 @@ This guide explains how to deploy FieldserviceIT to Hostinger shared/cloud hosti
 | Setting | Value |
 |---------|-------|
 | Document Root | `backend` |
-| Entry Point | `dist/src/main.js` |
+| Entry Point | `dist/main.js` |
 | Build Command | `npm ci --omit=dev && npx prisma generate && npx prisma migrate deploy && npx nest build` |
 | Node.js Version | 20 |
 

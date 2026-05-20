@@ -11,28 +11,38 @@ jobs:
     environment: production
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
         with:
-          fetch-depth: 0
-          token: ${{ secrets.DEPLOY_TOKEN }}
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
 
-      - name: Configure Git
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+      - name: Install dependencies
+        working-directory: backend
+        run: npm ci
 
-      - name: Add backend remote
-        run: |
-          git remote add backend-origin https://x-access-token:${{ secrets.DEPLOY_TOKEN }}@github.com/nicholasnkb-cmd/fieldserviceit-backend.git || true
+      - name: Generate Prisma client
+        working-directory: backend
+        run: npx prisma generate
 
-      - name: Push backend subtree
-        run: |
-          git subtree push --prefix=backend backend-origin master
+      - name: Build backend
+        working-directory: backend
+        run: npm run build
 
-      - name: Trigger hPanel redeploy
-        run: |
-          echo "Backend pushed to GitHub. Trigger hPanel redeploy manually or via API."
-          echo "API endpoint: POST https://developers.hostinger.com/api/hosting/v1/nodejs/redeploy"
-        if: success()
+      - name: Install hostinger script dependencies
+        working-directory: hostinger
+        run: npm ci
+
+      - name: Create deployment archive
+        working-directory: backend
+        run: node ../hostinger/create-backend-archive.js
+
+      - name: Deploy via Hostinger API
+        working-directory: hostinger
+        run: node deploy-backend.js
+        env:
+          HOSTINGER_API_TOKEN: ${{ secrets.HOSTINGER_API_TOKEN }}
 
   deploy-frontend:
     name: Deploy Frontend to hPanel

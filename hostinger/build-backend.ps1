@@ -22,8 +22,8 @@ npx prisma generate
 npx nest build
 
 # Verify entry exists
-if (-not (Test-Path "dist/src/main.js")) {
-    Write-Host "ERROR: dist/src/main.js not found! Build may have failed." -ForegroundColor Red
+if (-not (Test-Path "dist/main.js")) {
+    Write-Host "ERROR: dist/main.js not found! Build may have failed." -ForegroundColor Red
     exit 1
 }
 
@@ -40,4 +40,4 @@ Copy-Item "$backend\package.json" "$output\package.json"
 Copy-Item "$PSScriptRoot\start-backend.sh" "$output\start-backend.sh"
 
 Write-Host "Backend build ready at: $output" -ForegroundColor Green
-Write-Host "Entry point: dist/src/main.js" -ForegroundColor Yellow
+Write-Host "Entry point: dist/main.js" -ForegroundColor Yellow

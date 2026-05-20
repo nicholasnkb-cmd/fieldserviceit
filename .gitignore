@@ -51,6 +51,13 @@ hostinger/*.zip
 hostinger/node_modules/
 !hostinger/.gitkeep
 
+# But track the deploy workflow files
+!hostinger/deploy-backend.js
+!hostinger/deploy-frontend.js
+!hostinger/create-backend-archive.js
+!hostinger/package.json
+!hostinger/package-lock.json
+
 # Python debug scripts
 *.py
 
