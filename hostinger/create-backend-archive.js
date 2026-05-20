@@ -16,6 +16,7 @@ const excludes = [
   ".dockerignore",
   "docker-entrypoint.sh",
   "uploads",
+  ".next",
 ];
 
 console.log(`Creating archive from ${backendDir}...`);

@@ -69,8 +69,9 @@ async function main() {
   const buildData = {
     node_version: 20,
     entry_file: "dist/main.js",
-    install_command: "npm ci --omit=dev && npx prisma generate",
+    install_command: "npm ci && npx prisma generate",
     build_command: null,
+    start_command: "npm run start",
     output_directory: "dist",
     source_type: "archive",
     source_options: { archive_path: filename },
