@@ -132,20 +132,15 @@ async function main() {
   // 3. Upload archive
   await tusUpload(ARCHIVE, creds.url, creds.auth_key, creds.rest_auth_key);
 
-  // 4. Fetch build settings
-  let buildSettings;
-  try {
-    buildSettings = await fetchBuildSettings();
-  } catch (e) {
-    log("WARN", `Build settings fetch failed: ${e.message}. Using defaults.`);
-    buildSettings = {
-      node_version: 20,
-      entry_file: ".next/standalone/server.js",
-      install_command: "npm ci",
-      build_command: "npm run build",
-      start_command: "npm run start -- -p $PORT",
-    };
-  }
+  // 4. Use pre-built settings (CI already built with correct env vars)
+  // Hostinger installs deps and starts the pre-built standalone server
+  const buildSettings = {
+    node_version: 20,
+    entry_file: ".next/standalone/server.js",
+    install_command: "npm ci",
+    build_command: null,
+    start_command: "npm run start -- -p $PORT",
+  };
 
   // 5. Trigger build
   const build = await triggerBuild(buildSettings);
