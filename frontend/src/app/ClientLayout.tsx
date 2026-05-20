@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '../stores/authStore';
 import { api } from '../lib/api';
@@ -9,8 +9,12 @@ import { ToastProvider } from '../components/ui/Toast';
 export function ClientLayout({ children }: { children: React.ReactNode }) {
   const { setUser, logout } = useAuthStore();
   const router = useRouter();
+  const hydrated = useRef(false);
 
   useEffect(() => {
+    if (hydrated.current) return;
+    hydrated.current = true;
+
     try {
       const token = localStorage.getItem('accessToken');
       if (token) {
@@ -30,18 +34,18 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
           api.get('/users/me').then((u) => {
             if (u) setUser(u);
           }).catch(() => {
-            logout();
-            router.push('/login');
+            // /users/me failed — keep JWT-derived profile, don't force logout
           });
         } catch {
-          logout();
-          router.push('/login');
+          // Invalid JWT — clear stale tokens
+          localStorage.removeItem('accessToken');
+          localStorage.removeItem('refreshToken');
         }
       }
     } catch {
       // localStorage not available
     }
-  }, [setUser, logout, router]);
+  }, []);
 
   return <ToastProvider>{children}</ToastProvider>;
 }
