@@ -62,12 +62,15 @@ async function main() {
   const creds = await getUploadUrl();
   await tusUpload(archivePath, creds.url, creds.auth_key, creds.rest_auth_key);
 
-  // 2. Trigger build (pre-built dist is in the archive, no build step needed)
+  // 2. Trigger build
+  // Archive contains source + pre-built dist/. Hostinger installs deps,
+  // generates Prisma client, skips build (pre-built), and starts the app.
   const filename = path.basename(archivePath);
   const buildData = {
     node_version: 20,
     entry_file: "dist/main.js",
-    build_script: null,
+    install_command: "npm ci --omit=dev && npx prisma generate",
+    build_command: null,
     output_directory: "dist",
     source_type: "archive",
     source_options: { archive_path: filename },
@@ -80,6 +83,7 @@ async function main() {
   console.log(`Build triggered: ${build.uuid} (state: ${build.state})`);
 
   // 3. Poll until done
+  let failed = false;
   for (let i = 0; i < 60; i++) {
     await new Promise(r => setTimeout(r, 3000));
     const list = await api("get",
@@ -89,6 +93,7 @@ async function main() {
     if (!b) continue;
     if (b.state !== build.state) console.log(`State: ${b.state} (${b.updated_at})`);
     if (b.state === "completed" || b.state === "failed") {
+      if (b.state === "failed") failed = true;
       try {
         const logs = await api("get",
           `/api/hosting/v1/accounts/${USERNAME}/websites/${DOMAIN}/nodejs/builds/${b.uuid}/logs?fromLine=0`
@@ -106,6 +111,8 @@ async function main() {
       break;
     }
   }
+
+  if (failed) { console.error("BUILD FAILED"); process.exit(1); }
 }
 
 main().catch(e => { console.error("FAILED:", e.message); process.exit(1); });

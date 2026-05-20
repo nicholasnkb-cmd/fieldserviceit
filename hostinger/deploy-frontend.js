@@ -98,10 +98,25 @@ async function triggerBuild(buildSettings) {
   return data;
 }
 
-async function listDeployments() {
-  const data = await api("get", `/api/hosting/v1/accounts/${USERNAME}/websites/${DOMAIN}/nodejs/builds`);
-  log("DEPLOYMENTS", data);
-  return data;
+async function waitForBuild(build) {
+  for (let i = 0; i < 60; i++) {
+    await new Promise(r => setTimeout(r, 3000));
+    const list = await api("get", `/api/hosting/v1/accounts/${USERNAME}/websites/${DOMAIN}/nodejs/builds?page=1&perPage=25`);
+    const b = list.data.find(x => x.uuid === build.uuid);
+    if (!b) continue;
+    if (b.state !== build.state) log("STATE", `${b.state} (${b.updated_at})`);
+    if (b.state === "completed" || b.state === "failed") {
+      try {
+        const logs = await api("get", `/api/hosting/v1/accounts/${USERNAME}/websites/${DOMAIN}/nodejs/builds/${b.uuid}/logs?fromLine=0`);
+        if (logs.logs) {
+          console.log("\n=== Build Logs ===");
+          logs.logs.split("\n").slice(-50).forEach(l => console.log(l));
+        }
+      } catch (e) { log("LOG_ERR", e.message); }
+      return b.state === "completed";
+    }
+  }
+  return false;
 }
 
 async function main() {
@@ -133,11 +148,12 @@ async function main() {
   }
 
   // 5. Trigger build
-  await triggerBuild(buildSettings);
+  const build = await triggerBuild(buildSettings);
 
-  // 6. Show deployments
-  console.log("\n=== Deployment Status ===");
-  await listDeployments();
+  // 6. Wait for completion
+  const success = await waitForBuild(build);
+  if (!success) { console.error("BUILD FAILED"); process.exit(1); }
+  console.log("Deployment successful");
 }
 
 main().catch(e => {
