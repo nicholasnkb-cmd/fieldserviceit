@@ -94,6 +94,8 @@ flowchart TD
 | `ticketTimeline` | `TicketTimeline` |
 | `ticketAttachment` | `TicketAttachment` |
 | `asset` | `Asset` with MDM device fields for category, ownership, enrollment, compliance, security, telecom, and check-in state |
+| Raw SQL | `MdmEnrollmentToken` for one-time device enrollment tokens |
+| Raw SQL | `MdmCommand` for queued lock, wipe, restart, lost-mode, sync, and policy commands |
 | `contract` | `Contract` |
 | `sla` | `SLA` |
 | `dispatch` | `Dispatch` |
@@ -121,6 +123,8 @@ erDiagram
   Company ||--o{ User : has
   Company ||--o{ Ticket : owns
   Company ||--o{ Asset : owns
+  Company ||--o{ MdmEnrollmentToken : issues
+  Company ||--o{ MdmCommand : queues
   Company ||--o{ Dispatch : owns
   Company ||--o{ Workflow : owns
   Company ||--o{ Notification : owns
@@ -140,6 +144,7 @@ erDiagram
   Ticket ||--o{ TicketAttachment : has
   Ticket ||--o{ Dispatch : schedules
   Ticket }o--|| Asset : references
+  Asset ||--o{ MdmCommand : receives
   Ticket }o--|| SLA : governed_by
 
   Workflow ||--o{ WorkflowStep : contains
@@ -161,6 +166,7 @@ erDiagram
 | Dashboard | `/dashboard`, `/dashboards`, `/all`, `/favorites`, `/history` | Operational dashboards and grouped views |
 | Tickets | `/tickets`, `/tickets/new`, `/tickets/[id]`, `/tickets/board`, `/my-tickets` | Ticket work queues and lifecycle |
 | Assets | `/assets`, `/assets/new` | CMDB asset management |
+| MDM agent API | `/v1/mdm/enroll`, `/v1/mdm/devices/:id/check-in`, `/v1/mdm/devices/:id/commands`, `/v1/mdm/commands/:id/complete` | Token-based device enrollment, check-in, command polling, and command completion |
 | Dispatch | `/dispatch` | Field-service scheduling and status |
 | Reports | `/reports` | Reporting and analytics |
 | Search | `/search` | Cross-domain search |

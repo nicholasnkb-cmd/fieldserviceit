@@ -6,6 +6,8 @@
 Company 1──N User
 Company 1──N Ticket
 Company 1──N Asset
+Company 1──N MdmEnrollmentToken
+Company 1──N MdmCommand
 Company 1──N Workflow
 Company 1──N Contract
 
@@ -23,6 +25,7 @@ Ticket 1──N Dispatch
 Asset N──1 AssetType
 Asset 1──N Ticket
 Asset 1──N Contract
+Asset 1──N MdmCommand
 
 Workflow 1──N WorkflowStep
 Workflow 1──N WorkflowRun
@@ -45,6 +48,8 @@ The `backend/prisma/` files are legacy helpers and should not be treated as the 
 | `TicketTimeline` | Ticket activity log | via ticket/company context |
 | `TicketAttachment` | Ticket files | via ticket/company context |
 | `Asset` | MDM/CMDB device records for desktops, laptops, mobile devices, servers, kiosks, IoT, printers, and network hardware | companyId |
+| `MdmEnrollmentToken` | One-time enrollment tokens used by device agents to register into a tenant fleet | companyId |
+| `MdmCommand` | Pending and completed device command queue for lock, wipe, restart, lost mode, sync, and policy push actions | companyId |
 | `Contract` | Service contracts / agreements | companyId |
 | `SLA` | SLA definitions and targets | companyId |
 | `Workflow` | Workflow templates | companyId |

@@ -60,6 +60,7 @@ FieldserviceIT/
 cd backend
 npm install
 copy .env.example .env          # Edit DATABASE_URL for your DB
+npm run seed                    # Populate plans, roles, demo company, users, assets, and sample ticket
 npm run start:dev
 ```
 
@@ -83,6 +84,7 @@ Target: **Hostinger shared/cloud hosting** (Node.js 20 + MySQL 8.0).
 
 The backend creates/ensures its MySQL tables at startup through the SQL data access layer.
 Docker-based local deployment is defined in `infra/docker-compose.yml`.
+Use `docs/HOSTINGER_DEPLOYMENT.md` plus the Hostinger env templates in `backend/.env.hostinger.example` and `frontend/.env.hostinger.example` for production setup.
 
 Production database name on Hostinger:
 
@@ -108,6 +110,8 @@ DATABASE_URL=mysql://USERNAME:PASSWORD@HOST:3306/u209468809_fieldserviceit
 | client@acme.com | client123 | CLIENT |
 | tech1@acme.com | tech123 | TECHNICIAN |
 | tech2@acme.com | tech123 | TECHNICIAN |
+
+If these accounts do not exist, run `npm run seed` inside `backend/` after MySQL is running and `DATABASE_URL` points at the target database.
 
 ## License
 
