@@ -58,6 +58,16 @@ services:
       - "3000:3000"
 ```
 
+## Hostinger Production Database
+
+Use the Hostinger MySQL database name in the backend environment:
+
+```env
+DATABASE_URL=mysql://USERNAME:PASSWORD@HOST:3306/u209468809_fieldserviceit
+```
+
+Replace `USERNAME`, `PASSWORD`, and `HOST` with the values shown in Hostinger hPanel.
+
 ## Kubernetes Manifests (see `infra/kubernetes/`)
 
 Includes:

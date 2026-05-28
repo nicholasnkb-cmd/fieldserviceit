@@ -84,6 +84,12 @@ Target: **Hostinger shared/cloud hosting** (Node.js 20 + MySQL 8.0).
 The backend creates/ensures its MySQL tables at startup through the SQL data access layer.
 Docker-based local deployment is defined in `infra/docker-compose.yml`.
 
+Production database name on Hostinger:
+
+```env
+DATABASE_URL=mysql://USERNAME:PASSWORD@HOST:3306/u209468809_fieldserviceit
+```
+
 ## Core Modules
 
 - **ITSM** — Incident, request, problem, change management with SLAs
