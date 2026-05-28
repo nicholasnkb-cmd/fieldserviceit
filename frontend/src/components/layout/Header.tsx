@@ -5,6 +5,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { api } from '../../lib/api';
+import { NotificationBell } from './NotificationBell';
 
 export function Header() {
   const { user, company, isAuthenticated, setCompany, logout } = useAuthStore();
@@ -40,6 +41,7 @@ export function Header() {
         <div className="flex items-center gap-4">
           {isAuthenticated && user ? (
             <div className="flex items-center gap-3">
+              <NotificationBell />
               <span className="text-sm text-gray-600">
                 {user.firstName} {user.lastName}
               </span>

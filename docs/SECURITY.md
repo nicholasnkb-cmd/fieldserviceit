@@ -26,14 +26,14 @@ SUPER_ADMIN → TENANT_ADMIN → TECHNICIAN → CLIENT → READ_ONLY
 | Category | Measure |
 |----------|---------|
 | In Transit | TLS 1.3, HSTS, mTLS between services |
-| At Rest | AES-256 (PostgreSQL TDE / RDS encryption) |
+| At Rest | MySQL volume/provider encryption where available |
 | PHI/HIPAA | Encrypted columns for sensitive fields |
 | Secrets | Vault or AWS Secrets Manager (never in env files) |
 | API Keys | Hashed on storage, shown once on creation |
 
 ## Tenant Isolation
 
-1. **Row-level:** `WHERE companyId = :currentUser.companyId` enforced via Prisma middleware
+1. **Row-level:** `WHERE companyId = :currentUser.companyId` enforced in SQL repository methods
 2. **Guard-level:** `TenantGuard` NestJS interceptor validates ownership
 3. **Token-level:** JWT contains `companyId` claim, verified on every request
 4. **Storage-level:** S3 prefixes per tenant: `uploads/{companyId}/{uuid}`

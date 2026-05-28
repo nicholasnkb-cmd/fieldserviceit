@@ -18,7 +18,8 @@ export default function AuditLogsPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (user && user.role !== 'SUPER_ADMIN') { router.push('/dashboard'); return; }
+    if (!user) return;
+    if (user.role !== 'SUPER_ADMIN') { router.push('/dashboard'); return; }
     setLoading(true);
     const params = `?page=${page}&limit=25${search ? `&search=${encodeURIComponent(search)}` : ''}`;
     api.get(`/admin/audit-logs${params}`).then((d) => { setLogs(d.data || []); setMeta(d.meta); }).catch(() => {}).finally(() => setLoading(false));

@@ -28,7 +28,7 @@ export default function MyTicketsPage() {
     const params = filter ? `?status=${filter}` : '';
     api.get(`/tickets${params}`)
       .then((data) => setTickets(data.data || []))
-      .catch(() => router.push('/login'))
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, [router, filter]);
 

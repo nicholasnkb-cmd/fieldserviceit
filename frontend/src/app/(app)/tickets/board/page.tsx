@@ -31,7 +31,7 @@ export default function BoardPage() {
     try {
       const data = await api.get('/tickets/board');
       setBoard(data.columns || []);
-    } catch { router.push('/login'); }
+    } catch { /* stay on page */ }
     finally { setLoading(false); }
   }, [router]);
 

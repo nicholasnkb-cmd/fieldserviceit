@@ -33,7 +33,7 @@ export default function TicketsPage() {
     params.set('limit', '25');
     api.get(`/tickets?${params}`)
       .then((data) => { setTickets(data.data || []); setMeta(data.meta); })
-      .catch(() => router.push('/login'))
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, [filter, page, router]);
 

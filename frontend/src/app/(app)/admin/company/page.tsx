@@ -30,7 +30,8 @@ export default function TenantAdminPage() {
   }, [search]);
 
   useEffect(() => {
-    if (user && user.role !== 'TENANT_ADMIN' && user.role !== 'SUPER_ADMIN') { router.push('/dashboard'); return; }
+    if (!user) return;
+    if (user.role !== 'TENANT_ADMIN' && user.role !== 'SUPER_ADMIN') { router.push('/dashboard'); return; }
     fetchUsers();
     setLoading(false);
   }, [user, router, fetchUsers]);

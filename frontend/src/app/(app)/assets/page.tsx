@@ -1,66 +1,166 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Eraser,
+  Laptop,
+  Lock,
+  MapPin,
+  Plus,
+  RefreshCw,
+  RotateCw,
+  Search,
+  ShieldCheck,
+  Smartphone,
+  Tablet,
+  Wifi,
+} from 'lucide-react';
 import { api } from '../../../lib/api';
 import { formatDate } from '../../../lib/utils';
 
-interface Asset {
+interface Device {
   id: string;
   name: string;
   assetType: string;
+  deviceCategory?: string;
+  ownership?: string;
+  assignedUser?: string;
   serialNumber?: string;
   manufacturer?: string;
   model?: string;
   location?: string;
   ipAddress?: string;
-  status: string;
-  createdAt: string;
-}
-
-interface AssetDetail extends Asset {
-  os?: string;
-  cpu?: string;
-  ram?: string;
-  storage?: string;
   macAddress?: string;
+  os?: string;
+  osVersion?: string;
+  status: string;
+  enrollmentStatus?: string;
+  managementMode?: string;
+  mdmProvider?: string;
+  lastCheckInAt?: string;
+  complianceStatus?: string;
+  complianceReasons?: string;
+  encryptionStatus?: string;
+  firewallEnabled?: boolean;
+  antivirusStatus?: string;
+  passcodeCompliant?: boolean;
+  jailbreakDetected?: boolean;
+  lostModeEnabled?: boolean;
+  batteryLevel?: number;
+  imei?: string;
+  phoneNumber?: string;
+  carrier?: string;
+  appInventory?: string;
+  policyProfile?: string;
   notes?: string;
+  createdAt: string;
   tickets?: { id: string; ticketNumber: string; title: string; status: string }[];
 }
 
+interface MdmSummary {
+  total: number;
+  enrolled: number;
+  unmanaged: number;
+  nonCompliant: number;
+  stale: number;
+  complianceRate: number;
+  byCategory: { mobile: number; desktop: number; server: number; other: number };
+}
+
+const deviceCategories = ['DESKTOP', 'LAPTOP', 'MOBILE', 'TABLET', 'SERVER', 'IOT', 'CHROMEBOOK', 'RUGGED', 'WEARABLE', 'KIOSK', 'NETWORK_DEVICE', 'PRINTER', 'OTHER'];
+const enrollmentStatuses = ['ENROLLED', 'PENDING', 'UNMANAGED', 'STALE', 'RETIRED'];
+const complianceStatuses = ['COMPLIANT', 'NON_COMPLIANT', 'UNKNOWN'];
+const ownershipTypes = ['COMPANY', 'BYOD', 'COBO', 'COPE'];
+const managementModes = ['FULL', 'WORK_PROFILE', 'USER_ENROLLMENT', 'AGENT', 'RMM', 'NONE'];
+
+const emptyForm = {
+  name: '',
+  assetType: 'LAPTOP',
+  deviceCategory: 'LAPTOP',
+  ownership: 'COMPANY',
+  assignedUser: '',
+  serialNumber: '',
+  manufacturer: '',
+  model: '',
+  location: '',
+  ipAddress: '',
+  macAddress: '',
+  os: '',
+  osVersion: '',
+  enrollmentStatus: 'UNMANAGED',
+  managementMode: 'NONE',
+  mdmProvider: '',
+  complianceStatus: 'UNKNOWN',
+  encryptionStatus: 'UNKNOWN',
+  antivirusStatus: '',
+  batteryLevel: '',
+  imei: '',
+  phoneNumber: '',
+  carrier: '',
+  policyProfile: '',
+  notes: '',
+};
+
+function statusClass(value?: string) {
+  if (value === 'COMPLIANT' || value === 'ENROLLED' || value === 'active') return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+  if (value === 'NON_COMPLIANT' || value === 'STALE') return 'bg-red-50 text-red-700 border-red-200';
+  if (value === 'PENDING' || value === 'UNKNOWN') return 'bg-amber-50 text-amber-700 border-amber-200';
+  return 'bg-gray-50 text-gray-700 border-gray-200';
+}
+
+function DeviceIcon({ category }: { category?: string }) {
+  if (category === 'MOBILE') return <Smartphone className="h-4 w-4" aria-hidden="true" />;
+  if (category === 'TABLET') return <Tablet className="h-4 w-4" aria-hidden="true" />;
+  return <Laptop className="h-4 w-4" aria-hidden="true" />;
+}
+
 export default function AssetsPage() {
-  const [assets, setAssets] = useState<Asset[]>([]);
+  const [devices, setDevices] = useState<Device[]>([]);
+  const [summary, setSummary] = useState<MdmSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [typeFilter, setTypeFilter] = useState('');
-  const [selected, setSelected] = useState<AssetDetail | null>(null);
+  const [filters, setFilters] = useState({ deviceCategory: '', enrollmentStatus: '', complianceStatus: '', ownership: '' });
+  const [selected, setSelected] = useState<Device | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: '', assetType: 'COMPUTER', serialNumber: '', manufacturer: '', model: '', location: '', ipAddress: '', os: '', cpu: '', ram: '', storage: '', notes: '' });
+  const [form, setForm] = useState(emptyForm);
   const [message, setMessage] = useState('');
-  const [sort, setSort] = useState<{ key: string; dir: 'asc' | 'desc' }>({ key: 'name', dir: 'asc' });
+  const [actionLoading, setActionLoading] = useState('');
 
-  const sortedAssets = useMemo(() => {
-    return [...assets].sort((a, b) => {
-      const aVal = (a as any)[sort.key];
-      const bVal = (b as any)[sort.key];
-      if (!aVal) return 1;
-      if (!bVal) return -1;
-      const cmp = String(aVal).localeCompare(String(bVal), undefined, { numeric: true });
-      return sort.dir === 'asc' ? cmp : -cmp;
-    });
-  }, [assets, sort]);
-  const router = useRouter();
-
-  const fetchAssets = useCallback(() => {
+  const fetchDevices = useCallback(() => {
+    setLoading(true);
     const params = new URLSearchParams();
     if (search) params.set('search', search);
-    if (typeFilter) params.set('assetType', typeFilter);
-    api.get(`/assets?${params}`).then((data) => setAssets(data.data || [])).catch(() => router.push('/login')).finally(() => setLoading(false));
-  }, [search, typeFilter, router]);
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value) params.set(key, value);
+    });
 
-  useEffect(() => { fetchAssets(); }, [fetchAssets]);
+    Promise.all([
+      api.get(`/assets?${params}`),
+      api.get('/assets/mdm/summary').catch(() => null),
+    ])
+      .then(([assetData, summaryData]) => {
+        setDevices(assetData.data || []);
+        if (summaryData) setSummary(summaryData);
+      })
+      .catch((err) => setMessage(err.message || 'Failed to load devices'))
+      .finally(() => setLoading(false));
+  }, [search, filters]);
 
-  const viewAsset = async (id: string) => {
+  useEffect(() => {
+    fetchDevices();
+  }, [fetchDevices]);
+
+  const sortedDevices = useMemo(() => {
+    return [...devices].sort((a, b) => {
+      const aCheckIn = a.lastCheckInAt ? new Date(a.lastCheckInAt).getTime() : 0;
+      const bCheckIn = b.lastCheckInAt ? new Date(b.lastCheckInAt).getTime() : 0;
+      return bCheckIn - aCheckIn || a.name.localeCompare(b.name);
+    });
+  }, [devices]);
+
+  const viewDevice = async (id: string) => {
     const data = await api.get(`/assets/${id}`);
     setSelected(data);
   };
@@ -68,179 +168,303 @@ export default function AssetsPage() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.post('/assets', form);
-      setMessage('Asset created');
+      const payload = {
+        ...form,
+        batteryLevel: form.batteryLevel === '' ? undefined : Number(form.batteryLevel),
+      };
+      await api.post('/assets', payload);
+      setMessage('Device added to MDM inventory');
       setShowForm(false);
-      setForm({ name: '', assetType: 'COMPUTER', serialNumber: '', manufacturer: '', model: '', location: '', ipAddress: '', os: '', cpu: '', ram: '', storage: '', notes: '' });
-      fetchAssets();
-    } catch (err: any) { setMessage(err.message); }
+      setForm(emptyForm);
+      fetchDevices();
+    } catch (err: any) {
+      setMessage(err.message || 'Failed to create device');
+    }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Delete this asset?')) return;
+  const runAction = async (action: string, body: Record<string, any> = {}) => {
+    if (!selected) return;
+    setActionLoading(action);
     try {
-      await api.delete(`/assets/${id}`);
-      setSelected(null);
-      setMessage('Asset deleted');
-      fetchAssets();
-    } catch (err: any) { setMessage(err.message); }
+      const updated = await api.post(`/assets/${selected.id}/actions/${action}`, body);
+      setSelected(updated);
+      setMessage(`${action.replaceAll('_', ' ')} queued for ${selected.name}`);
+      fetchDevices();
+    } catch (err: any) {
+      setMessage(err.message || 'Action failed');
+    } finally {
+      setActionLoading('');
+    }
   };
 
-  if (loading) return <div className="p-8">Loading...</div>;
+  const checkIn = async () => {
+    if (!selected) return;
+    setActionLoading('CHECK_IN');
+    try {
+      const updated = await api.post(`/assets/${selected.id}/check-in`, {
+        enrollmentStatus: 'ENROLLED',
+        complianceStatus: selected.complianceStatus || 'COMPLIANT',
+      });
+      setSelected(updated);
+      setMessage(`${selected.name} checked in`);
+      fetchDevices();
+    } catch (err: any) {
+      setMessage(err.message || 'Check-in failed');
+    } finally {
+      setActionLoading('');
+    }
+  };
 
-  const assetTypes = ['COMPUTER', 'SERVER', 'PRINTER', 'SWITCH', 'IP_PHONE', 'CLOUD_INSTANCE', 'NETWORK_DEVICE', 'VIRTUAL_MACHINE', 'OTHER'];
+  const statItems = [
+    { label: 'Devices', value: summary?.total ?? devices.length, icon: Laptop },
+    { label: 'Enrolled', value: summary?.enrolled ?? 0, icon: CheckCircle2 },
+    { label: 'Non-compliant', value: summary?.nonCompliant ?? 0, icon: AlertTriangle },
+    { label: 'Compliance', value: `${summary?.complianceRate ?? 0}%`, icon: ShieldCheck },
+  ];
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Assets</h1>
-        <button onClick={() => setShowForm(!showForm)} className="px-4 py-2 bg-primary text-white text-sm rounded-md hover:bg-primary/90">
-          {showForm ? 'Cancel' : 'Add Asset'}
+    <div className="p-6">
+      <div className="flex flex-col gap-4 border-b border-gray-200 pb-5 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <p className="text-sm font-medium text-emerald-700">Device management</p>
+          <h1 className="mt-1 text-2xl font-bold text-gray-950">MDM Fleet</h1>
+          <p className="mt-1 text-sm text-gray-500">Manage desktops, laptops, mobile devices, servers, kiosks, IoT, and network hardware.</p>
+        </div>
+        <button onClick={() => setShowForm(!showForm)} className="inline-flex items-center justify-center gap-2 rounded bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90">
+          <Plus className="h-4 w-4" aria-hidden="true" />
+          {showForm ? 'Close enrollment' : 'Enroll device'}
         </button>
       </div>
 
-      {message && <div className="bg-green-50 text-green-600 p-3 rounded text-sm mb-4">{message}</div>}
+      {message && <div className="mt-4 rounded border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">{message}</div>}
 
-      {showForm && (
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h2 className="text-lg font-semibold mb-4">New Asset</h2>
-          <form onSubmit={handleCreate} className="grid grid-cols-2 gap-4">
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700">Name *</label>
-              <input type="text" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
+      <div className="mt-5 grid gap-3 md:grid-cols-4">
+        {statItems.map((item) => {
+          const Icon = item.icon;
+          return (
+            <div key={item.label} className="rounded border border-gray-200 bg-white p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-500">{item.label}</span>
+                <Icon className="h-4 w-4 text-gray-500" aria-hidden="true" />
+              </div>
+              <div className="mt-2 text-2xl font-semibold text-gray-950">{item.value}</div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Type</label>
-              <select value={form.assetType} onChange={(e) => setForm({ ...form, assetType: e.target.value })}
-                className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm">
-                {assetTypes.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Status</label>
-              <select defaultValue="active" className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm">
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-                <option value="maintenance">Maintenance</option>
-              </select>
-            </div>
-            <div><label className="block text-sm font-medium text-gray-700">Serial Number</label>
-              <input type="text" value={form.serialNumber} onChange={(e) => setForm({ ...form, serialNumber: e.target.value })}
-                className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm" /></div>
-            <div><label className="block text-sm font-medium text-gray-700">Manufacturer</label>
-              <input type="text" value={form.manufacturer} onChange={(e) => setForm({ ...form, manufacturer: e.target.value })}
-                className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm" /></div>
-            <div><label className="block text-sm font-medium text-gray-700">Model</label>
-              <input type="text" value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })}
-                className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm" /></div>
-            <div><label className="block text-sm font-medium text-gray-700">Location</label>
-              <input type="text" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })}
-                className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm" /></div>
-            <div><label className="block text-sm font-medium text-gray-700">IP Address</label>
-              <input type="text" value={form.ipAddress} onChange={(e) => setForm({ ...form, ipAddress: e.target.value })}
-                className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm" /></div>
-            <div><label className="block text-sm font-medium text-gray-700">OS</label>
-              <input type="text" value={form.os} onChange={(e) => setForm({ ...form, os: e.target.value })}
-                className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm" /></div>
-            <div><label className="block text-sm font-medium text-gray-700">CPU</label>
-              <input type="text" value={form.cpu} onChange={(e) => setForm({ ...form, cpu: e.target.value })}
-                className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm" /></div>
-            <div><label className="block text-sm font-medium text-gray-700">RAM</label>
-              <input type="text" value={form.ram} onChange={(e) => setForm({ ...form, ram: e.target.value })}
-                className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm" /></div>
-            <div><label className="block text-sm font-medium text-gray-700">Storage</label>
-              <input type="text" value={form.storage} onChange={(e) => setForm({ ...form, storage: e.target.value })}
-                className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm" /></div>
-            <div className="col-span-2"><label className="block text-sm font-medium text-gray-700">Notes</label>
-              <textarea rows={3} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm" /></div>
-            <div className="col-span-2">
-              <button type="submit" className="px-4 py-2 bg-primary text-white text-sm rounded-md hover:bg-primary/90">Create</button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      <div className="flex gap-3 mb-4">
-        <input type="text" placeholder="Search assets..." value={search} onChange={(e) => setSearch(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && fetchAssets()}
-          className="flex-1 max-w-md rounded border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
-        <select value={typeFilter} onChange={(e) => { setTypeFilter(e.target.value); setTimeout(fetchAssets, 0); }}
-          className="rounded border border-gray-300 px-3 py-2 text-sm">
-          <option value="">All Types</option>
-          {assetTypes.map(t => <option key={t} value={t}>{t}</option>)}
-        </select>
+          );
+        })}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white rounded-lg shadow overflow-hidden">
-          <table className="w-full">
+      {showForm && (
+        <form onSubmit={handleCreate} className="mt-5 rounded border border-gray-200 bg-white p-5">
+          <div className="grid gap-4 md:grid-cols-4">
+            <label className="md:col-span-2">
+              <span className="text-sm font-medium text-gray-700">Device name *</span>
+              <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm" />
+            </label>
+            <label>
+              <span className="text-sm font-medium text-gray-700">Category</span>
+              <select value={form.deviceCategory} onChange={(e) => setForm({ ...form, deviceCategory: e.target.value, assetType: e.target.value })} className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm">
+                {deviceCategories.map((type) => <option key={type} value={type}>{type.replaceAll('_', ' ')}</option>)}
+              </select>
+            </label>
+            <label>
+              <span className="text-sm font-medium text-gray-700">Ownership</span>
+              <select value={form.ownership} onChange={(e) => setForm({ ...form, ownership: e.target.value })} className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm">
+                {ownershipTypes.map((type) => <option key={type} value={type}>{type}</option>)}
+              </select>
+            </label>
+            <label>
+              <span className="text-sm font-medium text-gray-700">Assigned user</span>
+              <input value={form.assignedUser} onChange={(e) => setForm({ ...form, assignedUser: e.target.value })} className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm" />
+            </label>
+            <label>
+              <span className="text-sm font-medium text-gray-700">Serial</span>
+              <input value={form.serialNumber} onChange={(e) => setForm({ ...form, serialNumber: e.target.value })} className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm" />
+            </label>
+            <label>
+              <span className="text-sm font-medium text-gray-700">Manufacturer</span>
+              <input value={form.manufacturer} onChange={(e) => setForm({ ...form, manufacturer: e.target.value })} className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm" />
+            </label>
+            <label>
+              <span className="text-sm font-medium text-gray-700">Model</span>
+              <input value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm" />
+            </label>
+            <label>
+              <span className="text-sm font-medium text-gray-700">OS</span>
+              <input value={form.os} onChange={(e) => setForm({ ...form, os: e.target.value })} placeholder="Windows, macOS, iOS, Android" className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm" />
+            </label>
+            <label>
+              <span className="text-sm font-medium text-gray-700">OS version</span>
+              <input value={form.osVersion} onChange={(e) => setForm({ ...form, osVersion: e.target.value })} className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm" />
+            </label>
+            <label>
+              <span className="text-sm font-medium text-gray-700">Enrollment</span>
+              <select value={form.enrollmentStatus} onChange={(e) => setForm({ ...form, enrollmentStatus: e.target.value })} className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm">
+                {enrollmentStatuses.map((status) => <option key={status} value={status}>{status.replaceAll('_', ' ')}</option>)}
+              </select>
+            </label>
+            <label>
+              <span className="text-sm font-medium text-gray-700">Management mode</span>
+              <select value={form.managementMode} onChange={(e) => setForm({ ...form, managementMode: e.target.value })} className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm">
+                {managementModes.map((mode) => <option key={mode} value={mode}>{mode.replaceAll('_', ' ')}</option>)}
+              </select>
+            </label>
+            <label>
+              <span className="text-sm font-medium text-gray-700">Compliance</span>
+              <select value={form.complianceStatus} onChange={(e) => setForm({ ...form, complianceStatus: e.target.value })} className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm">
+                {complianceStatuses.map((status) => <option key={status} value={status}>{status.replaceAll('_', ' ')}</option>)}
+              </select>
+            </label>
+            <label>
+              <span className="text-sm font-medium text-gray-700">IP address</span>
+              <input value={form.ipAddress} onChange={(e) => setForm({ ...form, ipAddress: e.target.value })} className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm" />
+            </label>
+            <label>
+              <span className="text-sm font-medium text-gray-700">IMEI</span>
+              <input value={form.imei} onChange={(e) => setForm({ ...form, imei: e.target.value })} className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm" />
+            </label>
+            <label>
+              <span className="text-sm font-medium text-gray-700">Policy profile</span>
+              <input value={form.policyProfile} onChange={(e) => setForm({ ...form, policyProfile: e.target.value })} placeholder="Baseline, kiosk, executive" className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm" />
+            </label>
+            <label className="md:col-span-4">
+              <span className="text-sm font-medium text-gray-700">Notes</span>
+              <textarea rows={3} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm" />
+            </label>
+          </div>
+          <div className="mt-4">
+            <button type="submit" className="rounded bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90">Save device</button>
+          </div>
+        </form>
+      )}
+
+      <div className="mt-5 flex flex-col gap-3 rounded border border-gray-200 bg-white p-4 lg:flex-row lg:items-center">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-gray-400" aria-hidden="true" />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && fetchDevices()} placeholder="Search name, serial, IP, IMEI, or user" className="w-full rounded border border-gray-300 py-2 pl-9 pr-3 text-sm" />
+        </div>
+        {[
+          ['deviceCategory', 'All device types', deviceCategories],
+          ['enrollmentStatus', 'All enrollment', enrollmentStatuses],
+          ['complianceStatus', 'All compliance', complianceStatuses],
+          ['ownership', 'All ownership', ownershipTypes],
+        ].map(([key, label, options]) => (
+          <select key={String(key)} value={(filters as any)[key as string]} onChange={(e) => setFilters({ ...filters, [key as string]: e.target.value })} className="rounded border border-gray-300 px-3 py-2 text-sm">
+            <option value="">{String(label)}</option>
+            {(options as string[]).map((option) => <option key={option} value={option}>{option.replaceAll('_', ' ')}</option>)}
+          </select>
+        ))}
+      </div>
+
+      <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
+        <div className="overflow-hidden rounded border border-gray-200 bg-white">
+          <table className="w-full table-fixed">
             <thead className="bg-gray-50">
               <tr>
-                {['name', 'assetType', 'location', 'status', 'createdAt'].map((k) => {
-                  const labels: Record<string, string> = { name: 'Name', assetType: 'Type', location: 'Location', status: 'Status', createdAt: 'Created' };
-                  return (
-                  <th key={k} onClick={() => setSort({ key: k, dir: sort.key === k && sort.dir === 'asc' ? 'desc' : 'asc' })}
-                    className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-gray-700 select-none">
-                    {labels[k]}
-                    {sort.key === k && <span className="ml-1">{sort.dir === 'asc' ? '▲' : '▼'}</span>}
-                  </th>
-                  );
-                })}
+                <th className="w-[28%] px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Device</th>
+                <th className="w-[16%] px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Owner</th>
+                <th className="w-[16%] px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Enrollment</th>
+                <th className="w-[16%] px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Compliance</th>
+                <th className="w-[14%] px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Check-in</th>
+                <th className="w-[10%] px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Battery</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {sortedAssets.map((asset) => (
-                <tr key={asset.id}
-                  onClick={() => viewAsset(asset.id)}
-                  className="hover:bg-blue-50 cursor-pointer transition-colors">
-                  <td className="px-4 py-3 text-sm font-medium text-blue-600 hover:underline">{asset.name}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{asset.assetType}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{asset.location || '-'}</td>
-                  <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded text-xs font-medium ${asset.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>{asset.status}</span></td>
-                  <td className="px-4 py-3 text-sm text-gray-500">{formatDate(asset.createdAt)}</td>
+              {sortedDevices.map((device) => (
+                <tr key={device.id} onClick={() => viewDevice(device.id)} className="cursor-pointer hover:bg-blue-50">
+                  <td className="px-4 py-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-gray-200 bg-gray-50 text-gray-600">
+                        <DeviceIcon category={device.deviceCategory || device.assetType} />
+                      </span>
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-medium text-blue-700">{device.name}</div>
+                        <div className="truncate text-xs text-gray-500">{[device.manufacturer, device.model, device.os].filter(Boolean).join(' ') || device.assetType}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-700">
+                    <div className="truncate">{device.assignedUser || '-'}</div>
+                    <div className="text-xs text-gray-500">{device.ownership || 'COMPANY'}</div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex rounded border px-2 py-0.5 text-xs font-medium ${statusClass(device.enrollmentStatus)}`}>{(device.enrollmentStatus || 'UNMANAGED').replaceAll('_', ' ')}</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex rounded border px-2 py-0.5 text-xs font-medium ${statusClass(device.complianceStatus)}`}>{(device.complianceStatus || 'UNKNOWN').replaceAll('_', ' ')}</span>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-500">{device.lastCheckInAt ? formatDate(device.lastCheckInAt) : 'Never'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{device.batteryLevel !== undefined && device.batteryLevel !== null ? `${device.batteryLevel}%` : '-'}</td>
                 </tr>
               ))}
-              {assets.length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-500">No assets found</td></tr>}
+              {!loading && sortedDevices.length === 0 && (
+                <tr><td colSpan={6} className="px-4 py-10 text-center text-sm text-gray-500">No devices found</td></tr>
+              )}
             </tbody>
           </table>
+          {loading && <div className="border-t border-gray-200 p-4 text-sm text-gray-500">Loading device inventory...</div>}
         </div>
 
-        {selected && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">{selected.name}</h2>
-              <button onClick={() => handleDelete(selected.id)} className="text-xs text-red-500 hover:underline">Delete</button>
+        <aside className="rounded border border-gray-200 bg-white p-5">
+          {!selected ? (
+            <div className="flex min-h-80 flex-col items-center justify-center text-center text-gray-500">
+              <ShieldCheck className="mb-3 h-8 w-8" aria-hidden="true" />
+              <p className="text-sm">Select a device to inspect compliance, security posture, and management actions.</p>
             </div>
-            <div className="space-y-3 text-sm">
-              <div className="grid grid-cols-2 gap-2">
-                <div><span className="text-gray-500">Type:</span> <span className="font-medium">{selected.assetType}</span></div>
-                <div><span className="text-gray-500">Status:</span> <span className="font-medium">{selected.status}</span></div>
-                {selected.serialNumber && <div className="col-span-2"><span className="text-gray-500">Serial:</span> <span className="font-medium">{selected.serialNumber}</span></div>}
-                {selected.manufacturer && <div><span className="text-gray-500">Manufacturer:</span> <span className="font-medium">{selected.manufacturer}</span></div>}
-                {selected.model && <div><span className="text-gray-500">Model:</span> <span className="font-medium">{selected.model}</span></div>}
-                {selected.location && <div className="col-span-2"><span className="text-gray-500">Location:</span> <span className="font-medium">{selected.location}</span></div>}
-                {selected.ipAddress && <div><span className="text-gray-500">IP:</span> <span className="font-medium">{selected.ipAddress}</span></div>}
-                {selected.macAddress && <div><span className="text-gray-500">MAC:</span> <span className="font-medium">{selected.macAddress}</span></div>}
-                {selected.os && <div className="col-span-2"><span className="text-gray-500">OS:</span> <span className="font-medium">{selected.os}</span></div>}
-                {selected.cpu && <div className="col-span-2"><span className="text-gray-500">CPU:</span> <span className="font-medium">{selected.cpu}</span></div>}
-                {selected.ram && <div><span className="text-gray-500">RAM:</span> <span className="font-medium">{selected.ram}</span></div>}
-                {selected.storage && <div><span className="text-gray-500">Storage:</span> <span className="font-medium">{selected.storage}</span></div>}
-              </div>
-              {selected.notes && <div><span className="text-gray-500">Notes:</span><p className="mt-1 text-gray-700">{selected.notes}</p></div>}
-              {selected.tickets && selected.tickets.length > 0 && (
-                <div><span className="text-gray-500 text-xs font-medium uppercase">Linked Tickets</span>
-                  <div className="mt-1 space-y-1">{
-                    selected.tickets.map(t => (
-                      <div key={t.id} className="text-xs text-blue-600 hover:underline cursor-pointer">{t.ticketNumber} - {t.title}</div>
-                    ))
-                  }</div>
+          ) : (
+            <div>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <DeviceIcon category={selected.deviceCategory || selected.assetType} />
+                    <h2 className="text-lg font-semibold text-gray-950">{selected.name}</h2>
+                  </div>
+                  <p className="mt-1 text-sm text-gray-500">{[selected.manufacturer, selected.model, selected.serialNumber].filter(Boolean).join(' - ') || 'No hardware identifiers'}</p>
                 </div>
+                <span className={`rounded border px-2 py-0.5 text-xs font-medium ${statusClass(selected.complianceStatus)}`}>{selected.complianceStatus || 'UNKNOWN'}</span>
+              </div>
+
+              <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
+                <div><span className="text-gray-500">Category</span><div className="font-medium">{selected.deviceCategory || selected.assetType}</div></div>
+                <div><span className="text-gray-500">Enrollment</span><div className="font-medium">{selected.enrollmentStatus || 'UNMANAGED'}</div></div>
+                <div><span className="text-gray-500">Management</span><div className="font-medium">{selected.managementMode || 'NONE'}</div></div>
+                <div><span className="text-gray-500">Provider</span><div className="font-medium">{selected.mdmProvider || '-'}</div></div>
+                <div><span className="text-gray-500">OS</span><div className="font-medium">{[selected.os, selected.osVersion].filter(Boolean).join(' ') || '-'}</div></div>
+                <div><span className="text-gray-500">Check-in</span><div className="font-medium">{selected.lastCheckInAt ? formatDate(selected.lastCheckInAt) : 'Never'}</div></div>
+                <div><span className="text-gray-500">Encryption</span><div className="font-medium">{selected.encryptionStatus || 'UNKNOWN'}</div></div>
+                <div><span className="text-gray-500">Antivirus</span><div className="font-medium">{selected.antivirusStatus || '-'}</div></div>
+                <div><span className="text-gray-500">Location</span><div className="font-medium">{selected.location || '-'}</div></div>
+                <div><span className="text-gray-500">IP</span><div className="font-medium">{selected.ipAddress || '-'}</div></div>
+              </div>
+
+              {selected.complianceReasons && (
+                <div className="mt-4 rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">{selected.complianceReasons}</div>
               )}
+
+              <div className="mt-5 grid grid-cols-2 gap-2">
+                <button onClick={checkIn} disabled={!!actionLoading} className="inline-flex items-center justify-center gap-2 rounded border border-gray-300 px-3 py-2 text-sm hover:bg-gray-50 disabled:opacity-60">
+                  <RefreshCw className="h-4 w-4" aria-hidden="true" /> Check in
+                </button>
+                <button onClick={() => runAction('LOCK')} disabled={!!actionLoading} className="inline-flex items-center justify-center gap-2 rounded border border-gray-300 px-3 py-2 text-sm hover:bg-gray-50 disabled:opacity-60">
+                  <Lock className="h-4 w-4" aria-hidden="true" /> Lock
+                </button>
+                <button onClick={() => runAction('RESTART')} disabled={!!actionLoading} className="inline-flex items-center justify-center gap-2 rounded border border-gray-300 px-3 py-2 text-sm hover:bg-gray-50 disabled:opacity-60">
+                  <RotateCw className="h-4 w-4" aria-hidden="true" /> Restart
+                </button>
+                <button onClick={() => runAction(selected.lostModeEnabled ? 'CLEAR_LOST_MODE' : 'LOST_MODE')} disabled={!!actionLoading} className="inline-flex items-center justify-center gap-2 rounded border border-gray-300 px-3 py-2 text-sm hover:bg-gray-50 disabled:opacity-60">
+                  <MapPin className="h-4 w-4" aria-hidden="true" /> {selected.lostModeEnabled ? 'Clear lost' : 'Lost mode'}
+                </button>
+                <button onClick={() => runAction('SYNC')} disabled={!!actionLoading} className="inline-flex items-center justify-center gap-2 rounded border border-gray-300 px-3 py-2 text-sm hover:bg-gray-50 disabled:opacity-60">
+                  <Wifi className="h-4 w-4" aria-hidden="true" /> Sync
+                </button>
+                <button onClick={() => runAction('WIPE', { reason: 'Admin requested wipe' })} disabled={!!actionLoading} className="inline-flex items-center justify-center gap-2 rounded border border-red-200 px-3 py-2 text-sm text-red-700 hover:bg-red-50 disabled:opacity-60">
+                  <Eraser className="h-4 w-4" aria-hidden="true" /> Wipe
+                </button>
+              </div>
+
+              {selected.notes && <div className="mt-5 whitespace-pre-wrap rounded border border-gray-200 bg-gray-50 p-3 text-xs leading-5 text-gray-600">{selected.notes}</div>}
             </div>
-          </div>
-        )}
+          )}
+        </aside>
       </div>
     </div>
   );

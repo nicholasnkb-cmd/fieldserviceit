@@ -5,7 +5,7 @@ interface FetchOptions extends RequestInit {
 }
 
 async function refreshAccessToken(): Promise<string | null> {
-  const refreshToken = localStorage.getItem('refreshToken');
+  const refreshToken = typeof window !== 'undefined' ? localStorage.getItem('refreshToken') : null;
   if (!refreshToken) return null;
 
   try {
@@ -18,8 +18,10 @@ async function refreshAccessToken(): Promise<string | null> {
     if (!res.ok) return null;
 
     const data = await res.json();
-    localStorage.setItem('accessToken', data.accessToken);
-    localStorage.setItem('refreshToken', data.refreshToken);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('accessToken', data.accessToken);
+      localStorage.setItem('refreshToken', data.refreshToken);
+    }
     return data.accessToken;
   } catch {
     return null;
@@ -35,7 +37,7 @@ export async function apiClient(endpoint: string, options: FetchOptions = {}): P
   };
 
   if (!skipAuth) {
-    const token = localStorage.getItem('accessToken');
+    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
     if (token) headers['Authorization'] = `Bearer ${token}`;
   }
 
@@ -57,7 +59,9 @@ export async function apiClient(endpoint: string, options: FetchOptions = {}): P
 
   if (!res.ok) {
     const error = await res.json().catch(() => ({ message: 'Request failed' }));
-    throw new Error(error.message || `HTTP ${res.status}`);
+    const err = new Error(error.message || `HTTP ${res.status}`);
+    (err as any).status = res.status;
+    throw err;
   }
 
   return res.json();

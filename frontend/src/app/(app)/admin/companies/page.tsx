@@ -22,6 +22,8 @@ export default function AdminCompaniesPage() {
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [newCompany, setNewCompany] = useState({ name: '', slug: '', domain: '' });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editCompany, setEditCompany] = useState({ name: '', slug: '', domain: '', isActive: true });
   const [message, setMessage] = useState('');
   const { user } = useAuthStore();
   const router = useRouter();
@@ -29,12 +31,13 @@ export default function AdminCompaniesPage() {
   const fetchCompanies = useCallback(() => {
     api.get('/admin/companies')
       .then((data) => setCompanies(data.data || []))
-      .catch(() => router.push('/login'))
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, [router]);
 
   useEffect(() => {
-    if (user && user.role !== 'SUPER_ADMIN') {
+    if (!user) return;
+    if (user.role !== 'SUPER_ADMIN') {
       router.push('/dashboard');
       return;
     }
@@ -58,6 +61,38 @@ export default function AdminCompaniesPage() {
     try {
       const data = await api.post(`/admin/companies/${companyId}/invite-code`, {});
       setMessage(`Invite code generated: ${data.inviteCode}`);
+      fetchCompanies();
+    } catch (err: any) {
+      setMessage(err.message);
+    }
+  };
+
+  const startEdit = (company: Company) => {
+    setEditingId(company.id);
+    setEditCompany({
+      name: company.name,
+      slug: company.slug,
+      domain: company.domain || '',
+      isActive: company.isActive,
+    });
+  };
+
+  const handleUpdate = async (companyId: string) => {
+    try {
+      await api.patch(`/admin/companies/${companyId}`, editCompany);
+      setMessage('Company updated successfully');
+      setEditingId(null);
+      fetchCompanies();
+    } catch (err: any) {
+      setMessage(err.message);
+    }
+  };
+
+  const handleDeactivate = async (companyId: string) => {
+    if (!confirm('Deactivate this company and its users?')) return;
+    try {
+      await api.delete(`/admin/companies/${companyId}`);
+      setMessage('Company deactivated');
       fetchCompanies();
     } catch (err: any) {
       setMessage(err.message);
@@ -133,6 +168,7 @@ export default function AdminCompaniesPage() {
               <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">Name</th>
               <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">Slug</th>
               <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">Domain</th>
+              <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">Status</th>
               <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">Users</th>
               <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">Tickets</th>
               <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">Assets</th>
@@ -143,20 +179,56 @@ export default function AdminCompaniesPage() {
           <tbody className="divide-y divide-gray-200">
             {companies.map((c) => (
               <tr key={c.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 text-sm font-medium text-gray-900">{c.name}</td>
-                <td className="px-6 py-4 text-sm text-gray-600">{c.slug}</td>
-                <td className="px-6 py-4 text-sm text-gray-600">{c.domain || '-'}</td>
+                <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                  {editingId === c.id ? (
+                    <input value={editCompany.name} onChange={(e) => setEditCompany({ ...editCompany, name: e.target.value })}
+                      className="w-40 rounded border border-gray-300 px-2 py-1 text-sm" />
+                  ) : c.name}
+                </td>
+                <td className="px-6 py-4 text-sm text-gray-600">
+                  {editingId === c.id ? (
+                    <input value={editCompany.slug} onChange={(e) => setEditCompany({ ...editCompany, slug: e.target.value })}
+                      className="w-32 rounded border border-gray-300 px-2 py-1 text-sm" />
+                  ) : c.slug}
+                </td>
+                <td className="px-6 py-4 text-sm text-gray-600">
+                  {editingId === c.id ? (
+                    <input value={editCompany.domain} onChange={(e) => setEditCompany({ ...editCompany, domain: e.target.value })}
+                      className="w-40 rounded border border-gray-300 px-2 py-1 text-sm" />
+                  ) : c.domain || '-'}
+                </td>
+                <td className="px-6 py-4 text-sm text-gray-600">
+                  {editingId === c.id ? (
+                    <select value={String(editCompany.isActive)} onChange={(e) => setEditCompany({ ...editCompany, isActive: e.target.value === 'true' })}
+                      className="rounded border border-gray-300 px-2 py-1 text-sm">
+                      <option value="true">Active</option>
+                      <option value="false">Inactive</option>
+                    </select>
+                  ) : (
+                    <span className={`rounded px-2 py-1 text-xs font-medium ${c.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                      {c.isActive ? 'Active' : 'Inactive'}
+                    </span>
+                  )}
+                </td>
                 <td className="px-6 py-4 text-sm text-gray-600">{c._count.users}</td>
                 <td className="px-6 py-4 text-sm text-gray-600">{c._count.tickets}</td>
                 <td className="px-6 py-4 text-sm text-gray-600">{c._count.assets}</td>
                 <td className="px-6 py-4 text-sm font-mono text-gray-600">{c.inviteCode || '-'}</td>
                 <td className="px-6 py-4">
-                  <button
-                    onClick={() => handleInviteCode(c.id)}
-                    className="text-xs text-primary hover:underline"
-                  >
-                    Generate invite
-                  </button>
+                  <div className="flex flex-wrap gap-2">
+                    {editingId === c.id ? (
+                      <>
+                        <button onClick={() => handleUpdate(c.id)} className="text-xs text-primary hover:underline">Save</button>
+                        <button onClick={() => setEditingId(null)} className="text-xs text-gray-500 hover:underline">Cancel</button>
+                      </>
+                    ) : (
+                      <>
+                        <button onClick={() => startEdit(c)} className="text-xs text-primary hover:underline">Edit</button>
+                        <button onClick={() => handleInviteCode(c.id)} className="text-xs text-primary hover:underline">Invite</button>
+                        <button onClick={() => handleDeactivate(c.id)} className="text-xs text-red-500 hover:underline">Deactivate</button>
+                      </>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}

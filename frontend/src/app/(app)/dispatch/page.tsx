@@ -44,7 +44,7 @@ export default function DispatchPage() {
     ]).then(([d, u]) => {
       setDispatches(d || []);
       setUsers(u.data || []);
-    }).catch(() => router.push('/login')).finally(() => setLoading(false));
+    }).catch(() => {}).finally(() => setLoading(false));
   }, [router]);
 
   useEffect(() => {

@@ -43,14 +43,15 @@ export default function AdminRolesPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    if (user && user.role !== 'SUPER_ADMIN' && user.role !== 'TENANT_ADMIN') { router.push('/dashboard'); return; }
+    if (!user) return;
+    if (user.role !== 'SUPER_ADMIN' && user.role !== 'TENANT_ADMIN') { router.push('/dashboard'); return; }
     Promise.all([
       api.get('/admin/permissions'),
       api.get('/admin/roles'),
     ]).then(([permsData, rolesData]) => {
       setPermissions(permsData);
       setRoles(rolesData);
-    }).catch(() => router.push('/login')).finally(() => setLoading(false));
+    }).catch(() => {}).finally(() => setLoading(false));
   }, [router, user]);
 
   const toggleExpand = (roleId: string) => {

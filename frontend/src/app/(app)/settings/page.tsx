@@ -17,7 +17,7 @@ export default function SettingsPage() {
   const isAdmin = user?.role === 'TENANT_ADMIN' || user?.role === 'SUPER_ADMIN';
 
   useEffect(() => {
-    if (!user) { router.push('/login'); return; }
+    if (!user) return;
     if (user.userType !== 'BUSINESS') { router.push('/my-tickets'); return; }
     api.get('/settings').then((data) => {
       setSettings(data);
@@ -27,7 +27,7 @@ export default function SettingsPage() {
         logoUrl: data.branding?.logoUrl || '',
         companyName: data.branding?.companyName || data.name || '',
       });
-    }).catch(() => router.push('/login')).finally(() => setLoading(false));
+    }).catch(() => {}).finally(() => setLoading(false));
   }, [router, user]);
 
   const saveGeneral = async (e: React.FormEvent) => {

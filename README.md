@@ -8,7 +8,7 @@ Multi-tenant enterprise workflow + IT operations platform (ITSM/MSP).
 |-------|-----------|
 | Frontend | Next.js 14, React 18, Tailwind CSS, shadcn/ui, Zustand |
 | Backend | Node.js 20, NestJS 10, REST |
-| Database | MySQL 8.0 (Prisma ORM) |
+| Database | MySQL 8.0 |
 | Auth | JWT, bcrypt |
 | Real-time | Socket.IO (WebSocket) |
 | Infra | Hostinger (shared/cloud hosting), Docker |
@@ -19,11 +19,12 @@ Multi-tenant enterprise workflow + IT operations platform (ITSM/MSP).
 FieldserviceIT/
 ├── docs/                        # Architecture & design docs
 ├── backend/                     # NestJS API server (port 4000)
-│   ├── prisma/                  # Database schema & migrations
+│   ├── schema.sql               # Reference SQL schema
+│   ├── prisma/                  # Legacy schema/seed helpers
 │   └── src/
 │       ├── common/              # Guards, decorators, interceptors
 │       ├── config/              # App configuration
-│       ├── database/            # Prisma service
+│       ├── database/            # MySQL SQL data access layer
 │       └── modules/             # Feature modules
 │           ├── auth/            # Authentication & authorization
 │           ├── users/           # User management
@@ -40,7 +41,6 @@ FieldserviceIT/
 │       ├── lib/                 # API client, utilities
 │       ├── stores/              # Zustand state management
 │       └── types/               # TypeScript types
-├── hostinger/                   # Deployment scripts & guides
 ├── infra/                       # Infrastructure configs
 │   ├── docker-compose.yml       # Local development (MySQL, MailHog)
 │   ├── kubernetes/              # K8s manifests (reference)
@@ -60,8 +60,6 @@ FieldserviceIT/
 cd backend
 npm install
 copy .env.example .env          # Edit DATABASE_URL for your DB
-npx prisma generate
-npx prisma migrate dev
 npm run start:dev
 ```
 
@@ -79,24 +77,12 @@ npm run dev
 docker compose -f infra/docker-compose.yml up -d
 ```
 
-### Local Dev without Docker (SQLite)
-
-```powershell
-.\hostinger\test-local.ps1       # Builds SQLite DB, seeds, starts both servers, runs tests
-.\hostinger\test-local.ps1 -Kill # Stop servers and clean up
-```
-
 ## Deployment
 
 Target: **Hostinger shared/cloud hosting** (Node.js 20 + MySQL 8.0).
 
-See [hostinger/DEPLOY.md](hostinger/DEPLOY.md) for full instructions.
-
-### Quick Build
-
-```powershell
-.\hostinger\build-all.ps1        # Builds both apps into hostinger/dist-*/
-```
+The backend creates/ensures its MySQL tables at startup through the SQL data access layer.
+Docker-based local deployment is defined in `infra/docker-compose.yml`.
 
 ## Core Modules
 

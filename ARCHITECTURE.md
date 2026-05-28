@@ -111,7 +111,7 @@ Client creates ticket
   → AuthGuard (JWT) + PermissionsGuard
   → TicketsController.create()
   → TicketsService.createTicket()
-  → Prisma insert to MySQL
+  → SQL data access layer inserts into MySQL
   → WebSocket emits 'ticket:created'
 ```
 
@@ -129,7 +129,7 @@ Client creates ticket
 | Frontend | Next.js 14, React 18, Tailwind CSS, shadcn/ui, Zustand, Recharts, Socket.IO Client |
 | Backend | Node.js 20, NestJS 10, REST |
 | Database | MySQL 8.0 |
-| ORM | Prisma 5 |
+| Data access | Custom MySQL SQL service with Prisma-like repository methods |
 | Auth | JWT, bcrypt, Passport |
 | Real-time | Socket.IO (WebSocket) |
 | Validation | class-validator, class-transformer |

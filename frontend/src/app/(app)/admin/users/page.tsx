@@ -37,15 +37,16 @@ export default function AdminUsersPage() {
     const params = search ? `?search=${encodeURIComponent(search)}` : '';
     api.get(`/admin/users${params}`)
       .then((data) => setUsers(data.data || []))
-      .catch(() => router.push('/login'));
+      .catch(() => {});
   }, [search, router]);
 
   useEffect(() => {
+    if (!user) return;
     if (user && user.role !== 'SUPER_ADMIN') { router.push('/dashboard'); return; }
     Promise.all([api.get('/admin/users'), api.get('/admin/companies')]).then(([u, c]) => {
       setUsers(u.data || []);
       setCompanies(c.data || []);
-    }).catch(() => router.push('/login')).finally(() => setLoading(false));
+    }).catch(() => {}).finally(() => setLoading(false));
   }, [router, user]);
 
   const handleRoleChange = async (userId: string) => {

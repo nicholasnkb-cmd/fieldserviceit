@@ -20,10 +20,11 @@ export default function AdminPermissionsPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (user && user.role !== 'SUPER_ADMIN') { router.push('/dashboard'); return; }
+    if (!user) return;
+    if (user.role !== 'SUPER_ADMIN') { router.push('/dashboard'); return; }
     api.get('/admin/permissions')
       .then(setPermissions)
-      .catch(() => router.push('/login'))
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, [router, user]);
 

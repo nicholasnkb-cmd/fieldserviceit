@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '../../../lib/api';
@@ -14,6 +15,15 @@ interface GlobalStats {
   ticketsByStatus: { status: string; _count: number }[];
 }
 
+const adminActions = [
+  { title: 'Users', href: '/admin/users', body: 'Create, deactivate, move, and assign platform roles.' },
+  { title: 'Businesses', href: '/admin/companies', body: 'Create companies, manage domains, status, and invites.' },
+  { title: 'Roles', href: '/admin/roles', body: 'CRUD roles and assign permission bundles.' },
+  { title: 'System Controls', href: '/admin/system', body: 'Manage plans, feature flags, usage limits, and restrictions.' },
+  { title: 'Permissions', href: '/admin/permissions', body: 'Audit the permission catalog used by roles.' },
+  { title: 'Audit Logs', href: '/admin/audit-logs', body: 'Review cross-tenant administrative events.' },
+];
+
 export default function AdminPage() {
   const [stats, setStats] = useState<GlobalStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -21,62 +31,66 @@ export default function AdminPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (user && user.role !== 'SUPER_ADMIN') {
+    if (!user) return;
+    if (user.role !== 'SUPER_ADMIN') {
       router.push('/dashboard');
       return;
     }
-    api.get('/admin/stats')
-      .then(setStats)
-      .catch(() => router.push('/login'))
-      .finally(() => setLoading(false));
+    api.get('/admin/stats').then(setStats).catch(() => {}).finally(() => setLoading(false));
   }, [user, router]);
 
   if (loading) return <div className="p-8">Loading...</div>;
   if (!stats) return null;
 
+  const statCards = [
+    ['Users', stats.totalUsers],
+    ['Businesses', stats.totalCompanies],
+    ['Tickets', stats.totalTickets],
+    ['Devices', stats.totalAssets],
+  ];
+
   return (
-    <div className="p-8">
-      <h1 className="text-2xl font-bold mb-6">Admin Dashboard</h1>
-
-      <div className="flex gap-3 mb-6">
-        <a href="/admin/users" className="px-4 py-2 bg-primary/10 text-primary text-sm rounded-md hover:bg-primary/20 transition-colors">User Management</a>
-        <a href="/admin/companies" className="px-4 py-2 bg-primary/10 text-primary text-sm rounded-md hover:bg-primary/20 transition-colors">Company Management</a>
-        <a href="/admin/roles" className="px-4 py-2 bg-primary/10 text-primary text-sm rounded-md hover:bg-primary/20 transition-colors">Roles</a>
+    <div className="p-8 space-y-8">
+      <div>
+        <p className="text-sm font-semibold uppercase text-primary">Super Admin</p>
+        <h1 className="mt-2 text-2xl font-bold">Platform Control Portal</h1>
+        <p className="mt-1 text-sm text-gray-500">
+          Manage tenants, users, roles, permissions, plans, feature access, and global restrictions.
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-sm font-medium text-gray-500">Total Users</h3>
-          <p className="text-3xl font-bold mt-2">{stats.totalUsers}</p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-sm font-medium text-gray-500">Companies</h3>
-          <p className="text-3xl font-bold mt-2">{stats.totalCompanies}</p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-sm font-medium text-gray-500">Tickets</h3>
-          <p className="text-3xl font-bold mt-2">{stats.totalTickets}</p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-sm font-medium text-gray-500">Assets</h3>
-          <p className="text-3xl font-bold mt-2">{stats.totalAssets}</p>
-        </div>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+        {statCards.map(([label, value]) => (
+          <div key={label} className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+            <p className="text-sm font-medium text-gray-500">{label}</p>
+            <p className="mt-2 text-3xl font-bold text-gray-950">{value}</p>
+          </div>
+        ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg shadow p-6">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {adminActions.map((action) => (
+          <Link key={action.href} href={action.href} className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm hover:border-primary/40 hover:shadow">
+            <h2 className="text-base font-semibold text-gray-950">{action.title}</h2>
+            <p className="mt-2 text-sm leading-6 text-gray-600">{action.body}</p>
+          </Link>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
           <h2 className="text-lg font-semibold mb-4">Users by Type</h2>
           {stats.usersByType.map((t) => (
-            <div key={t.userType} className="flex items-center justify-between py-2">
+            <div key={t.userType} className="flex items-center justify-between border-t border-gray-100 py-3 first:border-t-0">
               <span className="text-sm text-gray-600">{t.userType}</span>
               <span className="text-sm font-medium">{t._count}</span>
             </div>
           ))}
         </div>
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
           <h2 className="text-lg font-semibold mb-4">Tickets by Status</h2>
           {stats.ticketsByStatus.map((s) => (
-            <div key={s.status} className="flex items-center justify-between py-2">
+            <div key={s.status} className="flex items-center justify-between border-t border-gray-100 py-3 first:border-t-0">
               <span className="text-sm text-gray-600">{s.status}</span>
               <span className="text-sm font-medium">{s._count}</span>
             </div>

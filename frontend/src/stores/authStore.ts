@@ -8,6 +8,27 @@ interface CompanyInfo {
   branding?: string;
 }
 
+function getUserFromToken(): User | null {
+  try {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+    if (!token) return null;
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return {
+      id: payload.sub,
+      email: payload.email,
+      firstName: payload.firstName || '',
+      lastName: payload.lastName || '',
+      role: payload.role,
+      userType: payload.userType || 'BUSINESS',
+      companyId: payload.companyId || null,
+      isActive: true,
+      createdAt: new Date().toISOString(),
+    };
+  } catch {
+    return null;
+  }
+}
+
 interface AuthState {
   user: User | null;
   company: CompanyInfo | null;
@@ -18,14 +39,16 @@ interface AuthState {
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
+  user: getUserFromToken(),
   company: null,
-  isAuthenticated: false,
+  isAuthenticated: !!getUserFromToken(),
   setUser: (user) => set({ user, isAuthenticated: true }),
   setCompany: (company) => set({ company }),
   logout: () => {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+    }
     set({ user: null, company: null, isAuthenticated: false });
   },
 }));

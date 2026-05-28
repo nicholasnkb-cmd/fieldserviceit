@@ -29,29 +29,36 @@ Workflow 1──N WorkflowRun
 WorkflowRun 1──N WorkflowRunStep
 ```
 
-## Prisma Schema (see `backend/prisma/schema.prisma`)
+## SQL Schema
+
+The runtime database is MySQL. `backend/src/database/database.service.ts` is the active data access layer and ensures the required tables on startup. `backend/schema.sql` is a reference SQL script for manual setup.
+
+The `backend/prisma/` files are legacy helpers and should not be treated as the source of truth unless the project intentionally migrates back to Prisma.
 
 ### Core Tables
 
 | Table | Description | Tenant Scope |
 |-------|-------------|-------------|
-| `companies` | Tenant organizations | Root (no companyId) |
-| `users` | All platform users | companyId |
-| `tickets` | ITSM tickets (incidents, requests, problems, changes) | companyId |
-| `ticket_timeline` | Ticket activity log | companyId |
-| `assets` | CMDB assets (computers, servers, printers, switches, IP phones, cloud) | companyId |
-| `asset_types` | Asset categorization | Shared |
-| `contracts` | Service contracts / agreements | companyId |
-| `slas` | SLA definitions and targets | companyId |
-| `workflows` | Workflow templates | companyId |
-| `workflow_steps` | Individual workflow steps | companyId |
-| `workflow_runs` | Workflow execution instances | companyId |
-| `workflow_run_steps` | Per-step execution status | companyId |
-| `dispatches` | Field technician dispatch records | companyId |
-| `notifications` | User notifications | companyId |
-| `notification_preferences` | Per-user notification settings | companyId |
-| `audit_logs` | Immutable audit trail | companyId |
-| `sessions` | Auth sessions / refresh tokens | companyId |
+| `Company` | Tenant organizations | Root (no companyId) |
+| `User` | All platform users | companyId |
+| `Ticket` | ITSM tickets (incidents, requests, problems, changes) | companyId |
+| `TicketTimeline` | Ticket activity log | via ticket/company context |
+| `TicketAttachment` | Ticket files | via ticket/company context |
+| `Asset` | MDM/CMDB device records for desktops, laptops, mobile devices, servers, kiosks, IoT, printers, and network hardware | companyId |
+| `Contract` | Service contracts / agreements | companyId |
+| `SLA` | SLA definitions and targets | companyId |
+| `Workflow` | Workflow templates | companyId |
+| `WorkflowStep` | Individual workflow steps | via workflow/company context |
+| `WorkflowRun` | Workflow execution instances | companyId |
+| `WorkflowRunStep` | Per-step execution status | via workflow run/company context |
+| `Dispatch` | Field technician dispatch records | companyId |
+| `Notification` | User notifications | companyId |
+| `NotificationPreference` | Per-user notification settings | via user/company context |
+| `AuditLog` | Immutable audit trail | companyId |
+| `Session` | Auth sessions / refresh tokens | via user/company context |
+| `Plan` | Billing plans | Shared |
+| `CompanyPlan` | Tenant subscription plan | companyId |
+| `UsageRecord` | Billing usage counters | companyId |
 
 ### Key Field Conventions
 

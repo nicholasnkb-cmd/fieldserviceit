@@ -20,9 +20,10 @@ const navItems = {
     { label: 'Settings', href: '/settings', icon: '⚙️' },
   ],
   admin: [
+    { label: 'Super Admin', href: '/admin', icon: '📊' },
     { label: 'Users', href: '/admin/users', icon: '👥' },
     { label: 'Companies', href: '/admin/companies', icon: '🏢' },
-    { label: 'Global Stats', href: '/admin', icon: '📊' },
+    { label: 'System Controls', href: '/admin/system', icon: '⚙️' },
     { label: 'Audit Logs', href: '/admin/audit-logs', icon: '📋' },
     { label: 'Permissions', href: '/admin/permissions', icon: '🔒' },
     { label: 'Roles', href: '/admin/roles', icon: '🔑' },

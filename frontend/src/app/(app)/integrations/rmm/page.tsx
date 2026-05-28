@@ -29,7 +29,7 @@ export default function RmmIntegrationPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    if (!user) { router.push('/login'); return; }
+    if (!user) return;
     if (user.userType !== 'BUSINESS') { router.push('/my-tickets'); return; }
     Promise.all([
       api.get('/integrations/rmm/providers'),
@@ -37,7 +37,7 @@ export default function RmmIntegrationPage() {
     ]).then(([provData, configData]) => {
       setProviders(provData.providers);
       setConfigs(configData);
-    }).catch(() => router.push('/login')).finally(() => setLoading(false));
+    }).catch(() => {}).finally(() => setLoading(false));
   }, [router, user]);
 
   const openConfig = (provider: string) => {

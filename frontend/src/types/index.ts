@@ -7,6 +7,11 @@ export interface User {
   userType: 'PUBLIC' | 'BUSINESS';
   companyId: string | null;
   phone?: string;
+  jobTitle?: string;
+  department?: string;
+  location?: string;
+  preferredContactMethod?: string;
+  timezone?: string;
   avatarUrl?: string;
   isActive: boolean;
   lastLoginAt?: string;

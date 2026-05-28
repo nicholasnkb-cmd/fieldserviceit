@@ -21,6 +21,8 @@ prisma/dev.db
 # IDE
 .vscode/
 .idea/
+.codex/
+.claude/
 *.swp
 *.swo
 *~

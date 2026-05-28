@@ -35,7 +35,7 @@ export default function ReportsPage() {
       if (tab === 'sla') setSla(data);
       if (tab === 'technician') setTechPerf(data || []);
       if (tab === 'assets') setAssetInv(data || []);
-    }).catch(() => router.push('/login')).finally(() => setLoading(false));
+    }).catch(() => {}).finally(() => setLoading(false));
   }, [tab, router]);
 
   const tabs = [
