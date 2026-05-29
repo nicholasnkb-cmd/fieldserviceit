@@ -1,7 +1,20 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
+const DEFAULT_TIMEOUT = 30000;
+
+export class ApiError extends Error {
+  status: number;
+  body: any;
+  constructor(message: string, status: number, body?: any) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.body = body;
+  }
+}
 
 interface FetchOptions extends RequestInit {
   skipAuth?: boolean;
+  timeout?: number;
 }
 
 async function refreshAccessToken(): Promise<string | null> {
@@ -28,8 +41,8 @@ async function refreshAccessToken(): Promise<string | null> {
   }
 }
 
-export async function apiClient(endpoint: string, options: FetchOptions = {}): Promise<any> {
-  const { skipAuth, ...fetchOptions } = options;
+export async function apiClient<T = any>(endpoint: string, options: FetchOptions = {}): Promise<T> {
+  const { skipAuth, timeout = DEFAULT_TIMEOUT, ...fetchOptions } = options;
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -41,39 +54,63 @@ export async function apiClient(endpoint: string, options: FetchOptions = {}): P
     if (token) headers['Authorization'] = `Bearer ${token}`;
   }
 
-  let res = await fetch(`${API_BASE}/v1${endpoint}`, {
-    ...fetchOptions,
-    headers,
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
 
-  if (res.status === 401 && !skipAuth) {
-    const newToken = await refreshAccessToken();
-    if (newToken) {
-      headers['Authorization'] = `Bearer ${newToken}`;
-      res = await fetch(`${API_BASE}/v1${endpoint}`, {
+  const doFetch = async (): Promise<T> => {
+    try {
+      const res = await fetch(`${API_BASE}/v1${endpoint}`, {
         ...fetchOptions,
         headers,
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
+
+      if (res.status === 401 && !skipAuth) {
+        const newToken = await refreshAccessToken();
+        if (newToken) {
+          headers['Authorization'] = `Bearer ${newToken}`;
+          const retryRes = await fetch(`${API_BASE}/v1${endpoint}`, {
+            ...fetchOptions,
+            headers,
+            signal: controller.signal,
+          });
+          if (!retryRes.ok) {
+            const retryError = await retryRes.json().catch(() => ({ message: 'Request failed' }));
+            throw new ApiError(retryError.message || `HTTP ${retryRes.status}`, retryRes.status, retryError);
+          }
+          return retryRes.json();
+        }
+      }
+
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ message: 'Request failed' }));
+        throw new ApiError(error.message || `HTTP ${res.status}`, res.status, error);
+      }
+
+      return res.json();
+    } catch (err: any) {
+      clearTimeout(timeoutId);
+      if (err instanceof ApiError) throw err;
+      if (err.name === 'AbortError') {
+        throw new ApiError('Request timed out', 408);
+      }
+      throw new ApiError(err.message || 'Network error', 0);
     }
-  }
+  };
 
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({ message: 'Request failed' }));
-    const err = new Error(error.message || `HTTP ${res.status}`);
-    (err as any).status = res.status;
-    throw err;
-  }
-
-  return res.json();
+  return doFetch();
 }
 
 export const api = {
-  get: (endpoint: string, opts?: FetchOptions) => apiClient(endpoint, { ...opts, method: 'GET' }),
-  post: (endpoint: string, body: any, opts?: FetchOptions) =>
-    apiClient(endpoint, { ...opts, method: 'POST', body: JSON.stringify(body) }),
-  patch: (endpoint: string, body: any, opts?: FetchOptions) =>
-    apiClient(endpoint, { ...opts, method: 'PATCH', body: JSON.stringify(body) }),
-  put: (endpoint: string, body: any, opts?: FetchOptions) =>
-    apiClient(endpoint, { ...opts, method: 'PUT', body: JSON.stringify(body) }),
-  delete: (endpoint: string, opts?: FetchOptions) => apiClient(endpoint, { ...opts, method: 'DELETE' }),
+  get: <T = any>(endpoint: string, opts?: FetchOptions) =>
+    apiClient<T>(endpoint, { ...opts, method: 'GET' }),
+  post: <T = any>(endpoint: string, body: any, opts?: FetchOptions) =>
+    apiClient<T>(endpoint, { ...opts, method: 'POST', body: JSON.stringify(body) }),
+  patch: <T = any>(endpoint: string, body: any, opts?: FetchOptions) =>
+    apiClient<T>(endpoint, { ...opts, method: 'PATCH', body: JSON.stringify(body) }),
+  put: <T = any>(endpoint: string, body: any, opts?: FetchOptions) =>
+    apiClient<T>(endpoint, { ...opts, method: 'PUT', body: JSON.stringify(body) }),
+  delete: <T = any>(endpoint: string, opts?: FetchOptions) =>
+    apiClient<T>(endpoint, { ...opts, method: 'DELETE' }),
 };

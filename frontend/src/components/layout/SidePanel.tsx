@@ -14,6 +14,7 @@ const navItems = {
     { label: 'Dashboard', href: '/dashboard', icon: '📊' },
     { label: 'Tickets', href: '/tickets', icon: '🎫' },
     { label: 'Assets', href: '/assets', icon: '💻' },
+    { label: 'AI Agent', href: '/ai-agent', icon: 'AI' },
     { label: 'Field Service', href: '/dispatch', icon: '🚚' },
     { label: 'Reports', href: '/reports', icon: '📈' },
     { label: 'RMM Integrations', href: '/integrations/rmm', icon: '🔄' },

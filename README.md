@@ -26,14 +26,22 @@ FieldserviceIT/
 │       ├── config/              # App configuration
 │       ├── database/            # MySQL SQL data access layer
 │       └── modules/             # Feature modules
+│           ├── admin/           # Platform & tenant admin (roles, permissions, audit logs)
 │           ├── auth/            # Authentication & authorization
-│           ├── users/           # User management
-│           ├── companies/       # Tenant management
-│           ├── tickets/         # ITSM ticketing (incidents, requests, problems, changes)
+│           ├── billing/         # Plans, Stripe subscriptions, usage counters
 │           ├── cmdb/            # Asset/CMDB management
+│           ├── companies/       # Tenant management
 │           ├── field-service/   # Technician dispatch & mobile
+│           ├── health/          # API/database health checks
+│           ├── notifications/   # In-app notifications & email delivery
 │           ├── reporting/       # Analytics & BI reports
-│           └── rmm-integration/ # RMM provider sync (ConnectWise, Datto, NinjaOne)
+│           ├── rmm-integration/ # RMM provider sync (ConnectWise, Datto, NinjaOne)
+│           ├── search/          # Cross-domain search
+│           ├── settings/        # Tenant settings & branding
+│           ├── tickets/         # ITSM ticketing (incidents, requests, problems, changes)
+│           ├── uploads/         # Avatar, attachment, dispatch photo & signature uploads
+│           ├── users/           # User management
+│           └── workflow/        # Workflow definitions & runs
 ├── frontend/                    # Next.js application (port 3000)
 │   └── src/
 │       ├── app/                 # Pages (login, dashboard, admin)
@@ -95,9 +103,17 @@ DATABASE_URL=mysql://USERNAME:PASSWORD@HOST:3306/u209468809_fieldserviceit
 ## Core Modules
 
 - **ITSM** — Incident, request, problem, change management with SLAs
-- **CMDB** — Asset tracking (computers, servers, printers, switches, IP phones, cloud)
+- **CMDB / MDM** — Asset tracking (computers, servers, printers, switches, IP phones, cloud) with MDM enrollment, compliance, and remote commands
 - **Field Service** — Technician dispatch, GPS, signatures, photo uploads
 - **RMM Integration** — ConnectWise, Datto, NinjaOne sync
+- **Workflow Engine** — Custom workflow definitions, triggers, and run tracking
+- **Billing** — Plan management, Stripe subscriptions, usage counters
+- **Notifications** — In-app notifications and email delivery (password reset, ticket updates)
+- **Admin** — Platform/tenant admin: roles, permissions, audit logs, system readiness
+- **Search** — Cross-domain search across tickets, assets, contacts
+- **Settings** — Tenant settings and branding
+- **Uploads** — Avatar, attachment, dispatch photo, and signature uploads
+- **Health** — API and database connectivity health checks
 - **Granular Permissions** — 25 permissions across 6 groups, 5 system roles
 - **Multi-Tenant** — Row-level isolation via companyId
 

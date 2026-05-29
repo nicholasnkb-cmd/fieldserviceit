@@ -96,7 +96,7 @@ flowchart TD
 | `asset` | `Asset` with MDM device fields for category, ownership, enrollment, compliance, security, telecom, and check-in state |
 | Raw SQL | `MdmEnrollmentToken` for one-time device enrollment tokens |
 | Raw SQL | `MdmCommand` for queued lock, wipe, restart, lost-mode, sync, and policy commands |
-| `contract` | `Contract` |
+| Raw SQL | `Contract` (accessible via `ticket.enrichTicket()` `include.contract` or `this.query()`/`this.execute()`) |
 | `sla` | `SLA` |
 | `dispatch` | `Dispatch` |
 | `notification` | `Notification` |

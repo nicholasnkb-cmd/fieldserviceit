@@ -4,7 +4,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   CheckCircle2,
+  Clipboard,
   Eraser,
+  KeyRound,
   Laptop,
   Lock,
   MapPin,
@@ -69,6 +71,14 @@ interface MdmSummary {
   byCategory: { mobile: number; desktop: number; server: number; other: number };
 }
 
+interface MdmCommand {
+  id: string;
+  action: string;
+  status: string;
+  createdAt: string;
+  completedAt?: string;
+}
+
 const deviceCategories = ['DESKTOP', 'LAPTOP', 'MOBILE', 'TABLET', 'SERVER', 'IOT', 'CHROMEBOOK', 'RUGGED', 'WEARABLE', 'KIOSK', 'NETWORK_DEVICE', 'PRINTER', 'OTHER'];
 const enrollmentStatuses = ['ENROLLED', 'PENDING', 'UNMANAGED', 'STALE', 'RETIRED'];
 const complianceStatuses = ['COMPLIANT', 'NON_COMPLIANT', 'UNKNOWN'];
@@ -127,6 +137,9 @@ export default function AssetsPage() {
   const [form, setForm] = useState(emptyForm);
   const [message, setMessage] = useState('');
   const [actionLoading, setActionLoading] = useState('');
+  const [enrollmentToken, setEnrollmentToken] = useState('');
+  const [tokenLoading, setTokenLoading] = useState(false);
+  const [commands, setCommands] = useState<MdmCommand[]>([]);
 
   const fetchDevices = useCallback(() => {
     setLoading(true);
@@ -161,8 +174,12 @@ export default function AssetsPage() {
   }, [devices]);
 
   const viewDevice = async (id: string) => {
-    const data = await api.get(`/assets/${id}`);
+    const [data, commandData] = await Promise.all([
+      api.get(`/assets/${id}`),
+      api.get<MdmCommand[]>(`/assets/${id}/commands`).catch(() => []),
+    ]);
     setSelected(data);
+    setCommands(commandData);
   };
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -188,6 +205,7 @@ export default function AssetsPage() {
     try {
       const updated = await api.post(`/assets/${selected.id}/actions/${action}`, body);
       setSelected(updated);
+      await viewDevice(selected.id);
       setMessage(`${action.replaceAll('_', ' ')} queued for ${selected.name}`);
       fetchDevices();
     } catch (err: any) {
@@ -213,6 +231,30 @@ export default function AssetsPage() {
     } finally {
       setActionLoading('');
     }
+  };
+
+  const createEnrollmentToken = async () => {
+    setTokenLoading(true);
+    try {
+      const token = await api.post('/assets/mdm/enrollment-tokens', {
+        ttlHours: 24,
+        deviceCategory: 'LAPTOP',
+        ownership: 'COMPANY',
+        policyProfile: 'Baseline',
+      });
+      setEnrollmentToken(token.token);
+      setMessage('Enrollment token created');
+    } catch (err: any) {
+      setMessage(err.message || 'Failed to create enrollment token');
+    } finally {
+      setTokenLoading(false);
+    }
+  };
+
+  const copyEnrollmentToken = async () => {
+    if (!enrollmentToken) return;
+    await navigator.clipboard.writeText(enrollmentToken);
+    setMessage('Enrollment token copied');
   };
 
   const statItems = [
@@ -251,6 +293,26 @@ export default function AssetsPage() {
             </div>
           );
         })}
+      </div>
+
+      <div className="mt-5 rounded border border-gray-200 bg-white p-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-950">Enrollment token</h2>
+            <p className="mt-1 text-sm text-gray-500">Use this with the device agent endpoint at /v1/mdm/enroll.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button onClick={createEnrollmentToken} disabled={tokenLoading} className="inline-flex items-center justify-center gap-2 rounded border border-gray-300 px-3 py-2 text-sm hover:bg-gray-50 disabled:opacity-60">
+              <KeyRound className="h-4 w-4" aria-hidden="true" />
+              {tokenLoading ? 'Creating...' : 'Create token'}
+            </button>
+            <button onClick={copyEnrollmentToken} disabled={!enrollmentToken} className="inline-flex items-center justify-center gap-2 rounded border border-gray-300 px-3 py-2 text-sm hover:bg-gray-50 disabled:opacity-60">
+              <Clipboard className="h-4 w-4" aria-hidden="true" />
+              Copy
+            </button>
+          </div>
+        </div>
+        {enrollmentToken && <div className="mt-3 break-all rounded border border-emerald-200 bg-emerald-50 p-3 font-mono text-xs text-emerald-800">{enrollmentToken}</div>}
       </div>
 
       {showForm && (
@@ -459,6 +521,22 @@ export default function AssetsPage() {
                 <button onClick={() => runAction('WIPE', { reason: 'Admin requested wipe' })} disabled={!!actionLoading} className="inline-flex items-center justify-center gap-2 rounded border border-red-200 px-3 py-2 text-sm text-red-700 hover:bg-red-50 disabled:opacity-60">
                   <Eraser className="h-4 w-4" aria-hidden="true" /> Wipe
                 </button>
+              </div>
+
+              <div className="mt-5">
+                <h3 className="text-sm font-semibold text-gray-950">Command queue</h3>
+                <div className="mt-2 divide-y divide-gray-200 rounded border border-gray-200">
+                  {commands.slice(0, 6).map((command) => (
+                    <div key={command.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                      <div className="min-w-0">
+                        <div className="truncate font-medium text-gray-800">{command.action.replaceAll('_', ' ')}</div>
+                        <div className="text-xs text-gray-500">{formatDate(command.createdAt)}</div>
+                      </div>
+                      <span className={`shrink-0 rounded border px-2 py-0.5 text-xs font-medium ${statusClass(command.status)}`}>{command.status}</span>
+                    </div>
+                  ))}
+                  {commands.length === 0 && <div className="px-3 py-4 text-sm text-gray-500">No commands queued yet</div>}
+                </div>
               </div>
 
               {selected.notes && <div className="mt-5 whitespace-pre-wrap rounded border border-gray-200 bg-gray-50 p-3 text-xs leading-5 text-gray-600">{selected.notes}</div>}

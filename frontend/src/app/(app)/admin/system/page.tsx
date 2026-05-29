@@ -17,6 +17,14 @@ interface Plan {
   features: Record<string, boolean>;
 }
 
+interface Readiness {
+  status: string;
+  generatedAt: string;
+  environment: string;
+  stripeWebhookPath: string;
+  checks: { name: string; status: string; detail: string }[];
+}
+
 const featureLabels: Record<string, string> = {
   tickets: 'Tickets',
   dispatch: 'Dispatch',
@@ -42,6 +50,7 @@ export default function SystemControlsPage() {
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [message, setMessage] = useState('');
+  const [readiness, setReadiness] = useState<Readiness | null>(null);
   const { user } = useAuthStore();
   const router = useRouter();
 
@@ -51,7 +60,14 @@ export default function SystemControlsPage() {
       router.push('/dashboard');
       return;
     }
-    api.get('/admin/plans')
+    Promise.all([
+      api.get('/admin/plans'),
+      api.get('/admin/system-readiness').catch(() => null),
+    ])
+      .then(([data, readinessData]) => {
+        if (readinessData) setReadiness(readinessData);
+        return data;
+      })
       .then((data) => {
         const rows = data || [];
         setPlans(rows);
@@ -114,6 +130,29 @@ export default function SystemControlsPage() {
       </div>
 
       {message && <div className="rounded bg-blue-50 p-3 text-sm text-blue-700">{message}</div>}
+
+      {readiness && (
+        <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-2 border-b border-gray-100 pb-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-950">Production readiness</h2>
+              <p className="text-sm text-gray-500">{readiness.environment} environment · webhook {readiness.stripeWebhookPath}</p>
+            </div>
+            <span className="w-fit rounded border border-gray-200 bg-gray-50 px-3 py-1 text-sm font-medium text-gray-700">{readiness.status.replaceAll('_', ' ')}</span>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            {readiness.checks.map((check) => (
+              <div key={check.name} className="rounded border border-gray-200 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-medium text-gray-900">{check.name}</span>
+                  <span className={`rounded border px-2 py-0.5 text-xs font-medium ${check.status === 'ok' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : check.status === 'critical' ? 'border-red-200 bg-red-50 text-red-700' : 'border-amber-200 bg-amber-50 text-amber-700'}`}>{check.status}</span>
+                </div>
+                <p className="mt-1 text-sm text-gray-500">{check.detail}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="space-y-5">
         {plans.map((plan) => {

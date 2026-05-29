@@ -26,7 +26,7 @@ services:
       - "8025:8025"
     restart: unless-stopped
 
-  backend:
+   backend:
     build:
       context: ../backend
       dockerfile: Dockerfile
@@ -51,6 +51,19 @@ services:
       S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-}
       SWAGGER_ENABLED: ${SWAGGER_ENABLED:-false}
       INBOUND_EMAIL_API_KEY: ${INBOUND_EMAIL_API_KEY:-}
+      # Rate limiting (optional overrides)
+      THROTTLE_TTL_SHORT: ${THROTTLE_TTL_SHORT:-1000}
+      THROTTLE_LIMIT_SHORT: ${THROTTLE_LIMIT_SHORT:-3}
+      THROTTLE_TTL_MEDIUM: ${THROTTLE_TTL_MEDIUM:-10000}
+      THROTTLE_LIMIT_MEDIUM: ${THROTTLE_LIMIT_MEDIUM:-20}
+      THROTTLE_TTL_LONG: ${THROTTLE_TTL_LONG:-60000}
+      THROTTLE_LIMIT_LONG: ${THROTTLE_LIMIT_LONG:-100}
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:4000/health/ping', r => { process.exit(r.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     ports:
       - "4000:4000"
     depends_on:
@@ -69,7 +82,8 @@ services:
     ports:
       - "3000:3000"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:
