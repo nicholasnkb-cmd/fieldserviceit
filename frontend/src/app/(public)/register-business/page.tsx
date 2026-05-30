@@ -4,6 +4,7 @@ import { Suspense, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '../../../stores/authStore';
+import { unwrapResponseBody } from '../../../lib/api';
 
 function RegisterBusinessForm() {
   const [firstName, setFirstName] = useState('');
@@ -55,7 +56,7 @@ function RegisterBusinessForm() {
       throw new Error(err.message || 'Account created, but checkout could not be started');
     }
 
-    const checkout = await checkoutRes.json();
+    const checkout = unwrapResponseBody(await checkoutRes.json());
     if (checkout.url) {
       window.location.href = checkout.url;
       return;
@@ -100,7 +101,7 @@ function RegisterBusinessForm() {
         throw new Error(err.message || 'Registration failed');
       }
 
-      const data = await res.json();
+      const data = unwrapResponseBody(await res.json());
       localStorage.setItem('accessToken', data.accessToken);
       localStorage.setItem('refreshToken', data.refreshToken);
       setUser(data.user);

@@ -1,6 +1,13 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 const DEFAULT_TIMEOUT = 30000;
 
+export function unwrapResponseBody(body: any): any {
+  if (body && typeof body === 'object' && 'success' in body && 'data' in body && 'timestamp' in body) {
+    return body.data;
+  }
+  return body;
+}
+
 export class ApiError extends Error {
   status: number;
   body: any;
@@ -30,7 +37,8 @@ async function refreshAccessToken(): Promise<string | null> {
 
     if (!res.ok) return null;
 
-    const data = await res.json();
+    const body = await res.json();
+    const data = unwrapResponseBody(body);
     if (typeof window !== 'undefined') {
       localStorage.setItem('accessToken', data.accessToken);
       localStorage.setItem('refreshToken', data.refreshToken);
@@ -79,7 +87,7 @@ export async function apiClient<T = any>(endpoint: string, options: FetchOptions
             const retryError = await retryRes.json().catch(() => ({ message: 'Request failed' }));
             throw new ApiError(retryError.message || `HTTP ${retryRes.status}`, retryRes.status, retryError);
           }
-          return retryRes.json();
+          return unwrapResponseBody(await retryRes.json());
         }
       }
 
@@ -88,7 +96,7 @@ export async function apiClient<T = any>(endpoint: string, options: FetchOptions
         throw new ApiError(error.message || `HTTP ${res.status}`, res.status, error);
       }
 
-      return res.json();
+      return unwrapResponseBody(await res.json());
     } catch (err: any) {
       clearTimeout(timeoutId);
       if (err instanceof ApiError) throw err;

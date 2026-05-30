@@ -4,6 +4,7 @@ import { Suspense, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '../../../stores/authStore';
+import { unwrapResponseBody } from '../../../lib/api';
 
 const individualPlans = ['Free', 'Starter'];
 
@@ -55,7 +56,7 @@ function RegisterForm() {
         throw new Error(err.message || 'Registration failed');
       }
 
-      const data = await res.json();
+      const data = unwrapResponseBody(await res.json());
       localStorage.setItem('accessToken', data.accessToken);
       localStorage.setItem('refreshToken', data.refreshToken);
       setUser(data.user);

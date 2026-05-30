@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '../../../stores/authStore';
+import { unwrapResponseBody } from '../../../lib/api';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -29,7 +30,7 @@ export default function LoginPage() {
         throw new Error(err.message || 'Login failed');
       }
 
-      const data = await res.json();
+      const data = unwrapResponseBody(await res.json());
       localStorage.setItem('accessToken', data.accessToken);
       localStorage.setItem('refreshToken', data.refreshToken);
       setUser(data.user);
