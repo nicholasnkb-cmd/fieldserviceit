@@ -3,6 +3,7 @@
 import { Suspense, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { useAuthStore } from '../../../stores/authStore';
 
 const individualPlans = ['Free', 'Starter'];
 
@@ -17,6 +18,7 @@ function RegisterForm() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const { setUser } = useAuthStore();
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialPlan = useMemo(() => {
@@ -56,6 +58,7 @@ function RegisterForm() {
       const data = await res.json();
       localStorage.setItem('accessToken', data.accessToken);
       localStorage.setItem('refreshToken', data.refreshToken);
+      setUser(data.user);
 
       router.push('/submit-ticket');
     } catch (err: any) {
