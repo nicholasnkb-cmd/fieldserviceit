@@ -8,6 +8,12 @@ import { cn, formatDate } from '../../lib/utils';
 import { api } from '../../lib/api';
 import { DarkModeToggle } from '../ui/DarkModeToggle';
 
+interface CompanyOption {
+  id: string;
+  name: string;
+  slug?: string;
+}
+
 const menuItems: (
   | { label: string; href: string; children?: undefined }
   | { label: string; children: { label: string; href: string }[]; href?: undefined }
@@ -34,11 +40,12 @@ const menuItems: (
 ];
 
 export function BannerMenu() {
-  const { user, company, isAuthenticated, logout } = useAuthStore();
+  const { user, company, activeCompanyContext, isAuthenticated, setActiveCompanyContext, logout } = useAuthStore();
   const pathname = usePathname();
   const router = useRouter();
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [companyOptions, setCompanyOptions] = useState<CompanyOption[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -81,6 +88,27 @@ export function BannerMenu() {
   }, [isAuthenticated, fetchNotifCount]);
 
   useEffect(() => {
+    if (!isAuthenticated || user?.role !== 'SUPER_ADMIN') return;
+
+    let active = true;
+    api.get('/admin/companies?limit=100')
+      .then((data) => {
+        if (!active) return;
+        const companies = data.data || [];
+        setCompanyOptions(companies);
+
+        if (activeCompanyContext && !companies.some((item: CompanyOption) => item.id === activeCompanyContext.id)) {
+          setActiveCompanyContext(null);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      active = false;
+    };
+  }, [activeCompanyContext, isAuthenticated, setActiveCompanyContext, user?.role]);
+
+  useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       if (notifRef.current && !notifRef.current.contains(e.target as Node)) setShowNotifs(false);
     };
@@ -104,7 +132,15 @@ export function BannerMenu() {
     router.push('/login');
   };
 
+  const handleCompanyContextChange = (companyId: string) => {
+    const selectedCompany = companyOptions.find((item) => item.id === companyId) || null;
+    setActiveCompanyContext(selectedCompany);
+    window.location.reload();
+  };
+
   if (!isAuthenticated || !user) return null;
+
+  const displayCompanyName = activeCompanyContext?.name || company?.name || 'FieldserviceIT';
 
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
@@ -112,8 +148,13 @@ export function BannerMenu() {
         {/* Logo */}
         <div className="flex items-center gap-2 shrink-0">
           <Link href="/dashboard" className="text-lg font-bold text-primary whitespace-nowrap">
-            {company?.name || 'FieldserviceIT'}
+            {displayCompanyName}
           </Link>
+          {activeCompanyContext && (
+            <span className="hidden lg:inline-flex text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-0.5">
+              Super admin view
+            </span>
+          )}
         </div>
 
         {/* Navigation */}
@@ -204,6 +245,22 @@ export function BannerMenu() {
 
         {/* User info */}
         <div className="flex items-center gap-3 shrink-0">
+          {user.role === 'SUPER_ADMIN' && (
+            <select
+              value={activeCompanyContext?.id || ''}
+              onChange={(e) => handleCompanyContextChange(e.target.value)}
+              className="hidden lg:block max-w-52 rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs text-gray-700 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              title="Select company context"
+            >
+              <option value="">Global admin</option>
+              {companyOptions.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+          )}
+
           <DarkModeToggle />
 
           {/* Notification bell */}

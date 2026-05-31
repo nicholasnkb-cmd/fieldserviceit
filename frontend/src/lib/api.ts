@@ -1,5 +1,6 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 const DEFAULT_TIMEOUT = 30000;
+const COMPANY_CONTEXT_KEY = 'superAdminCompanyContext';
 
 export function unwrapResponseBody(body: any): any {
   if (body && typeof body === 'object' && 'success' in body && 'data' in body && 'timestamp' in body) {
@@ -60,6 +61,9 @@ export async function apiClient<T = any>(endpoint: string, options: FetchOptions
   if (!skipAuth) {
     const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
     if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const companyContext = getCompanyContextId();
+    if (companyContext) headers['X-Company-Context'] = companyContext;
   }
 
   const controller = new AbortController();
@@ -108,6 +112,17 @@ export async function apiClient<T = any>(endpoint: string, options: FetchOptions
   };
 
   return doFetch();
+}
+
+function getCompanyContextId(): string | null {
+  try {
+    const value = typeof window !== 'undefined' ? localStorage.getItem(COMPANY_CONTEXT_KEY) : null;
+    if (!value) return null;
+    const company = JSON.parse(value);
+    return typeof company?.id === 'string' ? company.id : null;
+  } catch {
+    return null;
+  }
 }
 
 export const api = {
