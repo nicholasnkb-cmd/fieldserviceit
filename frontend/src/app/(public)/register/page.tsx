@@ -38,6 +38,7 @@ function RegisterForm() {
       const res = await fetch(`${apiUrl}/v1/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           email,
           password,
@@ -57,8 +58,8 @@ function RegisterForm() {
       }
 
       const data = unwrapResponseBody(await res.json());
-      localStorage.setItem('accessToken', data.accessToken);
-      localStorage.setItem('refreshToken', data.refreshToken);
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
       setUser(data.user);
 
       router.push('/submit-ticket');

@@ -30,8 +30,8 @@ function RegisterBusinessForm() {
   }, [searchParams]);
   const selectedPlan = initialPlan;
 
-  const startCheckout = async (apiUrl: string, accessToken: string, planName: string) => {
-    const plansRes = await fetch(`${apiUrl}/v1/plans`);
+  const startCheckout = async (apiUrl: string, planName: string) => {
+    const plansRes = await fetch(`${apiUrl}/v1/plans`, { credentials: 'include' });
     if (!plansRes.ok) throw new Error('Account created, but plans could not be loaded');
 
     const plansData = await plansRes.json();
@@ -42,8 +42,8 @@ function RegisterBusinessForm() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`,
       },
+      credentials: 'include',
       body: JSON.stringify({
         planId: plan.id,
         successUrl: `${window.location.origin}/billing?success=1`,
@@ -80,6 +80,7 @@ function RegisterBusinessForm() {
       const res = await fetch(`${apiUrl}/v1/auth/register-business`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           email,
           password,
@@ -102,11 +103,11 @@ function RegisterBusinessForm() {
       }
 
       const data = unwrapResponseBody(await res.json());
-      localStorage.setItem('accessToken', data.accessToken);
-      localStorage.setItem('refreshToken', data.refreshToken);
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
       setUser(data.user);
 
-      await startCheckout(apiUrl, data.accessToken, selectedPlan);
+      await startCheckout(apiUrl, selectedPlan);
     } catch (err: any) {
       setError(err.message);
     } finally {

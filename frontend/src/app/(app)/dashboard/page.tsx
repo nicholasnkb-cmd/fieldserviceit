@@ -59,12 +59,9 @@ export default function DashboardPage() {
   }, [user, router]);
 
   const fetchSummary = useCallback(() => {
-    const token = localStorage.getItem('accessToken');
-    if (!token) { router.push('/login'); return; }
-
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
     fetch(`${apiUrl}/v1/reports/tickets`, {
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: 'include',
     })
       .then((res) => {
         if (!res.ok) throw new Error('Unauthorized');
@@ -73,15 +70,13 @@ export default function DashboardPage() {
       .then(setSummary)
       .catch(() => { /* stay on page, show empty */ })
       .finally(() => setLoading(false));
-  }, [router]);
+  }, []);
 
   useEffect(() => { fetchSummary(); }, [fetchSummary]);
 
   useEffect(() => {
-    const token = localStorage.getItem('accessToken');
-    if (!token) return;
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
-    fetch(`${apiUrl}/v1/reports/activity`, { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`${apiUrl}/v1/reports/activity`, { credentials: 'include' })
       .then((res) => res.ok ? res.json() : [])
       .then(setActivity)
       .catch(() => {});

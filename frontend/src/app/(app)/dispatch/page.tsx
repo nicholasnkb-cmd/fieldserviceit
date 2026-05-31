@@ -91,7 +91,7 @@ export default function DispatchPage() {
       Array.from(files).forEach((f) => formData.append('photos', f));
       const uploadRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/v1/uploads/photo`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${localStorage.getItem('accessToken')}` },
+        credentials: 'include',
         body: formData,
       });
       if (!uploadRes.ok) throw new Error('Upload failed');
@@ -138,7 +138,7 @@ export default function DispatchPage() {
     try {
       const uploadRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/v1/uploads/signature`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${localStorage.getItem('accessToken')}` },
+        credentials: 'include',
         body: formData,
       });
       if (!uploadRes.ok) throw new Error('Upload failed');

@@ -13,37 +13,43 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     if (hydrated.current) return;
     hydrated.current = true;
 
+    api.get('/users/me').then((u) => {
+      if (u) setUser(u);
+    }).catch(() => {});
+
     try {
-      const token = localStorage.getItem('accessToken');
-      if (token) {
-        try {
-          const payload = JSON.parse(atob(token.split('.')[1]));
-          setUser({
-            id: payload.sub,
-            email: payload.email,
-            firstName: '',
-            lastName: '',
-            role: payload.role,
-            userType: payload.userType || 'BUSINESS',
-            companyId: payload.companyId || null,
-            isActive: true,
-            createdAt: new Date().toISOString(),
-          });
-          api.get('/users/me').then((u) => {
-            if (u) setUser(u);
-          }).catch(() => {
-            // /users/me failed — keep JWT-derived profile, don't force logout
-          });
-        } catch {
-          // Invalid JWT — clear stale tokens
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('refreshToken');
-        }
-      }
-    } catch {
-      // localStorage not available
-    }
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+    } catch {}
   }, [setUser]);
+
+  useEffect(() => {
+    const report = (message: string, stack?: string, metadata?: Record<string, any>) => {
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+        const state = useAuthStore.getState();
+        const payload = JSON.stringify({
+          source: 'frontend',
+          message,
+          stack,
+          path: window.location.pathname,
+          userId: state.user?.id,
+          companyId: state.user?.companyId,
+          metadata,
+        });
+        navigator.sendBeacon?.(`${apiUrl}/v1/error-reports`, new Blob([payload], { type: 'application/json' }));
+      } catch {}
+    };
+
+    const onError = (event: ErrorEvent) => report(event.message, event.error?.stack, { filename: event.filename, lineno: event.lineno, colno: event.colno });
+    const onRejection = (event: PromiseRejectionEvent) => report(String(event.reason?.message || event.reason || 'Unhandled promise rejection'), event.reason?.stack);
+    window.addEventListener('error', onError);
+    window.addEventListener('unhandledrejection', onRejection);
+    return () => {
+      window.removeEventListener('error', onError);
+      window.removeEventListener('unhandledrejection', onRejection);
+    };
+  }, []);
 
   return <ToastProvider>{children}</ToastProvider>;
 }

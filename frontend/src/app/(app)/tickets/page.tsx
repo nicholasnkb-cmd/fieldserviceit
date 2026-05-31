@@ -93,10 +93,9 @@ export default function TicketsPage() {
 
   const exportCsv = async () => {
     try {
-      const token = localStorage.getItem('accessToken');
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
       const res = await fetch(`${apiUrl}/v1/tickets/export/csv?status=${filter}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
       });
       if (!res.ok) throw new Error('Export failed');
       const blob = await res.blob();

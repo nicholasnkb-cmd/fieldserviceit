@@ -2,6 +2,7 @@ import { BannerMenu } from './BannerMenu';
 import { SidePanel } from './SidePanel';
 import { Footer } from './Footer';
 import { TenantContextBanner } from './TenantContextBanner';
+import { FeatureAccessGate } from './FeatureAccessGate';
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -11,7 +12,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <SidePanel />
         <main className="flex-1 bg-gray-50">
           <TenantContextBanner />
-          {children}
+          <FeatureAccessGate>{children}</FeatureAccessGate>
         </main>
       </div>
       <Footer />

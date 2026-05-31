@@ -101,15 +101,14 @@ export default function TicketDetailPage() {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-    setUploadingFiles(true);
+      setUploadingFiles(true);
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
-      const token = localStorage.getItem('accessToken');
       const formData = new FormData();
       for (let i = 0; i < files.length; i++) formData.append('files', files[i]);
       const res = await fetch(`${apiUrl}/v1/uploads/ticket`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
         body: formData,
       });
       if (!res.ok) throw new Error('Upload failed');

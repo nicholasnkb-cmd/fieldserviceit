@@ -22,6 +22,7 @@ export default function LoginPage() {
       const res = await fetch(`${apiUrl}/v1/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ email, password }),
       });
 
@@ -31,8 +32,8 @@ export default function LoginPage() {
       }
 
       const data = unwrapResponseBody(await res.json());
-      localStorage.setItem('accessToken', data.accessToken);
-      localStorage.setItem('refreshToken', data.refreshToken);
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
       setUser(data.user);
 
       router.push('/dashboard');

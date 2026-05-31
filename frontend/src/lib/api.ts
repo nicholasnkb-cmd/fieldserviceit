@@ -26,25 +26,19 @@ interface FetchOptions extends RequestInit {
 }
 
 async function refreshAccessToken(): Promise<string | null> {
-  const refreshToken = typeof window !== 'undefined' ? localStorage.getItem('refreshToken') : null;
-  if (!refreshToken) return null;
-
   try {
     const res = await fetch(`${API_BASE}/v1/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken }),
+      credentials: 'include',
+      body: JSON.stringify({}),
     });
 
     if (!res.ok) return null;
 
     const body = await res.json();
     const data = unwrapResponseBody(body);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('accessToken', data.accessToken);
-      localStorage.setItem('refreshToken', data.refreshToken);
-    }
-    return data.accessToken;
+    return data.accessToken || 'cookie';
   } catch {
     return null;
   }
@@ -59,9 +53,6 @@ export async function apiClient<T = any>(endpoint: string, options: FetchOptions
   };
 
   if (!skipAuth) {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-
     const companyContext = getCompanyContextId();
     if (companyContext) headers['X-Company-Context'] = companyContext;
   }
@@ -74,6 +65,7 @@ export async function apiClient<T = any>(endpoint: string, options: FetchOptions
       const res = await fetch(`${API_BASE}/v1${endpoint}`, {
         ...fetchOptions,
         headers,
+        credentials: 'include',
         signal: controller.signal,
       });
       clearTimeout(timeoutId);
@@ -85,6 +77,7 @@ export async function apiClient<T = any>(endpoint: string, options: FetchOptions
           const retryRes = await fetch(`${API_BASE}/v1${endpoint}`, {
             ...fetchOptions,
             headers,
+            credentials: 'include',
             signal: controller.signal,
           });
           if (!retryRes.ok) {

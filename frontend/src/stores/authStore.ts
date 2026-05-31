@@ -12,24 +12,7 @@ interface CompanyInfo {
 const COMPANY_CONTEXT_KEY = 'superAdminCompanyContext';
 
 function getUserFromToken(): User | null {
-  try {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-    if (!token) return null;
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    return {
-      id: payload.sub,
-      email: payload.email,
-      firstName: payload.firstName || '',
-      lastName: payload.lastName || '',
-      role: payload.role,
-      userType: payload.userType || 'BUSINESS',
-      companyId: payload.companyId || null,
-      isActive: true,
-      createdAt: new Date().toISOString(),
-    };
-  } catch {
-    return null;
-  }
+  return null;
 }
 
 function getCompanyContextFromStorage(): CompanyInfo | null {
@@ -71,6 +54,13 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
   logout: () => {
     if (typeof window !== 'undefined') {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+      fetch(`${apiUrl}/v1/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      }).catch(() => {});
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
       localStorage.removeItem(COMPANY_CONTEXT_KEY);

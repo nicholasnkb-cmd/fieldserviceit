@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import { allCategories, categories } from '../../../lib/ticketCategories';
 
 export default function SubmitTicketPage() {
@@ -21,15 +20,6 @@ export default function SubmitTicketPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [success, setSuccess] = useState<{ ticketNumber: string; trackingToken?: string } | null>(null);
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
-
-  useEffect(() => {
-    const token = localStorage.getItem('accessToken');
-    if (!token) {
-      router.push('/login');
-    }
-  }, [router]);
-
   const validate = () => {
     const e: Record<string, string> = {};
     if (!title.trim()) e.title = 'Title is required';
@@ -49,7 +39,6 @@ export default function SubmitTicketPage() {
     setLoading(true);
 
     try {
-      const token = localStorage.getItem('accessToken');
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
       const body: any = {
         title, description, priority, type,
@@ -65,8 +54,8 @@ export default function SubmitTicketPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
+        credentials: 'include',
         body: JSON.stringify(body),
       });
 
