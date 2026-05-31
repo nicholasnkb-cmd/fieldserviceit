@@ -16,6 +16,8 @@ export default function TicketsPage() {
   const [tickets, setTickets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(1);
   const [meta, setMeta] = useState<any>({ page: 1, totalPages: 1 });
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -26,16 +28,22 @@ export default function TicketsPage() {
   const router = useRouter();
   const { toast } = useToast();
 
+  useEffect(() => {
+    const handle = window.setTimeout(() => setDebouncedSearch(search.trim()), 350);
+    return () => window.clearTimeout(handle);
+  }, [search]);
+
   const fetchTickets = useCallback(() => {
     const params = new URLSearchParams();
     if (filter) params.set('status', filter);
+    if (debouncedSearch) params.set('search', debouncedSearch);
     params.set('page', String(page));
     params.set('limit', '25');
     api.get(`/tickets?${params}`)
       .then((data) => { setTickets(data.data || []); setMeta(data.meta); })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [filter, page, router]);
+  }, [filter, debouncedSearch, page]);
 
   useEffect(() => {
     if (user && user.userType !== 'BUSINESS') { router.push('/my-tickets'); return; }
@@ -139,6 +147,15 @@ export default function TicketsPage() {
           <button onClick={() => setSelected(new Set())} className="px-3 py-1 text-gray-500 text-xs hover:text-gray-700">Clear</button>
         </div>
       )}
+
+      <div className="mb-4">
+        <input
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+          placeholder="Search ticket number or title"
+          className="w-full max-w-md rounded border border-gray-300 px-3 py-2 text-sm"
+        />
+      </div>
 
       <ResponsiveTable>
         <table className="w-full bg-white rounded-lg shadow overflow-hidden">
