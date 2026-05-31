@@ -85,6 +85,12 @@ export default function LandingPage() {
             FieldserviceIT
           </Link>
           <div className="flex items-center gap-2 sm:gap-4">
+            <Link href="/about" className="hidden text-sm font-medium text-gray-700 hover:text-gray-950 md:inline">
+              About
+            </Link>
+            <Link href="/contact" className="hidden text-sm font-medium text-gray-700 hover:text-gray-950 md:inline">
+              Contact
+            </Link>
             <Link href="/submit-ticket" className="hidden text-sm font-medium text-gray-700 hover:text-gray-950 sm:inline">
               Submit ticket
             </Link>

@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "postbuild": "node postbuild.js",
-    "start": "next start",
+    "start": "node .next/standalone/server.js",
+    "start:next": "next start",
     "lint": "next lint",
     "test": "jest --passWithNoTests",
     "test:watch": "jest --watch --passWithNoTests"

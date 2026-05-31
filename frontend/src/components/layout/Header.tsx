@@ -58,12 +58,20 @@ export function Header() {
               </button>
             </div>
           ) : (
-            <Link
-              href="/login"
-              className="text-sm text-primary hover:text-primary-700 font-medium"
-            >
-              Sign in
-            </Link>
+            <>
+              <Link href="/about" className="hidden text-sm font-medium text-gray-600 hover:text-gray-950 sm:inline">
+                About
+              </Link>
+              <Link href="/contact" className="hidden text-sm font-medium text-gray-600 hover:text-gray-950 sm:inline">
+                Contact
+              </Link>
+              <Link
+                href="/login"
+                className="text-sm text-primary hover:text-primary-700 font-medium"
+              >
+                Sign in
+              </Link>
+            </>
           )}
         </div>
       </div>

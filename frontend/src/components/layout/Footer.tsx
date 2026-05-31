@@ -13,6 +13,7 @@ export function Footer() {
         <div>
           <h3 className="text-white font-semibold mb-3">Quick Links</h3>
           <ul className="space-y-2 text-sm">
+            <li><Link href="/about" className="hover:text-white transition-colors">About Us</Link></li>
             <li><Link href="/dashboard" className="hover:text-white transition-colors">Dashboard</Link></li>
             <li><Link href="/tickets" className="hover:text-white transition-colors">Tickets</Link></li>
             <li><Link href="/assets" className="hover:text-white transition-colors">Assets</Link></li>
@@ -22,9 +23,9 @@ export function Footer() {
         <div>
           <h3 className="text-white font-semibold mb-3">Support</h3>
           <ul className="space-y-2 text-sm">
-            <li><a href="#" className="hover:text-white transition-colors">Privacy Policy</a></li>
-            <li><a href="#" className="hover:text-white transition-colors">Terms of Service</a></li>
-            <li><a href="#" className="hover:text-white transition-colors">Contact Support</a></li>
+            <li><Link href="/contact" className="hover:text-white transition-colors">Contact Us</Link></li>
+            <li><Link href="/legal-disclaimer" className="hover:text-white transition-colors">Legal Disclaimer</Link></li>
+            <li><a href="mailto:support@fieldserviceit.com" className="hover:text-white transition-colors">Contact Support</a></li>
           </ul>
         </div>
       </div>
