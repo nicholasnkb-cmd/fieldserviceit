@@ -14,16 +14,22 @@ export default function AuditLogsPage() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const { user } = useAuthStore();
   const router = useRouter();
+
+  useEffect(() => {
+    const handle = window.setTimeout(() => setDebouncedSearch(search.trim()), 350);
+    return () => window.clearTimeout(handle);
+  }, [search]);
 
   useEffect(() => {
     if (!user) return;
     if (user.role !== 'SUPER_ADMIN') { router.push('/dashboard'); return; }
     setLoading(true);
-    const params = `?page=${page}&limit=25${search ? `&search=${encodeURIComponent(search)}` : ''}`;
+    const params = `?page=${page}&limit=25${debouncedSearch ? `&search=${encodeURIComponent(debouncedSearch)}` : ''}`;
     api.get(`/admin/audit-logs${params}`).then((d) => { setLogs(d.data || []); setMeta(d.meta); }).catch(() => {}).finally(() => setLoading(false));
-  }, [page, search, user, router]);
+  }, [page, debouncedSearch, user, router]);
 
   return (
     <div className="p-8">

@@ -131,6 +131,7 @@ export default function AssetsPage() {
   const [summary, setSummary] = useState<MdmSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [filters, setFilters] = useState({ deviceCategory: '', enrollmentStatus: '', complianceStatus: '', ownership: '' });
   const [selected, setSelected] = useState<Device | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -141,10 +142,15 @@ export default function AssetsPage() {
   const [tokenLoading, setTokenLoading] = useState(false);
   const [commands, setCommands] = useState<MdmCommand[]>([]);
 
+  useEffect(() => {
+    const handle = window.setTimeout(() => setDebouncedSearch(search.trim()), 350);
+    return () => window.clearTimeout(handle);
+  }, [search]);
+
   const fetchDevices = useCallback(() => {
     setLoading(true);
     const params = new URLSearchParams();
-    if (search) params.set('search', search);
+    if (debouncedSearch) params.set('search', debouncedSearch);
     Object.entries(filters).forEach(([key, value]) => {
       if (value) params.set(key, value);
     });
@@ -159,7 +165,7 @@ export default function AssetsPage() {
       })
       .catch((err) => setMessage(err.message || 'Failed to load devices'))
       .finally(() => setLoading(false));
-  }, [search, filters]);
+  }, [debouncedSearch, filters]);
 
   useEffect(() => {
     fetchDevices();

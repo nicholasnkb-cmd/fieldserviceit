@@ -14,6 +14,7 @@ export default function TenantAdminPage() {
   const [users, setUsers] = useState<CompanyUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [newRole, setNewRole] = useState('');
@@ -22,12 +23,17 @@ export default function TenantAdminPage() {
   const { user } = useAuthStore();
   const router = useRouter();
 
+  useEffect(() => {
+    const handle = window.setTimeout(() => setDebouncedSearch(search.trim()), 350);
+    return () => window.clearTimeout(handle);
+  }, [search]);
+
   const fetchUsers = useCallback(() => {
-    const params = search ? `?search=${encodeURIComponent(search)}` : '';
+    const params = debouncedSearch ? `?search=${encodeURIComponent(debouncedSearch)}` : '';
     api.get(`/admin/company/users${params}`)
       .then((data) => setUsers(data.data || []))
       .catch(() => {});
-  }, [search]);
+  }, [debouncedSearch]);
 
   useEffect(() => {
     if (!user) return;

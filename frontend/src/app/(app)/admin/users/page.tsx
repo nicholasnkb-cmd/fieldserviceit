@@ -25,6 +25,7 @@ export default function AdminUsersPage() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [editing, setEditing] = useState<string | null>(null);
   const [newRole, setNewRole] = useState('');
   const [showCreate, setShowCreate] = useState(false);
@@ -33,12 +34,17 @@ export default function AdminUsersPage() {
   const { user } = useAuthStore();
   const router = useRouter();
 
+  useEffect(() => {
+    const handle = window.setTimeout(() => setDebouncedSearch(search.trim()), 350);
+    return () => window.clearTimeout(handle);
+  }, [search]);
+
   const fetchUsers = useCallback(() => {
-    const params = search ? `?search=${encodeURIComponent(search)}` : '';
+    const params = debouncedSearch ? `?search=${encodeURIComponent(debouncedSearch)}` : '';
     api.get(`/admin/users${params}`)
       .then((data) => setUsers(data.data || []))
       .catch(() => {});
-  }, [search, router]);
+  }, [debouncedSearch]);
 
   useEffect(() => {
     if (!user) return;
@@ -48,6 +54,11 @@ export default function AdminUsersPage() {
       setCompanies(c.data || []);
     }).catch(() => {}).finally(() => setLoading(false));
   }, [router, user]);
+
+  useEffect(() => {
+    if (!user || user.role !== 'SUPER_ADMIN') return;
+    fetchUsers();
+  }, [debouncedSearch, fetchUsers, user]);
 
   const handleRoleChange = async (userId: string) => {
     try { await api.patch(`/admin/users/${userId}/role`, { role: newRole }); setMessage('Role updated'); setEditing(null); fetchUsers(); }
