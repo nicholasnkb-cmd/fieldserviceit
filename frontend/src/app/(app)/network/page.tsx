@@ -23,6 +23,8 @@ import {
 } from 'lucide-react';
 import { api } from '../../../lib/api';
 import { formatDate } from '../../../lib/utils';
+import { RequireCompanyContext } from '../../../components/layout/RequireCompanyContext';
+import { useAuthStore } from '../../../stores/authStore';
 
 type NetworkTab = 'overview' | 'topology' | 'vlans' | 'wifi' | 'firewall' | 'dhcp' | 'monitoring' | 'interfaces' | 'firmware' | 'discovery' | 'actions' | 'vendors' | 'credentials' | 'alerts' | 'ipam' | 'backups' | 'maintenance' | 'ops';
 
@@ -350,6 +352,7 @@ function DeviceGlyph({ type }: { type?: string }) {
 }
 
 export default function NetworkPage() {
+  const { user, activeCompanyContext } = useAuthStore();
   const [devices, setDevices] = useState<NetworkDevice[]>([]);
   const [selected, setSelected] = useState<NetworkDevice | null>(null);
   const [config, setConfig] = useState<NetworkConfig>(defaultConfig);
@@ -389,6 +392,12 @@ export default function NetworkPage() {
   const [syslogFilter, setSyslogFilter] = useState('');
   const [pinging, setPinging] = useState(false);
   const [snmpPolling, setSnmpPolling] = useState(false);
+  const [pendingAction, setPendingAction] = useState<{ action: string; port: string } | null>(null);
+
+  const canEditNetwork = ['SUPER_ADMIN', 'TENANT_ADMIN', 'TECHNICIAN'].includes(user?.role || '');
+  const canManageCredentials = ['SUPER_ADMIN', 'TENANT_ADMIN'].includes(user?.role || '');
+  const canRunActions = ['SUPER_ADMIN', 'TENANT_ADMIN', 'TECHNICIAN'].includes(user?.role || '');
+  const canManageOps = ['SUPER_ADMIN', 'TENANT_ADMIN'].includes(user?.role || '');
 
   useEffect(() => {
     const handle = window.setTimeout(() => setDebouncedSearch(search.trim()), 350);
@@ -396,6 +405,10 @@ export default function NetworkPage() {
   }, [search]);
 
   const fetchDevices = useCallback(async () => {
+    if (user?.role === 'SUPER_ADMIN' && !activeCompanyContext) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const params = new URLSearchParams({ assetType: 'NETWORK_DEVICE', limit: '100' });
@@ -412,7 +425,7 @@ export default function NetworkPage() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, selected]);
+  }, [activeCompanyContext, debouncedSearch, selected, user?.role]);
 
   useEffect(() => {
     fetchDevices();
@@ -689,6 +702,20 @@ export default function NetworkPage() {
     }
   };
 
+  const confirmPendingAction = async () => {
+    if (!pendingAction) return;
+    if (pendingAction.action.startsWith('EXECUTE:')) {
+      await executeAction(pendingAction.action.slice('EXECUTE:'.length));
+      setPendingAction(null);
+      return;
+    }
+    const payload = ['BOUNCE_POE', 'DISABLE_PORT', 'ENABLE_PORT'].includes(pendingAction.action)
+      ? { port: pendingAction.port }
+      : {};
+    await queueAction(pendingAction.action, payload);
+    setPendingAction(null);
+  };
+
   const executeAction = async (actionId: string) => {
     if (!selected) return;
     setSaving(true);
@@ -782,7 +809,29 @@ export default function NetworkPage() {
     }));
   };
 
+  const tabItems = [
+    { key: 'overview', Icon: Cpu, label: 'Overview' },
+    { key: 'topology', Icon: Globe2, label: 'Topology' },
+    { key: 'vlans', Icon: Cable, label: 'VLANs', hidden: !canEditNetwork },
+    { key: 'wifi', Icon: Wifi, label: 'Wi-Fi', hidden: !canEditNetwork },
+    { key: 'firewall', Icon: Shield, label: 'Firewall', hidden: !canEditNetwork },
+    { key: 'dhcp', Icon: Server, label: 'DHCP', hidden: !canEditNetwork },
+    { key: 'monitoring', Icon: Activity, label: 'Monitoring' },
+    { key: 'interfaces', Icon: Cable, label: 'Interfaces' },
+    { key: 'firmware', Icon: Server, label: 'Firmware' },
+    { key: 'discovery', Icon: Search, label: 'Discovery', hidden: !canEditNetwork },
+    { key: 'actions', Icon: RefreshCw, label: 'Actions', hidden: !canRunActions },
+    { key: 'vendors', Icon: Globe2, label: 'Vendors' },
+    { key: 'credentials', Icon: KeyRound, label: 'Credentials', hidden: !canManageCredentials },
+    { key: 'alerts', Icon: AlertTriangle, label: 'Alerts' },
+    { key: 'ipam', Icon: SlidersHorizontal, label: 'IPAM', hidden: !canEditNetwork },
+    { key: 'backups', Icon: Save, label: 'Backups', hidden: !canEditNetwork },
+    { key: 'maintenance', Icon: RefreshCw, label: 'Maintenance', hidden: !canEditNetwork },
+    { key: 'ops', Icon: SlidersHorizontal, label: 'Ops', hidden: !canManageOps },
+  ].filter((item) => !item.hidden);
+
   return (
+    <RequireCompanyContext area="Network monitoring">
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="flex flex-col gap-4 border-b border-gray-200 pb-5 lg:flex-row lg:items-end lg:justify-between">
         <div>
@@ -795,10 +844,12 @@ export default function NetworkPage() {
             <RefreshCw className="h-4 w-4" aria-hidden="true" />
             Refresh
           </button>
-          <button onClick={() => setShowAdd((value) => !value)} className="inline-flex items-center justify-center gap-2 rounded bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90">
-            <Plus className="h-4 w-4" aria-hidden="true" />
-            Add equipment
-          </button>
+          {canEditNetwork && (
+            <button onClick={() => setShowAdd((value) => !value)} className="inline-flex items-center justify-center gap-2 rounded bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90">
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              Add equipment
+            </button>
+          )}
         </div>
       </div>
 
@@ -819,7 +870,7 @@ export default function NetworkPage() {
         })}
       </div>
 
-      {showAdd && (
+      {showAdd && canEditNetwork && (
         <form onSubmit={createDevice} className="mt-5 rounded border border-gray-200 bg-white p-5">
           <div className="grid gap-4 md:grid-cols-4">
             <label className="md:col-span-2">
@@ -912,33 +963,16 @@ export default function NetworkPage() {
                     </div>
                     <p className="mt-1 text-sm text-gray-500">{[selected.manufacturer, selected.model, selected.serialNumber].filter(Boolean).join(' - ') || 'No hardware identifiers'}</p>
                   </div>
-                  <button onClick={saveConfig} disabled={saving} className="inline-flex items-center justify-center gap-2 rounded bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-60">
-                    <Save className="h-4 w-4" aria-hidden="true" />
-                    {saving ? 'Saving...' : 'Save config'}
-                  </button>
+                  {canEditNetwork && (
+                    <button onClick={saveConfig} disabled={saving} className="inline-flex items-center justify-center gap-2 rounded bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-60">
+                      <Save className="h-4 w-4" aria-hidden="true" />
+                      {saving ? 'Saving...' : 'Save config'}
+                    </button>
+                  )}
                 </div>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  {[
-                    ['overview', Cpu, 'Overview'],
-                    ['topology', Globe2, 'Topology'],
-                    ['vlans', Cable, 'VLANs'],
-                    ['wifi', Wifi, 'Wi-Fi'],
-                    ['firewall', Shield, 'Firewall'],
-                    ['dhcp', Server, 'DHCP'],
-                    ['monitoring', Activity, 'Monitoring'],
-                    ['interfaces', Cable, 'Interfaces'],
-                    ['firmware', Server, 'Firmware'],
-                    ['discovery', Search, 'Discovery'],
-                    ['actions', RefreshCw, 'Actions'],
-                    ['vendors', Globe2, 'Vendors'],
-                    ['credentials', KeyRound, 'Credentials'],
-                    ['alerts', AlertTriangle, 'Alerts'],
-                    ['ipam', SlidersHorizontal, 'IPAM'],
-                    ['backups', Save, 'Backups'],
-                    ['maintenance', RefreshCw, 'Maintenance'],
-                    ['ops', SlidersHorizontal, 'Ops'],
-                  ].map(([key, Icon, label]) => {
-                    const TabIcon = Icon as typeof Cpu;
+                  {tabItems.map(({ key, Icon, label }) => {
+                    const TabIcon = Icon;
                     return (
                       <button key={String(key)} onClick={() => setTab(key as NetworkTab)} className={`inline-flex items-center gap-2 rounded border px-3 py-2 text-sm font-medium ${tab === key ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}`}>
                         <TabIcon className="h-4 w-4" aria-hidden="true" />
@@ -1243,9 +1277,12 @@ export default function NetworkPage() {
 
                 {tab === 'actions' && (
                   <div className="space-y-4">
+                    <div className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                      Actions can interrupt service. Queue the action first, review it below, then execute it when you are ready.
+                    </div>
                     <div className="flex flex-wrap gap-2">
                       {['RESTART', 'BACKUP_CONFIG', 'SYNC_CONTROLLER', 'BOUNCE_POE', 'DISABLE_PORT', 'ENABLE_PORT'].map((action) => (
-                        <button key={action} onClick={() => queueAction(action)} disabled={saving} className="inline-flex items-center gap-2 rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-60">
+                        <button key={action} onClick={() => setPendingAction({ action, port: '' })} disabled={saving} className="inline-flex items-center gap-2 rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-60">
                           <RefreshCw className="h-4 w-4" />
                           {action.replaceAll('_', ' ')}
                         </button>
@@ -1258,7 +1295,7 @@ export default function NetworkPage() {
                     />
                     <div className="flex flex-wrap gap-2">
                       {deviceActions.filter((item) => item.status === 'QUEUED').slice(0, 6).map((item) => (
-                        <button key={item.id} onClick={() => executeAction(item.id)} className="inline-flex items-center gap-2 rounded border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                        <button key={item.id} onClick={() => setPendingAction({ action: `EXECUTE:${item.id}`, port: '' })} className="inline-flex items-center gap-2 rounded border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
                           <RefreshCw className="h-4 w-4" />
                           Execute {item.action.replaceAll('_', ' ')}
                         </button>
@@ -1416,7 +1453,32 @@ export default function NetworkPage() {
           )}
         </section>
       </div>
+      {pendingAction && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/40 px-4">
+          <div className="w-full max-w-md rounded border border-gray-200 bg-white p-5 shadow-xl">
+            <h2 className="text-lg font-semibold text-gray-950">
+              {pendingAction.action.startsWith('EXECUTE:') ? 'Execute queued action?' : `Queue ${pendingAction.action.replaceAll('_', ' ')}?`}
+            </h2>
+            <p className="mt-2 text-sm text-gray-500">
+              Confirm this change for {selected?.name}. Reboots, PoE bounces, and port state changes can interrupt users.
+            </p>
+            {['BOUNCE_POE', 'DISABLE_PORT', 'ENABLE_PORT'].includes(pendingAction.action) && (
+              <label className="mt-4 block">
+                <span className="text-sm font-medium text-gray-700">Port name or number</span>
+                <input value={pendingAction.port} onChange={(event) => setPendingAction({ ...pendingAction, port: event.target.value })} className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm" placeholder="1, ge-0/0/1, ether2" />
+              </label>
+            )}
+            <div className="mt-5 flex justify-end gap-2">
+              <button onClick={() => setPendingAction(null)} className="rounded border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Cancel</button>
+              <button onClick={confirmPendingAction} disabled={saving || (['BOUNCE_POE', 'DISABLE_PORT', 'ENABLE_PORT'].includes(pendingAction.action) && !pendingAction.port.trim())} className="rounded bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-60">
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+    </RequireCompanyContext>
   );
 }
 

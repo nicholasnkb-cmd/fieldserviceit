@@ -11,6 +11,7 @@ import { TableSkeleton } from '../../../components/ui/Skeleton';
 import { Pagination } from '../../../components/ui/Pagination';
 import { connectSocket, disconnectSocket, onSocketEvent } from '../../../lib/socket';
 import { useToast } from '../../../components/ui/Toast';
+import { RequireCompanyContext } from '../../../components/layout/RequireCompanyContext';
 
 export default function TicketsPage() {
   const [tickets, setTickets] = useState<any[]>([]);
@@ -24,7 +25,7 @@ export default function TicketsPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [bulkUserId, setBulkUserId] = useState('');
   const [bulkStatus, setBulkStatus] = useState('');
-  const { user } = useAuthStore();
+  const { user, activeCompanyContext } = useAuthStore();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -34,6 +35,10 @@ export default function TicketsPage() {
   }, [search]);
 
   const fetchTickets = useCallback(() => {
+    if (user?.role === 'SUPER_ADMIN' && !activeCompanyContext) {
+      setLoading(false);
+      return;
+    }
     const params = new URLSearchParams();
     if (filter) params.set('status', filter);
     if (debouncedSearch) params.set('search', debouncedSearch);
@@ -43,13 +48,17 @@ export default function TicketsPage() {
       .then((data) => { setTickets(data.data || []); setMeta(data.meta); })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [filter, debouncedSearch, page]);
+  }, [activeCompanyContext, filter, debouncedSearch, page, user?.role]);
 
   useEffect(() => {
     if (user && user.userType !== 'BUSINESS') { router.push('/my-tickets'); return; }
+    if (user?.role === 'SUPER_ADMIN' && !activeCompanyContext) {
+      setLoading(false);
+      return;
+    }
     fetchTickets();
     api.get('/users?limit=200').then((d) => setUsers(d.data || [])).catch(() => {});
-  }, [user, fetchTickets, router]);
+  }, [activeCompanyContext, user, fetchTickets, router]);
 
   useEffect(() => {
     if (!user?.companyId) return;
@@ -103,6 +112,7 @@ export default function TicketsPage() {
   const techUsers = users.filter((u: any) => u.role === 'TECHNICIAN' || u.role === 'TENANT_ADMIN');
 
   return (
+    <RequireCompanyContext area="Tickets">
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Tickets</h1>
@@ -207,5 +217,6 @@ export default function TicketsPage() {
       </ResponsiveTable>
       <Pagination page={meta.page} totalPages={meta.totalPages} onPage={setPage} />
     </div>
+    </RequireCompanyContext>
   );
 }

@@ -21,6 +21,8 @@ import {
 } from 'lucide-react';
 import { api } from '../../../lib/api';
 import { formatDate } from '../../../lib/utils';
+import { RequireCompanyContext } from '../../../components/layout/RequireCompanyContext';
+import { useAuthStore } from '../../../stores/authStore';
 
 interface Device {
   id: string;
@@ -127,6 +129,7 @@ function DeviceIcon({ category }: { category?: string }) {
 }
 
 export default function AssetsPage() {
+  const { user, activeCompanyContext } = useAuthStore();
   const [devices, setDevices] = useState<Device[]>([]);
   const [summary, setSummary] = useState<MdmSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -148,6 +151,10 @@ export default function AssetsPage() {
   }, [search]);
 
   const fetchDevices = useCallback(() => {
+    if (user?.role === 'SUPER_ADMIN' && !activeCompanyContext) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     const params = new URLSearchParams();
     if (debouncedSearch) params.set('search', debouncedSearch);
@@ -165,7 +172,7 @@ export default function AssetsPage() {
       })
       .catch((err) => setMessage(err.message || 'Failed to load devices'))
       .finally(() => setLoading(false));
-  }, [debouncedSearch, filters]);
+  }, [activeCompanyContext, debouncedSearch, filters, user?.role]);
 
   useEffect(() => {
     fetchDevices();
@@ -271,6 +278,7 @@ export default function AssetsPage() {
   ];
 
   return (
+    <RequireCompanyContext area="Assets">
     <div className="p-6">
       <div className="flex flex-col gap-4 border-b border-gray-200 pb-5 lg:flex-row lg:items-end lg:justify-between">
         <div>
@@ -551,5 +559,6 @@ export default function AssetsPage() {
         </aside>
       </div>
     </div>
+    </RequireCompanyContext>
   );
 }

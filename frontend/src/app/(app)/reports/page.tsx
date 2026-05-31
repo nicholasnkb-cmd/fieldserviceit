@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '../../../lib/api';
 import { useAuthStore } from '../../../stores/authStore';
+import { RequireCompanyContext } from '../../../components/layout/RequireCompanyContext';
 
 interface TicketSummary { total: number; byStatus: { status: string; _count: number }[]; byPriority: { priority: string; _count: number }[] }
 interface SlaCompliance { total: number; compliant: number; rate: number }
@@ -18,11 +19,15 @@ export default function ReportsPage() {
   const [techPerf, setTechPerf] = useState<TechPerf[]>([]);
   const [assetInv, setAssetInv] = useState<AssetInv[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user } = useAuthStore();
+  const { user, activeCompanyContext } = useAuthStore();
   const router = useRouter();
   const isAdmin = user?.role === 'TENANT_ADMIN' || user?.role === 'SUPER_ADMIN';
 
   useEffect(() => {
+    if (user?.role === 'SUPER_ADMIN' && !activeCompanyContext) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     const fetches: Record<string, Promise<any>> = {
       tickets: api.get('/reports/tickets'),
@@ -36,7 +41,7 @@ export default function ReportsPage() {
       if (tab === 'technician') setTechPerf(data || []);
       if (tab === 'assets') setAssetInv(data || []);
     }).catch(() => {}).finally(() => setLoading(false));
-  }, [tab, router]);
+  }, [activeCompanyContext, tab, user?.role]);
 
   const tabs = [
     { key: 'tickets' as const, label: 'Tickets' },
@@ -46,6 +51,7 @@ export default function ReportsPage() {
   ];
 
   return (
+    <RequireCompanyContext area="Reports">
     <div className="p-8">
       <h1 className="text-2xl font-bold mb-6">Reports</h1>
 
@@ -170,5 +176,6 @@ export default function ReportsPage() {
         </>
       )}
     </div>
+    </RequireCompanyContext>
   );
 }

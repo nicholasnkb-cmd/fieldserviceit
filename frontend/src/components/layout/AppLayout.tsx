@@ -1,6 +1,7 @@
 import { BannerMenu } from './BannerMenu';
 import { SidePanel } from './SidePanel';
 import { Footer } from './Footer';
+import { TenantContextBanner } from './TenantContextBanner';
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -8,7 +9,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <BannerMenu />
       <div className="flex flex-1">
         <SidePanel />
-        <main className="flex-1 bg-gray-50">{children}</main>
+        <main className="flex-1 bg-gray-50">
+          <TenantContextBanner />
+          {children}
+        </main>
       </div>
       <Footer />
     </div>

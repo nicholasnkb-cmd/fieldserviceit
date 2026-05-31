@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '../../../../lib/api';
 import { getStatusColor } from '../../../../lib/utils';
@@ -23,6 +24,7 @@ export default function BoardPage() {
   const [loading, setLoading] = useState(true);
   const [dragging, setDragging] = useState<string | null>(null);
   const { user } = useAuthStore();
+  const router = useRouter();
   const { toast } = useToast();
 
   const fetchBoard = useCallback(async () => {

@@ -134,6 +134,9 @@ export function BannerMenu() {
 
   const handleCompanyContextChange = (companyId: string) => {
     const selectedCompany = companyOptions.find((item) => item.id === companyId) || null;
+    if (selectedCompany) {
+      api.post('/admin/company-context/audit', { companyId: selectedCompany.id }).catch(() => {});
+    }
     setActiveCompanyContext(selectedCompany);
     window.location.reload();
   };
