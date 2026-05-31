@@ -30,6 +30,7 @@ interface FetchOptions extends RequestInit {
 async function refreshAccessToken(): Promise<string | null> {
   try {
     const refreshToken = getSessionRefreshToken();
+    if (!refreshToken) return null;
     const res = await fetch(`${API_BASE}/v1/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
