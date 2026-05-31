@@ -357,6 +357,7 @@ export default function NetworkPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [tab, setTab] = useState<NetworkTab>('overview');
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -389,11 +390,16 @@ export default function NetworkPage() {
   const [pinging, setPinging] = useState(false);
   const [snmpPolling, setSnmpPolling] = useState(false);
 
+  useEffect(() => {
+    const handle = window.setTimeout(() => setDebouncedSearch(search.trim()), 350);
+    return () => window.clearTimeout(handle);
+  }, [search]);
+
   const fetchDevices = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({ assetType: 'NETWORK_DEVICE', limit: '100' });
-      if (search) params.set('search', search);
+      if (debouncedSearch) params.set('search', debouncedSearch);
       const result = await api.get<{ data: NetworkDevice[] }>(`/assets?${params.toString()}`);
       const networkDevices = result.data || [];
       setDevices(networkDevices);
@@ -406,7 +412,7 @@ export default function NetworkPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, selected]);
+  }, [debouncedSearch, selected]);
 
   useEffect(() => {
     fetchDevices();
