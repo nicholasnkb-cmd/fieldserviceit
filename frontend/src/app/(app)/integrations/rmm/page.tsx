@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { api } from '../../../../lib/api';
 import { useAuthStore } from '../../../../stores/authStore';
 import { useToast } from '../../../../components/ui/Toast';
+import { RequireCompanyContext } from '../../../../components/layout/RequireCompanyContext';
 
 interface RmmConfig {
   id: string;
@@ -24,27 +25,33 @@ export default function RmmIntegrationPage() {
   const [configForm, setConfigForm] = useState<Record<string, string>>({});
   const [syncInterval, setSyncInterval] = useState(60);
   const [saving, setSaving] = useState(false);
-  const { user } = useAuthStore();
+  const [message, setMessage] = useState('');
+  const { user, activeCompanyContext } = useAuthStore();
   const router = useRouter();
   const { toast } = useToast();
 
   useEffect(() => {
     if (!user) return;
     if (user.userType !== 'BUSINESS') { router.push('/my-tickets'); return; }
+    if (user.role === 'SUPER_ADMIN' && !activeCompanyContext) {
+      setLoading(false);
+      return;
+    }
     Promise.all([
       api.get('/integrations/rmm/providers'),
       api.get('/integrations/rmm/configs'),
     ]).then(([provData, configData]) => {
       setProviders(provData.providers);
       setConfigs(configData);
-    }).catch(() => {}).finally(() => setLoading(false));
-  }, [router, user]);
+    }).catch((err) => setMessage(err.message || 'Unable to load RMM integrations')).finally(() => setLoading(false));
+  }, [activeCompanyContext, router, user]);
 
   const openConfig = (provider: string) => {
     const existing = configs.find((c) => c.provider === provider);
     setShowConfig(provider);
     setConfigForm({});
     setSyncInterval(existing?.syncIntervalMin || 60);
+    setMessage('');
   };
 
   const saveConfig = async (e: React.FormEvent) => {
@@ -70,6 +77,7 @@ export default function RmmIntegrationPage() {
       toast('success', 'RMM configuration saved');
     } catch (err: any) {
       toast('error', err.message);
+      setMessage(err.message || 'Unable to save RMM configuration');
     } finally {
       setSaving(false);
     }
@@ -83,6 +91,7 @@ export default function RmmIntegrationPage() {
       toast('success', 'Configuration deactivated');
     } catch (err: any) {
       toast('error', err.message);
+      setMessage(err.message || 'Unable to remove RMM configuration');
     }
   };
 
@@ -99,6 +108,7 @@ export default function RmmIntegrationPage() {
       }
     } catch (err: any) {
       toast('error', err.message);
+      setMessage(err.message || 'Unable to sync RMM provider');
     } finally {
       setSyncing(null);
     }
@@ -130,8 +140,10 @@ export default function RmmIntegrationPage() {
   if (loading) return <div className="p-8">Loading...</div>;
 
   return (
+    <RequireCompanyContext area="RMM integrations">
     <div className="p-8 max-w-4xl">
       <h1 className="text-2xl font-bold mb-6">RMM Integrations</h1>
+      {message && <div className="mb-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{message}</div>}
 
       <div className="grid gap-4 mb-8">
         {providers.map((provider) => {
@@ -199,5 +211,6 @@ export default function RmmIntegrationPage() {
         })}
       </div>
     </div>
+    </RequireCompanyContext>
   );
 }
