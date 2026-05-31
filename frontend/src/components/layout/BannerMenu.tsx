@@ -325,6 +325,23 @@ export function BannerMenu() {
       </div>
 
       {/* Mobile nav */}
+      {user.role === 'SUPER_ADMIN' && (
+        <div className="border-t border-gray-200 px-4 py-2 lg:hidden">
+          <select
+            value={activeCompanyContext?.id || ''}
+            onChange={(e) => handleCompanyContextChange(e.target.value)}
+            className="w-full rounded-md border border-gray-300 bg-white px-2 py-2 text-sm text-gray-700 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            title="Select company context"
+          >
+            <option value="">Global admin</option>
+            {companyOptions.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
       <div className="md:hidden border-t border-gray-200 px-4 py-2 overflow-x-auto flex gap-2">
         {menuItems.map((item) => {
           const href = item.href ?? item.children?.[0]?.href ?? '#';

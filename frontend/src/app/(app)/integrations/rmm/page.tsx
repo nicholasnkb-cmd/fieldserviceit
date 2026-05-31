@@ -13,7 +13,24 @@ interface RmmConfig {
   isActive: boolean;
   syncIntervalMin: number;
   lastSyncAt: string | null;
+  lastSyncStatus?: string | null;
+  lastSyncMessage?: string | null;
+  lastTestStatus?: string | null;
+  lastTestAt?: string | null;
   createdAt: string;
+  hasCredentials?: boolean;
+}
+
+interface RmmSyncRun {
+  id: string;
+  provider: string;
+  status: string;
+  startedAt: string;
+  completedAt?: string | null;
+  assetsCreated?: number;
+  assetsUpdated?: number;
+  assetsSkipped?: number;
+  errorMessage?: string | null;
 }
 
 export default function RmmIntegrationPage() {
@@ -25,7 +42,9 @@ export default function RmmIntegrationPage() {
   const [configForm, setConfigForm] = useState<Record<string, string>>({});
   const [syncInterval, setSyncInterval] = useState(60);
   const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState<string | null>(null);
   const [message, setMessage] = useState('');
+  const [history, setHistory] = useState<RmmSyncRun[]>([]);
   const { user, activeCompanyContext } = useAuthStore();
   const router = useRouter();
   const { toast } = useToast();
@@ -40,9 +59,11 @@ export default function RmmIntegrationPage() {
     Promise.all([
       api.get('/integrations/rmm/providers'),
       api.get('/integrations/rmm/configs'),
-    ]).then(([provData, configData]) => {
+      api.get('/integrations/rmm/sync-history').catch(() => []),
+    ]).then(([provData, configData, historyData]) => {
       setProviders(provData.providers);
       setConfigs(configData);
+      setHistory(historyData || []);
     }).catch((err) => setMessage(err.message || 'Unable to load RMM integrations')).finally(() => setLoading(false));
   }, [activeCompanyContext, router, user]);
 
@@ -52,6 +73,52 @@ export default function RmmIntegrationPage() {
     setConfigForm({});
     setSyncInterval(existing?.syncIntervalMin || 60);
     setMessage('');
+  };
+
+  const refreshRmm = async () => {
+    const [configData, historyData] = await Promise.all([
+      api.get('/integrations/rmm/configs'),
+      api.get('/integrations/rmm/sync-history').catch(() => []),
+    ]);
+    setConfigs(configData);
+    setHistory(historyData || []);
+  };
+
+  const testCurrentConfig = async () => {
+    if (!showConfig) return;
+    setTesting(`draft:${showConfig}`);
+    setMessage('');
+    try {
+      const result = await api.post('/integrations/rmm/configs/test', {
+        provider: showConfig,
+        credentials: configForm,
+      });
+      const text = result.status === 'PASS' ? 'Connection test passed' : 'Connection test failed';
+      setMessage(text);
+      toast(result.status === 'PASS' ? 'success' : 'error', text);
+    } catch (err: any) {
+      setMessage(err.message || 'Connection test failed');
+      toast('error', err.message || 'Connection test failed');
+    } finally {
+      setTesting(null);
+    }
+  };
+
+  const testSavedConfig = async (provider: string) => {
+    setTesting(provider);
+    setMessage('');
+    try {
+      const result = await api.post(`/integrations/rmm/configs/${provider}/test`, {});
+      await refreshRmm();
+      const text = result.status === 'PASS' ? `${provider} connection passed` : `${provider} connection failed`;
+      setMessage(text);
+      toast(result.status === 'PASS' ? 'success' : 'error', text);
+    } catch (err: any) {
+      setMessage(err.message || 'Connection test failed');
+      toast('error', err.message || 'Connection test failed');
+    } finally {
+      setTesting(null);
+    }
   };
 
   const saveConfig = async (e: React.FormEvent) => {
@@ -101,8 +168,7 @@ export default function RmmIntegrationPage() {
       const result = await api.post(`/integrations/rmm/sync-now/${provider}`, {});
       if (result.synced) {
         toast('success', `Sync triggered for ${provider}`);
-        const configsUpdated = await api.get('/integrations/rmm/configs');
-        setConfigs(configsUpdated);
+        await refreshRmm();
       } else {
         toast('error', result.error || 'Sync failed');
       }
@@ -118,6 +184,12 @@ export default function RmmIntegrationPage() {
     connectwise: 'ConnectWise',
     datto: 'Datto',
     ninjaone: 'NinjaOne',
+  };
+
+  const providerHelp: Record<string, string> = {
+    connectwise: 'Requires a ConnectWise company ID, API public/private keys, and a client ID from developer settings.',
+    datto: 'Requires a Datto API token. Site ID is optional but recommended to scope syncs to one site.',
+    ninjaone: 'Requires an API key and your NinjaOne instance URL, for example https://app.ninjarmm.com.',
   };
 
   const credentialFields: Record<string, { key: string; label: string; type?: string }[]> = {
@@ -158,8 +230,15 @@ export default function RmmIntegrationPage() {
                       ? `Configured ${config.isActive ? '(active)' : '(inactive)'} — Sync every ${config.syncIntervalMin}min`
                       : 'Not configured'}
                   </p>
+                  <p className="mt-1 text-xs text-gray-500">{providerHelp[provider]}</p>
                   {config?.lastSyncAt && (
                     <p className="text-xs text-gray-400">Last sync: {new Date(config.lastSyncAt).toLocaleString()}</p>
+                  )}
+                  {config?.lastSyncStatus && (
+                    <p className="text-xs text-gray-400">Sync status: {config.lastSyncStatus}{config.lastSyncMessage ? ` - ${config.lastSyncMessage}` : ''}</p>
+                  )}
+                  {config?.lastTestStatus && (
+                    <p className="text-xs text-gray-400">Last test: {config.lastTestStatus}{config.lastTestAt ? ` at ${new Date(config.lastTestAt).toLocaleString()}` : ''}</p>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
@@ -169,6 +248,10 @@ export default function RmmIntegrationPage() {
                   </button>
                   {config && (
                     <>
+                      <button onClick={() => testSavedConfig(provider)} disabled={testing === provider}
+                        className="px-3 py-1.5 text-sm bg-blue-50 text-blue-700 rounded hover:bg-blue-100 disabled:opacity-50">
+                        {testing === provider ? 'Testing...' : 'Test'}
+                      </button>
                       <button onClick={() => syncNow(provider)} disabled={syncing === provider}
                         className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 disabled:opacity-50">
                         {syncing === provider ? 'Syncing...' : 'Sync Now'}
@@ -182,6 +265,9 @@ export default function RmmIntegrationPage() {
 
               {showConfig === provider && (
                 <form onSubmit={saveConfig} className="mt-4 pt-4 border-t border-gray-100 space-y-3">
+                  <p className="rounded border border-blue-100 bg-blue-50 px-3 py-2 text-sm text-blue-700">
+                    Secrets are encrypted before storage. Existing secrets stay hidden; enter new values only when rotating credentials.
+                  </p>
                   {credentialFields[provider]?.map((field) => (
                     <div key={field.key}>
                       <label className="block text-sm font-medium text-gray-700">{field.label}</label>
@@ -197,6 +283,10 @@ export default function RmmIntegrationPage() {
                       className="mt-1 block w-48 rounded border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
                   </div>
                   <div className="flex gap-2">
+                    <button type="button" onClick={testCurrentConfig} disabled={testing === `draft:${provider}`}
+                      className="px-4 py-2 bg-blue-50 text-blue-700 text-sm rounded-md hover:bg-blue-100 disabled:opacity-50">
+                      {testing === `draft:${provider}` ? 'Testing...' : 'Test Connection'}
+                    </button>
                     <button type="submit" disabled={saving}
                       className="px-4 py-2 bg-primary text-white text-sm rounded-md hover:bg-primary/90 disabled:opacity-50">
                       {saving ? 'Saving...' : 'Save Configuration'}
@@ -210,6 +300,36 @@ export default function RmmIntegrationPage() {
           );
         })}
       </div>
+      <section className="rounded border border-gray-200 bg-white p-5">
+        <h2 className="text-lg font-semibold text-gray-950">Recent sync history</h2>
+        <div className="mt-4 overflow-hidden rounded border border-gray-200">
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                {['Started', 'Provider', 'Status', 'Created', 'Updated', 'Skipped', 'Message'].map((header) => (
+                  <th key={header} className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{header}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {history.map((run) => (
+                <tr key={run.id}>
+                  <td className="px-4 py-3 text-sm text-gray-600">{new Date(run.startedAt).toLocaleString()}</td>
+                  <td className="px-4 py-3 text-sm font-medium text-gray-900">{providerLabels[run.provider] || run.provider}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{run.status}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{run.assetsCreated || 0}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{run.assetsUpdated || 0}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{run.assetsSkipped || 0}</td>
+                  <td className="px-4 py-3 text-sm text-gray-500">{run.errorMessage || '-'}</td>
+                </tr>
+              ))}
+              {history.length === 0 && (
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-500">No RMM sync runs yet</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
     </RequireCompanyContext>
   );

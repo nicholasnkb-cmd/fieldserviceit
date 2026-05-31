@@ -23,6 +23,14 @@ interface Readiness {
   environment: string;
   stripeWebhookPath: string;
   checks: { name: string; status: string; detail: string }[];
+  deployment?: {
+    frontendVersion?: string;
+    backendVersion?: string;
+    nodeEnv?: string;
+    corsOrigin?: string | null;
+    lastNetworkPoll?: { source?: string; status?: string; createdAt?: string } | null;
+    lastRmmSync?: { provider?: string; status?: string; completedAt?: string; assetsCreated?: number; assetsUpdated?: number; assetsSkipped?: number; errorMessage?: string | null } | null;
+  };
 }
 
 const featureLabels: Record<string, string> = {
@@ -141,6 +149,19 @@ export default function SystemControlsPage() {
             <span className="w-fit rounded border border-gray-200 bg-gray-50 px-3 py-1 text-sm font-medium text-gray-700">{readiness.status.replaceAll('_', ' ')}</span>
           </div>
           <div className="mt-4 grid gap-3 md:grid-cols-2">
+            {[
+              ['Frontend version', readiness.deployment?.frontendVersion || 'unknown'],
+              ['Backend version', readiness.deployment?.backendVersion || 'unknown'],
+              ['Runtime', readiness.deployment?.nodeEnv || readiness.environment],
+              ['CORS origin', readiness.deployment?.corsOrigin || 'not set'],
+              ['Last monitoring poll', readiness.deployment?.lastNetworkPoll ? `${readiness.deployment.lastNetworkPoll.source || 'poll'} ${readiness.deployment.lastNetworkPoll.status || ''}` : 'No poll recorded'],
+              ['Last RMM sync', readiness.deployment?.lastRmmSync ? `${readiness.deployment.lastRmmSync.provider || 'RMM'} ${readiness.deployment.lastRmmSync.status || ''}` : 'No sync recorded'],
+            ].map(([label, value]) => (
+              <div key={label} className="rounded border border-gray-200 bg-gray-50 p-3">
+                <div className="text-xs font-medium uppercase text-gray-500">{label}</div>
+                <div className="mt-1 truncate text-sm font-medium text-gray-900">{value}</div>
+              </div>
+            ))}
             {readiness.checks.map((check) => (
               <div key={check.name} className="rounded border border-gray-200 p-3">
                 <div className="flex items-center justify-between gap-3">
