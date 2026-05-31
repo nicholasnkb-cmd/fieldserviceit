@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { User } from '../types';
+import { clearSessionTokens } from '../lib/api';
 
 interface CompanyInfo {
   id: string;
@@ -61,8 +62,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({}),
       }).catch(() => {});
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
+      clearSessionTokens();
       localStorage.removeItem(COMPANY_CONTEXT_KEY);
     }
     set({ user: null, company: null, activeCompanyContext: null, isAuthenticated: false });

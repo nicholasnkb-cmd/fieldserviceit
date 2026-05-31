@@ -4,7 +4,7 @@ import { Suspense, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '../../../stores/authStore';
-import { unwrapResponseBody } from '../../../lib/api';
+import { setSessionTokens, unwrapResponseBody } from '../../../lib/api';
 
 function RegisterBusinessForm() {
   const [firstName, setFirstName] = useState('');
@@ -105,6 +105,7 @@ function RegisterBusinessForm() {
       const data = unwrapResponseBody(await res.json());
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
+      setSessionTokens(data);
       setUser(data.user);
 
       await startCheckout(apiUrl, selectedPlan);

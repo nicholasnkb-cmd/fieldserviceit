@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '../../../stores/authStore';
-import { unwrapResponseBody } from '../../../lib/api';
+import { setSessionTokens, unwrapResponseBody } from '../../../lib/api';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -34,6 +34,7 @@ export default function LoginPage() {
       const data = unwrapResponseBody(await res.json());
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
+      setSessionTokens(data);
       setUser(data.user);
 
       router.push('/dashboard');

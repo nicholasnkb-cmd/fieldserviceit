@@ -1,6 +1,8 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 const DEFAULT_TIMEOUT = 30000;
 const COMPANY_CONTEXT_KEY = 'superAdminCompanyContext';
+const SESSION_ACCESS_TOKEN_KEY = 'fsit.accessToken';
+const SESSION_REFRESH_TOKEN_KEY = 'fsit.refreshToken';
 
 export function unwrapResponseBody(body: any): any {
   if (body && typeof body === 'object' && 'success' in body && 'data' in body && 'timestamp' in body) {
@@ -27,18 +29,22 @@ interface FetchOptions extends RequestInit {
 
 async function refreshAccessToken(): Promise<string | null> {
   try {
+    const refreshToken = getSessionRefreshToken();
     const res = await fetch(`${API_BASE}/v1/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({}),
+      body: JSON.stringify(refreshToken ? { refreshToken } : {}),
     });
 
     if (!res.ok) return null;
 
     const body = await res.json();
     const data = unwrapResponseBody(body);
-    return data.accessToken || 'cookie';
+    if (data.accessToken || data.refreshToken) {
+      setSessionTokens(data);
+    }
+    return data.accessToken || getSessionAccessToken() || 'cookie';
   } catch {
     return null;
   }
@@ -55,6 +61,8 @@ export async function apiClient<T = any>(endpoint: string, options: FetchOptions
   if (!skipAuth) {
     const companyContext = getCompanyContextId();
     if (companyContext) headers['X-Company-Context'] = companyContext;
+    const token = getSessionAccessToken();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
   }
 
   const controller = new AbortController();
@@ -116,6 +124,40 @@ function getCompanyContextId(): string | null {
   } catch {
     return null;
   }
+}
+
+function getSessionAccessToken(): string | null {
+  try {
+    return typeof window !== 'undefined' ? sessionStorage.getItem(SESSION_ACCESS_TOKEN_KEY) : null;
+  } catch {
+    return null;
+  }
+}
+
+function getSessionRefreshToken(): string | null {
+  try {
+    return typeof window !== 'undefined' ? sessionStorage.getItem(SESSION_REFRESH_TOKEN_KEY) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function setSessionTokens(data: any) {
+  if (typeof window === 'undefined') return;
+  try {
+    if (data?.accessToken) sessionStorage.setItem(SESSION_ACCESS_TOKEN_KEY, data.accessToken);
+    if (data?.refreshToken) sessionStorage.setItem(SESSION_REFRESH_TOKEN_KEY, data.refreshToken);
+  } catch {}
+}
+
+export function clearSessionTokens() {
+  if (typeof window === 'undefined') return;
+  try {
+    sessionStorage.removeItem(SESSION_ACCESS_TOKEN_KEY);
+    sessionStorage.removeItem(SESSION_REFRESH_TOKEN_KEY);
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+  } catch {}
 }
 
 export const api = {
