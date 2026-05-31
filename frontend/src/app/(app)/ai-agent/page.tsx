@@ -35,6 +35,7 @@ export default function AiAgentPage() {
   const [approvedActions, setApprovedActions] = useState<string[]>([]);
   const [loading, setLoading] = useState('');
   const [message, setMessage] = useState('');
+  const [answer, setAnswer] = useState<any>(null);
 
   const approvalSet = useMemo(() => new Set(approvedActions), [approvedActions]);
 
@@ -47,6 +48,20 @@ export default function AiAgentPage() {
       setApprovedActions([]);
     } catch (err: any) {
       setMessage(err.message || 'Failed to create plan');
+    } finally {
+      setLoading('');
+    }
+  };
+
+  const askQuestion = async () => {
+    setLoading('ask');
+    setMessage('');
+    try {
+      const data = await api.post('/ai-agent/ask', { question: goal });
+      setAnswer(data);
+      setMessage(data.answer);
+    } catch (err: any) {
+      setMessage(err.message || 'Agent could not answer');
     } finally {
       setLoading('');
     }
@@ -107,6 +122,14 @@ export default function AiAgentPage() {
           </div>
 
           <div className="mt-5 flex flex-wrap gap-3">
+            <button
+              onClick={askQuestion}
+              disabled={!!loading}
+              className="inline-flex items-center justify-center gap-2 rounded border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-60"
+            >
+              <Sparkles className="h-4 w-4" aria-hidden="true" />
+              {loading === 'ask' ? 'Answering...' : 'Ask'}
+            </button>
             <button
               onClick={requestPlan}
               disabled={!!loading}
@@ -198,6 +221,12 @@ export default function AiAgentPage() {
                 </div>
               ))}
               {!plan?.results?.length && <p className="text-sm text-gray-500">No actions have run yet.</p>}
+              {answer && (
+                <div className="rounded border border-blue-200 bg-blue-50 p-3">
+                  <div className="text-sm font-medium text-blue-900">Answer</div>
+                  <p className="mt-1 text-sm text-blue-800">{answer.answer}</p>
+                </div>
+              )}
             </div>
           </section>
         </aside>

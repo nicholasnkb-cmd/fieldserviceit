@@ -46,6 +46,7 @@ export function BannerMenu() {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [companyOptions, setCompanyOptions] = useState<CompanyOption[]>([]);
+  const [favoritePaths, setFavoritePaths] = useState<Set<string>>(new Set());
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -83,6 +84,9 @@ export function BannerMenu() {
   useEffect(() => {
     if (!isAuthenticated) return;
     fetchNotifCount();
+    api.get('/users/me/favorites').then((items) => {
+      setFavoritePaths(new Set((items || []).map((item: any) => item.path)));
+    }).catch(() => {});
     const interval = setInterval(fetchNotifCount, 30000);
     return () => clearInterval(interval);
   }, [isAuthenticated, fetchNotifCount]);
@@ -130,6 +134,21 @@ export function BannerMenu() {
   const handleLogout = () => {
     logout();
     router.push('/login');
+  };
+
+  const toggleFavorite = async () => {
+    const label = pathname.split('/').filter(Boolean).pop()?.replaceAll('-', ' ') || 'Dashboard';
+    if (favoritePaths.has(pathname)) {
+      await api.delete('/users/me/favorites', { body: JSON.stringify({ path: pathname }) } as any);
+      setFavoritePaths((current) => {
+        const next = new Set(current);
+        next.delete(pathname);
+        return next;
+      });
+      return;
+    }
+    await api.post('/users/me/favorites', { path: pathname, label: label.replace(/^./, (letter) => letter.toUpperCase()) });
+    setFavoritePaths((current) => new Set(current).add(pathname));
   };
 
   const handleCompanyContextChange = (companyId: string) => {
@@ -248,6 +267,14 @@ export function BannerMenu() {
 
         {/* User info */}
         <div className="flex items-center gap-3 shrink-0">
+          <button
+            onClick={toggleFavorite}
+            className="rounded-md px-2 py-1 text-lg leading-none text-amber-500 hover:bg-amber-50"
+            title={favoritePaths.has(pathname) ? 'Remove page from favorites' : 'Add page to favorites'}
+          >
+            {favoritePaths.has(pathname) ? '★' : '☆'}
+          </button>
+
           {user.role === 'SUPER_ADMIN' && (
             <select
               value={activeCompanyContext?.id || ''}

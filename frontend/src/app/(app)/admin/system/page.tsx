@@ -33,6 +33,10 @@ interface Readiness {
   };
 }
 
+interface CompanyOption { id: string; name: string }
+interface UserOption { id: string; email: string; firstName: string; lastName: string; company?: { id: string; name: string } }
+interface FunctionControl { key: string; label: string }
+
 const featureLabels: Record<string, string> = {
   tickets: 'Tickets',
   dispatch: 'Dispatch',
@@ -59,6 +63,13 @@ export default function SystemControlsPage() {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [message, setMessage] = useState('');
   const [readiness, setReadiness] = useState<Readiness | null>(null);
+  const [companies, setCompanies] = useState<CompanyOption[]>([]);
+  const [users, setUsers] = useState<UserOption[]>([]);
+  const [functions, setFunctions] = useState<FunctionControl[]>([]);
+  const [selectedCompanyId, setSelectedCompanyId] = useState('');
+  const [selectedUserId, setSelectedUserId] = useState('');
+  const [companyFeatures, setCompanyFeatures] = useState<Record<string, boolean>>({});
+  const [userFeatures, setUserFeatures] = useState<Record<string, boolean>>({});
   const { user } = useAuthStore();
   const router = useRouter();
 
@@ -71,9 +82,15 @@ export default function SystemControlsPage() {
     Promise.all([
       api.get('/admin/plans'),
       api.get('/admin/system-readiness').catch(() => null),
+      api.get('/admin/companies?limit=200').catch(() => ({ data: [] })),
+      api.get('/admin/users?limit=200').catch(() => ({ data: [] })),
+      api.get('/admin/function-controls').catch(() => []),
     ])
-      .then(([data, readinessData]) => {
+      .then(([data, readinessData, companyData, userData, functionData]) => {
         if (readinessData) setReadiness(readinessData);
+        setCompanies(companyData.data || []);
+        setUsers(userData.data || []);
+        setFunctions(functionData || []);
         return data;
       })
       .then((data) => {
@@ -125,6 +142,32 @@ export default function SystemControlsPage() {
     }
   };
 
+  const loadCompanyControls = async (companyId: string) => {
+    setSelectedCompanyId(companyId);
+    if (!companyId) return;
+    const data = await api.get(`/admin/companies/${companyId}/feature-controls`);
+    setCompanyFeatures(data.featureOverrides || {});
+  };
+
+  const loadUserControls = async (userId: string) => {
+    setSelectedUserId(userId);
+    if (!userId) return;
+    const data = await api.get(`/admin/users/${userId}/feature-controls`);
+    setUserFeatures(data.featureOverrides || {});
+  };
+
+  const saveCompanyControls = async () => {
+    if (!selectedCompanyId) return;
+    await api.patch(`/admin/companies/${selectedCompanyId}/feature-overrides`, { featureOverrides: companyFeatures });
+    setMessage('Business function controls saved');
+  };
+
+  const saveUserControls = async () => {
+    if (!selectedUserId) return;
+    await api.patch(`/admin/users/${selectedUserId}/feature-controls`, { featureOverrides: userFeatures });
+    setMessage('User function controls saved');
+  };
+
   if (loading) return <div className="p-8">Loading system controls...</div>;
 
   return (
@@ -174,6 +217,31 @@ export default function SystemControlsPage() {
           </div>
         </section>
       )}
+
+      <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+        <h2 className="text-lg font-semibold text-gray-950">Business, tenant, and user functions</h2>
+        <p className="mt-1 text-sm text-gray-500">Turn specific application functions on or off for a business or an individual user.</p>
+        <div className="mt-4 grid gap-6 lg:grid-cols-2">
+          <div className="rounded border border-gray-200 p-4">
+            <label className="block text-sm font-medium text-gray-700">Business / tenant</label>
+            <select value={selectedCompanyId} onChange={(e) => loadCompanyControls(e.target.value)} className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm">
+              <option value="">Select business...</option>
+              {companies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
+            </select>
+            <FeatureToggleGrid functions={functions} values={companyFeatures} onChange={setCompanyFeatures} />
+            <button onClick={saveCompanyControls} disabled={!selectedCompanyId} className="mt-4 rounded bg-primary px-4 py-2 text-sm font-medium text-white disabled:opacity-50">Save business controls</button>
+          </div>
+          <div className="rounded border border-gray-200 p-4">
+            <label className="block text-sm font-medium text-gray-700">User</label>
+            <select value={selectedUserId} onChange={(e) => loadUserControls(e.target.value)} className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm">
+              <option value="">Select user...</option>
+              {users.map((item) => <option key={item.id} value={item.id}>{item.firstName} {item.lastName} - {item.email}</option>)}
+            </select>
+            <FeatureToggleGrid functions={functions} values={userFeatures} onChange={setUserFeatures} />
+            <button onClick={saveUserControls} disabled={!selectedUserId} className="mt-4 rounded bg-primary px-4 py-2 text-sm font-medium text-white disabled:opacity-50">Save user controls</button>
+          </div>
+        </div>
+      </section>
 
       <div className="space-y-5">
         {plans.map((plan) => {
@@ -273,6 +341,32 @@ export default function SystemControlsPage() {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function FeatureToggleGrid({ functions, values, onChange }: { functions: FunctionControl[]; values: Record<string, boolean>; onChange: (next: Record<string, boolean>) => void }) {
+  return (
+    <div className="mt-4 grid gap-2 sm:grid-cols-2">
+      {functions.map((item) => (
+        <label key={item.key} className="flex items-center justify-between gap-3 rounded border border-gray-200 px-3 py-2 text-sm">
+          <span>{item.label}</span>
+          <select
+            value={values[item.key] === false ? 'off' : values[item.key] === true ? 'on' : 'inherit'}
+            onChange={(e) => {
+              const next = { ...values };
+              if (e.target.value === 'inherit') delete next[item.key];
+              else next[item.key] = e.target.value === 'on';
+              onChange(next);
+            }}
+            className="rounded border border-gray-300 px-2 py-1 text-xs"
+          >
+            <option value="inherit">Inherit</option>
+            <option value="on">On</option>
+            <option value="off">Off</option>
+          </select>
+        </label>
+      ))}
     </div>
   );
 }
