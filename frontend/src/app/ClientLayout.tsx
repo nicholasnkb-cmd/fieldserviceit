@@ -1,14 +1,12 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
 import { useAuthStore } from '../stores/authStore';
 import { api } from '../lib/api';
 import { ToastProvider } from '../components/ui/Toast';
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
-  const { setUser, logout } = useAuthStore();
-  const router = useRouter();
+  const { setUser } = useAuthStore();
   const hydrated = useRef(false);
 
   useEffect(() => {
@@ -45,7 +43,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     } catch {
       // localStorage not available
     }
-  }, []);
+  }, [setUser]);
 
   return <ToastProvider>{children}</ToastProvider>;
 }

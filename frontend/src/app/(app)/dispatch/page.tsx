@@ -45,7 +45,7 @@ export default function DispatchPage() {
       setDispatches(d || []);
       setUsers(u.data || []);
     }).catch(() => {}).finally(() => setLoading(false));
-  }, [router]);
+  }, []);
 
   useEffect(() => {
     if (user?.userType === 'PUBLIC') { router.push('/my-tickets'); return; }

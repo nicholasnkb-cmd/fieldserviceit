@@ -32,15 +32,17 @@ export default function NewAssetPage() {
     notes: '',
   });
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
+    setError('');
     try {
       await api.post('/assets', form);
       router.push('/assets');
     } catch (err: any) {
-      alert(err.message);
+      setError(err.message || 'Unable to enroll device');
     } finally {
       setSubmitting(false);
     }
@@ -59,6 +61,11 @@ export default function NewAssetPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="rounded border border-gray-200 bg-white p-5">
+        {error && (
+          <div className="mb-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {error}
+          </div>
+        )}
         <div className="grid gap-4 md:grid-cols-3">
           <label className="md:col-span-2">
             <span className="text-sm font-medium text-gray-700">Device name *</span>

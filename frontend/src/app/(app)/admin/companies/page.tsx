@@ -33,7 +33,7 @@ export default function AdminCompaniesPage() {
       .then((data) => setCompanies(data.data || []))
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [router]);
+  }, []);
 
   useEffect(() => {
     if (!user) return;
