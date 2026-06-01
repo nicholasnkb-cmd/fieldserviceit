@@ -20,6 +20,8 @@ export default function TicketDetailPage() {
   const [holdReason, setHoldReason] = useState('');
   const [showHoldInput, setShowHoldInput] = useState(false);
   const [resolution, setResolution] = useState('');
+  const [showResolutionInput, setShowResolutionInput] = useState(false);
+  const [actionError, setActionError] = useState('');
   const [commentText, setCommentText] = useState('');
   const [commentIsInternal, setCommentIsInternal] = useState(false);
   const [submittingComment, setSubmittingComment] = useState(false);
@@ -59,12 +61,17 @@ export default function TicketDetailPage() {
   }, [user?.companyId, user?.id, id, toast]);
 
   const updateTicket = async (body: any) => {
+    setActionError('');
     try {
       const updated = await api.patch(`/tickets/${id}`, body);
       setTicket(updated);
       toast('success', 'Ticket updated');
+      return updated;
     } catch (err: any) {
-      toast('error', err.message);
+      const detail = err?.body?.message || err?.message || 'Ticket update failed';
+      setActionError(detail);
+      toast('error', detail);
+      throw err;
     }
   };
 
@@ -74,9 +81,12 @@ export default function TicketDetailPage() {
       return;
     }
     if (status === 'RESOLVED') {
-      const res = prompt('Enter resolution notes:');
-      if (res === null) return;
-      updateTicket({ status, resolution: res, onHoldReason: null });
+      setShowResolutionInput(true);
+      return;
+    }
+    if (status === 'CLOSED' && ticket.status !== 'RESOLVED') {
+      setActionError('Resolve the ticket before closing it.');
+      toast('error', 'Resolve the ticket before closing it.');
       return;
     }
     const body: any = { status };
@@ -89,9 +99,25 @@ export default function TicketDetailPage() {
       toast('error', 'Hold reason is required');
       return;
     }
-    updateTicket({ status: 'ON_HOLD', onHoldReason: holdReason });
-    setShowHoldInput(false);
-    setHoldReason('');
+    updateTicket({ status: 'ON_HOLD', onHoldReason: holdReason })
+      .then(() => {
+        setShowHoldInput(false);
+        setHoldReason('');
+      })
+      .catch(() => undefined);
+  };
+
+  const submitResolution = () => {
+    if (!resolution.trim()) {
+      toast('error', 'Resolution notes are required');
+      return;
+    }
+    updateTicket({ status: 'RESOLVED', resolution, onHoldReason: null })
+      .then(() => {
+        setShowResolutionInput(false);
+        setResolution('');
+      })
+      .catch(() => undefined);
   };
 
   const assignUser = () => {
@@ -164,6 +190,12 @@ export default function TicketDetailPage() {
     <div className="p-8 max-w-4xl">
       <button onClick={() => router.back()} className="text-sm text-primary hover:underline mb-4">&larr; Back</button>
       <div className="bg-white rounded-lg shadow p-6">
+        {actionError && isAdmin && (
+          <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+            <div className="font-semibold">Ticket action failed</div>
+            <div className="mt-1">{actionError}</div>
+          </div>
+        )}
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-bold">{ticket.ticketNumber}</h1>
           <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(ticket.status)}`}>{ticket.status}</span>
@@ -238,7 +270,6 @@ export default function TicketDetailPage() {
               <h3 className="text-sm font-medium text-gray-500 mb-2">Status</h3>
               <div className="flex flex-wrap gap-2">
                 {statusFlow.map((s) => {
-                  const allowed = s === ticket.status;
                   return (
                     <button key={s} onClick={() => changeStatus(s)}
                       disabled={ticket.status === s}
@@ -262,6 +293,20 @@ export default function TicketDetailPage() {
                     <button onClick={submitHold}
                       className="px-3 py-1 bg-yellow-500 text-white text-xs rounded-md hover:bg-yellow-600">Submit Hold</button>
                     <button onClick={() => { setShowHoldInput(false); setHoldReason(''); }}
+                      className="px-3 py-1 bg-gray-200 text-gray-700 text-xs rounded-md hover:bg-gray-300">Cancel</button>
+                  </div>
+                </div>
+              )}
+              {showResolutionInput && (
+                <div className="mt-3 rounded-md border border-emerald-200 bg-emerald-50 p-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Resolution Notes</label>
+                  <textarea value={resolution} onChange={(e) => setResolution(e.target.value)}
+                    className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                    rows={3} placeholder="Summarize what fixed the issue, parts used, or next steps..." />
+                  <div className="flex gap-2 mt-2">
+                    <button onClick={submitResolution}
+                      className="px-3 py-1 bg-emerald-600 text-white text-xs rounded-md hover:bg-emerald-700">Resolve Ticket</button>
+                    <button onClick={() => { setShowResolutionInput(false); setResolution(''); }}
                       className="px-3 py-1 bg-gray-200 text-gray-700 text-xs rounded-md hover:bg-gray-300">Cancel</button>
                   </div>
                 </div>
