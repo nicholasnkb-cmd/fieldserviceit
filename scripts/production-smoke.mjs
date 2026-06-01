@@ -179,13 +179,23 @@ if (email && password) {
   await check('AI tools API', () => expectOk(`${apiUrl}/v1/ai-agent/tools`));
   await check('RMM providers API', () => expectOk(`${apiUrl}/v1/integrations/rmm/providers`));
   await check('ticket search API', () => expectOk(`${apiUrl}/v1/tickets?limit=1`));
-  await check('asset list API', () => expectOk(`${apiUrl}/v1/assets?limit=1`));
+  if (!(currentUser?.role === 'SUPER_ADMIN' && !currentUser?.companyId)) {
+    await check('asset list API', () => expectOk(`${apiUrl}/v1/assets?limit=1`));
+  }
   if (currentUser?.role === 'SUPER_ADMIN') {
     await expectList('admin users list API', `${apiUrl}/v1/admin/users?limit=5`);
     await expectList('admin companies list API', `${apiUrl}/v1/admin/companies?limit=5`);
     await expectList('admin roles list API', `${apiUrl}/v1/admin/roles`);
     await expectList('admin audit logs list API', `${apiUrl}/v1/admin/audit-logs?limit=5`);
     await expectList('admin tickets list API', `${apiUrl}/v1/admin/tickets?limit=5`);
+    if (!currentUser?.companyId) {
+      await check('asset list API with company context', async () => {
+        const companies = listData(await expectJson(`${apiUrl}/v1/admin/companies?limit=5`));
+        const company = companies.find((item) => item?.id && item.isActive !== false);
+        if (!company) throw new Error('No active company available for asset context check');
+        await expectOk(`${apiUrl}/v1/assets?limit=1`, { headers: { 'X-Company-Context': company.id } });
+      });
+    }
     await expectMutationListPreserved();
     if (runMutations) {
       await runTemporaryAdminMutations();
