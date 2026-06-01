@@ -5,6 +5,23 @@ const password = process.env.E2E_PASSWORD;
 
 test.skip(!email || !password, 'Set E2E_EMAIL and E2E_PASSWORD to run production browser smoke tests.');
 
+async function submitTicketComment(page: import('@playwright/test').Page, comment: string, isInternal = false) {
+  const commentInput = page.getByPlaceholder('Type your comment...');
+  const internalCheckbox = page.getByLabel('Internal note (visible to staff only)');
+  const submitButton = page.getByRole('button', { name: 'Submit' });
+
+  if (isInternal) {
+    await internalCheckbox.check();
+  } else {
+    await internalCheckbox.uncheck();
+  }
+  await commentInput.fill(comment);
+  await expect(commentInput).toHaveValue(comment);
+  await expect(submitButton).toBeEnabled();
+  await submitButton.click();
+  await expect(page.getByText(comment)).toBeVisible();
+}
+
 test('super admin can open core admin data pages', async ({ page }) => {
   await page.goto('/login');
   await page.getByLabel('Email').fill(email!);
@@ -65,14 +82,8 @@ test('super admin can manage a ticket from the ticket detail page', async ({ pag
     await page.getByRole('button', { name: 'IN PROGRESS' }).click();
     await expect(page.getByText('IN_PROGRESS').first()).toBeVisible();
 
-    await page.getByPlaceholder('Type your comment...').fill(`Browser smoke comment ${suffix}`);
-    await page.getByRole('button', { name: 'Submit' }).click();
-    await expect(page.getByText(`Browser smoke comment ${suffix}`)).toBeVisible();
-
-    await page.getByLabel('Internal note (visible to staff only)').check();
-    await page.getByPlaceholder('Type your comment...').fill(`Internal browser smoke note ${suffix}`);
-    await page.getByRole('button', { name: 'Submit' }).click();
-    await expect(page.getByText(`Internal browser smoke note ${suffix}`)).toBeVisible();
+    await submitTicketComment(page, `Browser smoke comment ${suffix}`);
+    await submitTicketComment(page, `Internal browser smoke note ${suffix}`, true);
 
     const fileChooserPromise = page.waitForEvent('filechooser');
     await page.getByText('Choose files').click();

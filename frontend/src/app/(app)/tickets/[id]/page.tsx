@@ -171,6 +171,7 @@ export default function TicketDetailPage() {
       const entry = await api.post(`/tickets/${id}/comments`, { comment: commentText, isInternal: commentIsInternal });
       setTicket((prev: any) => ({ ...prev, timeline: [entry, ...(prev.timeline || [])] }));
       setCommentText('');
+      setCommentIsInternal(false);
       toast('success', 'Comment added');
     } catch (err: any) {
       toast('error', err.message);
