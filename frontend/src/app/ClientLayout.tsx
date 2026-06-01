@@ -1,31 +1,64 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { usePathname } from 'next/navigation';
 import { useAuthStore } from '../stores/authStore';
 import { api } from '../lib/api';
 import { ToastProvider } from '../components/ui/Toast';
 
+const PUBLIC_PATHS = [
+  '/',
+  '/about',
+  '/contact',
+  '/forgot-password',
+  '/legal-disclaimer',
+  '/login',
+  '/register',
+  '/register-business',
+  '/reset-password',
+  '/submit-ticket',
+  '/track',
+  '/verify-email',
+];
+
+function isPublicPath(pathname: string) {
+  return PUBLIC_PATHS.some((path) => pathname === path || (path !== '/' && pathname.startsWith(`${path}/`)));
+}
+
 export function ClientLayout({ children }: { children: React.ReactNode }) {
   const { setUser, setAuthChecked, logout } = useAuthStore();
-  const hydrated = useRef(false);
+  const pathname = usePathname();
+  const lastHydratedPath = useRef<string | null>(null);
 
   useEffect(() => {
-    if (hydrated.current) return;
-    hydrated.current = true;
+    if (isPublicPath(pathname)) {
+      lastHydratedPath.current = pathname;
+      setAuthChecked(true);
+      return;
+    }
+
+    if (lastHydratedPath.current === pathname) return;
+    lastHydratedPath.current = pathname;
+    let active = true;
+    setAuthChecked(false);
 
     api.get('/users/me').then((u) => {
-      if (u) setUser(u);
+      if (active && u) setUser(u);
     }).catch((err: any) => {
-      if (err?.status === 401) logout();
+      if (active && err?.status === 401) logout();
     }).finally(() => {
-      setAuthChecked(true);
+      if (active) setAuthChecked(true);
     });
 
     try {
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
     } catch {}
-  }, [logout, setAuthChecked, setUser]);
+
+    return () => {
+      active = false;
+    };
+  }, [logout, pathname, setAuthChecked, setUser]);
 
   useEffect(() => {
     const report = (message: string, stack?: string, metadata?: Record<string, any>) => {
