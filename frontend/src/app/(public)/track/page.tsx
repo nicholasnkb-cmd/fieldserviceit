@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { formatDate, getStatusColor } from '../../../lib/utils';
+import { unwrapResponseBody } from '../../../lib/api';
 
 interface TicketData {
   id: string;
@@ -47,7 +48,7 @@ export default function TrackTicketPage() {
         throw new Error(err.message || 'Ticket not found');
       }
 
-      const data = await res.json();
+      const data = unwrapResponseBody(await res.json());
       setTicket(data);
     } catch (err: any) {
       setError(err.message);

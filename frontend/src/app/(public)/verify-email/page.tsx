@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { unwrapResponseBody } from '../../../lib/api';
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
@@ -18,14 +19,16 @@ function VerifyEmailContent() {
       return;
     }
 
-    fetch(`/v1/auth/verify-email/${token}`)
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+    fetch(`${apiUrl}/v1/auth/verify-email/${token}`)
       .then((res) => {
         if (res.ok) return res.json();
         return res.json().then((e) => { throw new Error(e.message); });
       })
       .then((data) => {
+        const body = unwrapResponseBody(data);
         setStatus('success');
-        setMessage(data.message || 'Email verified successfully');
+        setMessage(body.message || 'Email verified successfully');
         setTimeout(() => router.push('/login'), 3000);
       })
       .catch((err) => {

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { allCategories, categories } from '../../../lib/ticketCategories';
+import { unwrapResponseBody } from '../../../lib/api';
 
 export default function SubmitTicketPage() {
   const [title, setTitle] = useState('');
@@ -64,7 +65,7 @@ export default function SubmitTicketPage() {
         throw new Error(err.message || 'Failed to create ticket');
       }
 
-      const data = await res.json();
+      const data = unwrapResponseBody(await res.json());
       setSuccess({ ticketNumber: data.ticketNumber, trackingToken: data.trackingToken });
       setTitle(''); setDescription(''); setContactName(''); setContactEmail(''); setContactPhone('');
       setCategory(''); setSubcategory(''); setLocation(''); setLatitude(''); setLongitude('');

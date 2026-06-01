@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { api } from '../../../../lib/api';
+import { api, unwrapResponseBody } from '../../../../lib/api';
 import { formatDate, getStatusColor } from '../../../../lib/utils';
 import { useAuthStore } from '../../../../stores/authStore';
 import { connectSocket, disconnectSocket, onSocketEvent } from '../../../../lib/socket';
@@ -102,7 +102,7 @@ export default function TicketDetailPage() {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-      setUploadingFiles(true);
+    setUploadingFiles(true);
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
       const formData = new FormData();
@@ -113,7 +113,7 @@ export default function TicketDetailPage() {
         body: formData,
       });
       if (!res.ok) throw new Error('Upload failed');
-      const urls: string[] = await res.json();
+      const urls = unwrapResponseBody(await res.json()) as string[];
       const newAttachments: any[] = [];
       for (let i = 0; i < urls.length; i++) {
         const att = await api.post(`/tickets/${id}/attachments`, { fileUrl: urls[i], fileName: files[i].name, fileSize: files[i].size, mimeType: files[i].type });

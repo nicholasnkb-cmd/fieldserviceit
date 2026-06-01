@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { api } from '../../../lib/api';
+import { api, unwrapResponseBody } from '../../../lib/api';
 import { formatDate, getStatusColor } from '../../../lib/utils';
 import { useAuthStore } from '../../../stores/authStore';
 import { connectSocket, disconnectSocket, onSocketEvent } from '../../../lib/socket';
@@ -95,7 +95,7 @@ export default function DispatchPage() {
         body: formData,
       });
       if (!uploadRes.ok) throw new Error('Upload failed');
-      const urls = await uploadRes.json();
+      const urls = unwrapResponseBody(await uploadRes.json());
       await api.post(`/dispatch/${selected.id}/photos`, { photoUrls: Array.isArray(urls) ? urls : [urls] });
       setMessage('Photos uploaded');
       fetchData();
@@ -142,7 +142,7 @@ export default function DispatchPage() {
         body: formData,
       });
       if (!uploadRes.ok) throw new Error('Upload failed');
-      const url = await uploadRes.json();
+      const url = unwrapResponseBody(await uploadRes.json());
       await api.post(`/dispatch/${selected.id}/signature`, { signature: url });
       setMessage('Signature saved');
       fetchData();

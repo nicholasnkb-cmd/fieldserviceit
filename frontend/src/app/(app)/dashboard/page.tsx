@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useAuthStore } from '../../../stores/authStore';
 import { connectSocket, disconnectSocket, onSocketEvent } from '../../../lib/socket';
 import { formatDate } from '../../../lib/utils';
+import { api } from '../../../lib/api';
 
 interface TicketSummary {
   total: number;
@@ -63,14 +64,7 @@ export default function DashboardPage() {
   }, [user, router]);
 
   const fetchSummary = useCallback(() => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
-    fetch(`${apiUrl}/v1/reports/tickets`, {
-      credentials: 'include',
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error('Unauthorized');
-        return res.json();
-      })
+    api.get('/reports/tickets')
       .then(setSummary)
       .catch(() => { /* stay on page, show empty */ })
       .finally(() => setLoading(false));
@@ -79,9 +73,7 @@ export default function DashboardPage() {
   useEffect(() => { fetchSummary(); }, [fetchSummary]);
 
   useEffect(() => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
-    fetch(`${apiUrl}/v1/reports/activity`, { credentials: 'include' })
-      .then((res) => res.ok ? res.json() : [])
+    api.get('/reports/activity')
       .then(setActivity)
       .catch(() => {});
   }, []);
