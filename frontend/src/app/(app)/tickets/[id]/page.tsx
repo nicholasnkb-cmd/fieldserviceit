@@ -10,6 +10,51 @@ import { useToast } from '../../../../components/ui/Toast';
 
 const statusFlow = ['OPEN', 'ASSIGNED', 'IN_PROGRESS', 'ON_HOLD', 'RESOLVED', 'CLOSED'];
 
+const auditDotClasses: Record<string, string> = {
+  CREATED: 'bg-slate-400',
+  COMMENT: 'bg-blue-400',
+  STATUS_CHANGED: 'bg-purple-400',
+  ASSIGNED: 'bg-green-400',
+  RESOLVED: 'bg-emerald-500',
+  HOLD: 'bg-orange-400',
+  ATTACHMENT: 'bg-cyan-500',
+  ATTACHMENT_REMOVED: 'bg-red-400',
+  TIME: 'bg-indigo-400',
+};
+
+function getActorName(entry: any) {
+  const name = `${entry.actor?.firstName || ''} ${entry.actor?.lastName || ''}`.trim();
+  return name || 'System';
+}
+
+function getAuditTitle(entry: any) {
+  const titles: Record<string, string> = {
+    CREATED: 'Ticket created',
+    COMMENT: entry.isInternal ? 'Internal note added' : 'Comment added',
+    STATUS_CHANGED: 'Status changed',
+    ASSIGNED: 'Assignment changed',
+    RESOLVED: 'Ticket resolved',
+    HOLD: 'Ticket placed on hold',
+    ATTACHMENT: 'Attachment added',
+    ATTACHMENT_REMOVED: 'Attachment removed',
+    TIME: 'Time logged',
+  };
+  return titles[entry.action] || entry.action?.replace(/_/g, ' ') || 'Ticket event';
+}
+
+function getAuditDetail(entry: any) {
+  if (entry.action === 'STATUS_CHANGED') {
+    return `From ${entry.oldValue || 'unknown'} to ${entry.newValue || 'unknown'}`;
+  }
+  if (entry.action === 'ASSIGNED') {
+    return `From ${entry.oldValue || 'unassigned'} to ${entry.newValue || 'unassigned'}`;
+  }
+  if (entry.action === 'RESOLVED' && entry.comment) {
+    return entry.comment;
+  }
+  return entry.comment || '';
+}
+
 export default function TicketDetailPage() {
   const { id } = useParams();
   const router = useRouter();
@@ -60,11 +105,22 @@ export default function TicketDetailPage() {
     return () => { unsub1(); unsub2(); disconnectSocket(); };
   }, [user?.companyId, user?.id, id, toast]);
 
+  const refreshTimeline = async () => {
+    const timeline = await api.get(`/tickets/${id}/timeline`);
+    setTicket((prev: any) => ({ ...prev, timeline: getListData(timeline) }));
+  };
+
   const updateTicket = async (body: any) => {
     setActionError('');
     try {
       const updated = await api.patch(`/tickets/${id}`, body);
-      setTicket(updated);
+      setTicket((prev: any) => ({
+        ...prev,
+        ...updated,
+        timeline: updated.timeline || prev?.timeline,
+        attachments: updated.attachments || prev?.attachments,
+      }));
+      refreshTimeline().catch(() => undefined);
       toast('success', 'Ticket updated');
       return updated;
     } catch (err: any) {
@@ -146,6 +202,7 @@ export default function TicketDetailPage() {
         newAttachments.push(att);
       }
       setTicket((prev: any) => ({ ...prev, attachments: [...(prev.attachments || []), ...newAttachments] }));
+      refreshTimeline().catch(() => undefined);
       toast('success', `${urls.length} file(s) uploaded`);
     } catch (err: any) {
       toast('error', err.message);
@@ -158,6 +215,7 @@ export default function TicketDetailPage() {
     try {
       await api.delete(`/tickets/${id}/attachments/${attachmentId}`);
       setTicket((prev: any) => ({ ...prev, attachments: prev.attachments?.filter((a: any) => a.id !== attachmentId) }));
+      refreshTimeline().catch(() => undefined);
       toast('success', 'Attachment removed');
     } catch (err: any) {
       toast('error', err.message);
@@ -398,36 +456,27 @@ export default function TicketDetailPage() {
 
         {ticket.timeline && ticket.timeline.length > 0 && (
           <div className="border-t pt-4 mt-4">
-            <h3 className="text-sm font-medium text-gray-500 mb-3">Activity</h3>
-            <div className="space-y-3 max-h-96 overflow-y-auto">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-medium text-gray-700">Audit Trail</h3>
+                <p className="text-xs text-gray-400">Ticket actions, comments, attachments, and status history.</p>
+              </div>
+              <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">{ticket.timeline.length} events</span>
+            </div>
+            <div className="space-y-3 max-h-96 overflow-y-auto rounded-md border border-gray-100 bg-gray-50 p-3">
               {ticket.timeline.map((entry: any) => (
-                <div key={entry.id} className="flex gap-3 text-sm">
+                <div key={entry.id} className="flex gap-3 rounded-md bg-white p-3 text-sm shadow-sm">
                   <div className="flex-shrink-0 mt-1">
-                    <div className={`w-2 h-2 rounded-full ${
-                      entry.action === 'COMMENT' ? (entry.isInternal ? 'bg-yellow-400' : 'bg-blue-400')
-                      : entry.action === 'STATUS_CHANGED' ? 'bg-purple-400'
-                      : entry.action === 'ASSIGNED' ? 'bg-green-400'
-                      : entry.action === 'RESOLVED' ? 'bg-emerald-500'
-                      : entry.action === 'HOLD' ? 'bg-orange-400'
-                      : 'bg-gray-400'
-                    }`} />
+                    <div className={`h-2.5 w-2.5 rounded-full ${entry.action === 'COMMENT' && entry.isInternal ? 'bg-yellow-400' : auditDotClasses[entry.action] || 'bg-gray-400'}`} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-gray-700">{entry.actor?.firstName} {entry.actor?.lastName}</span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-semibold text-gray-800">{getAuditTitle(entry)}</span>
+                      <span className="text-gray-500">by {getActorName(entry)}</span>
                       <span className="text-xs text-gray-400">{formatDate(entry.createdAt)}</span>
                       {entry.isInternal && <span className="text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded">Internal</span>}
                     </div>
-                    {entry.action === 'COMMENT' ? (
-                      <p className="text-gray-600 mt-0.5 whitespace-pre-wrap">{entry.comment}</p>
-                    ) : entry.action === 'STATUS_CHANGED' ? (
-                      <p className="text-gray-600 mt-0.5">
-                        Status changed from <span className="font-medium">{entry.oldValue}</span> to <span className="font-medium">{entry.newValue}</span>
-                        {entry.comment && ` — ${entry.comment}`}
-                      </p>
-                    ) : (
-                      <p className="text-gray-600 mt-0.5">{entry.comment}</p>
-                    )}
+                    {getAuditDetail(entry) && <p className="mt-1 whitespace-pre-wrap text-gray-600">{getAuditDetail(entry)}</p>}
                   </div>
                 </div>
               ))}

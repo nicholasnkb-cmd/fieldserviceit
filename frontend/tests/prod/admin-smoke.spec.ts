@@ -81,12 +81,17 @@ test('super admin can manage a ticket from the ticket detail page', async ({ pag
   try {
     await page.goto(`/tickets/${ticket.id}`);
     await expect(page.getByRole('heading', { name: ticket.ticketNumber })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Audit Trail' })).toBeVisible();
+    await expect(page.getByText('Ticket created')).toBeVisible();
 
     await page.getByRole('button', { name: 'IN PROGRESS' }).click();
     await expect(page.getByText('IN_PROGRESS').first()).toBeVisible();
+    await expect(page.getByText('Status changed').first()).toBeVisible();
 
     await submitTicketComment(page, `Browser smoke comment ${suffix}`);
     await submitTicketComment(page, `Internal browser smoke note ${suffix}`, true);
+    await expect(page.getByText('Comment added').first()).toBeVisible();
+    await expect(page.getByText('Internal note added').first()).toBeVisible();
 
     const fileChooserPromise = page.waitForEvent('filechooser');
     await page.getByText('Choose files').click();
@@ -97,11 +102,13 @@ test('super admin can manage a ticket from the ticket detail page', async ({ pag
       buffer: Buffer.from(`browser smoke upload ${suffix}`),
     });
     await expect(page.getByText(`browser-smoke-${suffix}.txt`)).toBeVisible();
+    await expect(page.getByText('Attachment added').first()).toBeVisible();
 
     await page.getByRole('button', { name: 'RESOLVED' }).click();
     await page.getByPlaceholder('Summarize what fixed the issue, parts used, or next steps...').fill(`Resolved by browser smoke ${suffix}`);
     await page.getByRole('button', { name: 'Resolve Ticket' }).click();
     await expect(page.getByText('RESOLVED').first()).toBeVisible();
+    await expect(page.getByText('Ticket resolved').first()).toBeVisible();
 
     await page.getByRole('button', { name: 'CLOSED' }).click();
     await expect(page.getByText('CLOSED').first()).toBeVisible();
