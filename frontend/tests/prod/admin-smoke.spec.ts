@@ -12,10 +12,13 @@ async function submitTicketComment(page: import('@playwright/test').Page, commen
 
   if (isInternal) {
     await internalCheckbox.check();
+    await expect(internalCheckbox).toBeChecked();
   } else {
     await internalCheckbox.uncheck();
+    await expect(internalCheckbox).not.toBeChecked();
   }
-  await commentInput.fill(comment);
+  await commentInput.clear();
+  await commentInput.pressSequentially(comment);
   await expect(commentInput).toHaveValue(comment);
   await expect(submitButton).toBeEnabled();
   await submitButton.click();
