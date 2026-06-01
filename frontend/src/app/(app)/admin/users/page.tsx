@@ -50,7 +50,7 @@ export default function AdminUsersPage() {
     const query = params.toString() ? `?${params.toString()}` : '';
     api.get(`/admin/users${query}`)
       .then((data) => setUsers(data.data || []))
-      .catch(() => {});
+      .catch((err: any) => setMessage(err.message || 'Failed to load users'));
   }, [debouncedSearch, searchParams]);
 
   useEffect(() => {
@@ -65,7 +65,8 @@ export default function AdminUsersPage() {
     Promise.all([api.get(`/admin/users${query}`), api.get('/admin/companies')]).then(([u, c]) => {
       setUsers(u.data || []);
       setCompanies(c.data || []);
-    }).catch(() => {}).finally(() => setLoading(false));
+      setMessage('');
+    }).catch((err: any) => setMessage(err.message || 'Failed to load user management data')).finally(() => setLoading(false));
   }, [router, searchParams, user]);
 
   useEffect(() => {

@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '../../../lib/api';
 import { useAuthStore } from '../../../stores/authStore';
+import { formatDate, getStatusColor } from '../../../lib/utils';
 
 interface GlobalStats {
   totalUsers: number;
@@ -13,6 +14,29 @@ interface GlobalStats {
   totalAssets: number;
   usersByType: { userType: string; _count: number }[];
   ticketsByStatus: { status: string; _count: number }[];
+}
+
+interface AdminUserRow {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  userType: string;
+  isActive: boolean;
+  company?: { id: string; name: string } | null;
+  createdAt: string;
+}
+
+interface TicketRow {
+  id: string;
+  ticketNumber: string;
+  title: string;
+  status: string;
+  priority: string;
+  contactName?: string;
+  contactEmail?: string;
+  createdAt: string;
 }
 
 const adminActions = [
@@ -26,7 +50,10 @@ const adminActions = [
 
 export default function AdminPage() {
   const [stats, setStats] = useState<GlobalStats | null>(null);
+  const [recentUsers, setRecentUsers] = useState<AdminUserRow[]>([]);
+  const [recentTickets, setRecentTickets] = useState<TicketRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState('');
   const { user } = useAuthStore();
   const router = useRouter();
 
@@ -36,11 +63,35 @@ export default function AdminPage() {
       router.push('/dashboard');
       return;
     }
-    api.get('/admin/stats').then(setStats).catch(() => {}).finally(() => setLoading(false));
+    setLoading(true);
+    Promise.all([
+      api.get('/admin/stats'),
+      api.get('/admin/users?limit=8'),
+      api.get('/tickets?limit=8'),
+    ])
+      .then(([statsData, usersData, ticketsData]) => {
+        setStats(statsData);
+        setRecentUsers(usersData.data || []);
+        setRecentTickets(ticketsData.data || []);
+        setMessage('');
+      })
+      .catch((err: any) => {
+        setMessage(err.message || 'Unable to load super admin data');
+      })
+      .finally(() => setLoading(false));
   }, [user, router]);
 
   if (loading) return <div className="p-8">Loading...</div>;
-  if (!stats) return null;
+  if (!stats) {
+    return (
+      <div className="p-8">
+        <h1 className="text-2xl font-bold">Platform Control Portal</h1>
+        <div className="mt-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          {message || 'Unable to load super admin data.'}
+        </div>
+      </div>
+    );
+  }
 
   const statCards = [
     ['Users', stats.totalUsers, '/admin/users'],
@@ -58,6 +109,8 @@ export default function AdminPage() {
           Manage tenants, users, roles, permissions, plans, feature access, and global restrictions.
         </p>
       </div>
+
+      {message && <div className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{message}</div>}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         {statCards.map(([label, value, href]) => (
@@ -96,6 +149,82 @@ export default function AdminPage() {
             </Link>
           ))}
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold">Recent Users</h2>
+            <Link href="/admin/users" className="text-sm font-medium text-primary hover:underline">View all</Link>
+          </div>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">User</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Type</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Role</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Company</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {recentUsers.map((item) => (
+                  <tr key={item.id} className="hover:bg-gray-50">
+                    <td className="px-3 py-3">
+                      <Link href={`/admin/users?search=${encodeURIComponent(item.email)}`} className="text-sm font-medium text-primary hover:underline">
+                        {item.firstName} {item.lastName}
+                      </Link>
+                      <div className="text-xs text-gray-500">{item.email}</div>
+                    </td>
+                    <td className="px-3 py-3 text-sm text-gray-600">{item.userType}</td>
+                    <td className="px-3 py-3 text-sm text-gray-600">{item.role}</td>
+                    <td className="px-3 py-3 text-sm text-gray-600">{item.company?.name || '-'}</td>
+                  </tr>
+                ))}
+                {recentUsers.length === 0 && (
+                  <tr><td colSpan={4} className="px-3 py-8 text-center text-sm text-gray-500">No users returned.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold">Recent Tickets</h2>
+            <Link href="/tickets" className="text-sm font-medium text-primary hover:underline">View all</Link>
+          </div>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Ticket</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Status</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Priority</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">Created</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {recentTickets.map((ticket) => (
+                  <tr key={ticket.id} className="hover:bg-gray-50">
+                    <td className="px-3 py-3">
+                      <Link href={`/tickets/${ticket.id}`} className="text-sm font-medium text-primary hover:underline">{ticket.ticketNumber}</Link>
+                      <div className="max-w-xs truncate text-xs text-gray-500">{ticket.title}</div>
+                    </td>
+                    <td className="px-3 py-3">
+                      <span className={`rounded-full px-2 py-1 text-xs font-medium ${getStatusColor(ticket.status)}`}>{ticket.status}</span>
+                    </td>
+                    <td className="px-3 py-3 text-sm text-gray-600">{ticket.priority}</td>
+                    <td className="px-3 py-3 text-sm text-gray-500">{formatDate(ticket.createdAt)}</td>
+                  </tr>
+                ))}
+                {recentTickets.length === 0 && (
+                  <tr><td colSpan={4} className="px-3 py-8 text-center text-sm text-gray-500">No tickets returned.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
       </div>
     </div>
   );

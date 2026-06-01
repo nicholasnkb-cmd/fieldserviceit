@@ -25,6 +25,7 @@ const navItems = {
   ],
   admin: [
     { label: 'Super Admin', href: '/admin', icon: '📊' },
+    { label: 'All Tickets', href: '/tickets', icon: '🎫' },
     { label: 'Users', href: '/admin/users', icon: '👥' },
     { label: 'Companies', href: '/admin/companies', icon: '🏢' },
     { label: 'System Controls', href: '/admin/system', icon: '⚙️' },
