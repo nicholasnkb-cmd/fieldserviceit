@@ -17,6 +17,16 @@ interface Company {
   createdAt: string;
 }
 
+function getListData<T>(response: any): T[] {
+  if (Array.isArray(response)) return response;
+  if (Array.isArray(response?.data)) return response.data;
+  return [];
+}
+
+function countFor(company: Company, key: 'users' | 'tickets' | 'assets') {
+  return company._count?.[key] ?? 0;
+}
+
 export default function AdminCompaniesPage() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,8 +46,14 @@ export default function AdminCompaniesPage() {
   const fetchCompanies = useCallback(() => {
     setMessage('');
     api.get('/admin/companies')
-      .then((data) => setCompanies(data.data || []))
-      .catch((err: any) => setMessage(err.message || 'Failed to load companies'))
+      .then((data) => {
+        setCompanies(getListData<Company>(data));
+        setMessage('');
+      })
+      .catch((err: any) => {
+        setCompanies([]);
+        setMessage(err.message || 'Failed to load companies');
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -222,17 +238,17 @@ export default function AdminCompaniesPage() {
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-600">
                   <button onClick={() => router.push(`/admin/users?companyId=${encodeURIComponent(c.id)}`)} className="text-primary hover:underline">
-                    {c._count.users}
+                    {countFor(c, 'users')}
                   </button>
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-600">
                   <button onClick={() => openCompanyArea(c, '/tickets')} className="text-primary hover:underline">
-                    {c._count.tickets}
+                    {countFor(c, 'tickets')}
                   </button>
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-600">
                   <button onClick={() => openCompanyArea(c, '/assets')} className="text-primary hover:underline">
-                    {c._count.assets}
+                    {countFor(c, 'assets')}
                   </button>
                 </td>
                 <td className="px-6 py-4 text-sm font-mono text-gray-600">{c.inviteCode || '-'}</td>
@@ -254,6 +270,13 @@ export default function AdminCompaniesPage() {
                 </td>
               </tr>
             ))}
+            {companies.length === 0 && (
+              <tr>
+                <td colSpan={9} className="px-6 py-8 text-center text-sm text-gray-500">
+                  {message ? 'Companies could not be loaded.' : 'No companies found.'}
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
