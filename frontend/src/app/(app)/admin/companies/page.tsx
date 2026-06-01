@@ -25,7 +25,7 @@ export default function AdminCompaniesPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editCompany, setEditCompany] = useState({ name: '', slug: '', domain: '', isActive: true });
   const [message, setMessage] = useState('');
-  const { user, setActiveCompanyContext } = useAuthStore();
+  const { user, authChecked, setActiveCompanyContext } = useAuthStore();
   const router = useRouter();
 
   const openCompanyArea = (company: Company, path: string) => {
@@ -34,20 +34,25 @@ export default function AdminCompaniesPage() {
   };
 
   const fetchCompanies = useCallback(() => {
+    setMessage('');
     api.get('/admin/companies')
       .then((data) => setCompanies(data.data || []))
-      .catch(() => {})
+      .catch((err: any) => setMessage(err.message || 'Failed to load companies'))
       .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    if (!authChecked) return;
+    if (!user) {
+      router.push('/login');
+      return;
+    }
     if (user.role !== 'SUPER_ADMIN') {
       router.push('/dashboard');
       return;
     }
     fetchCompanies();
-  }, [user, router, fetchCompanies]);
+  }, [authChecked, user, router, fetchCompanies]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,7 +124,7 @@ export default function AdminCompaniesPage() {
       </div>
 
       {message && (
-        <div className="bg-green-50 text-green-600 p-3 rounded text-sm mb-4">{message}</div>
+        <div className={`p-3 rounded text-sm mb-4 ${message.includes('Failed') || message.includes('Error') ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>{message}</div>
       )}
 
       {showCreate && (

@@ -43,13 +43,13 @@ const navItems = {
 
 export function SidePanel() {
   const pathname = usePathname();
-  const { user, isAuthenticated } = useAuthStore();
+  const { user, authChecked, isAuthenticated } = useAuthStore();
   const [features, setFeatures] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!authChecked || !isAuthenticated) return;
     api.get('/users/me/features').then((data) => setFeatures(data.features || {})).catch(() => {});
-  }, [isAuthenticated]);
+  }, [authChecked, isAuthenticated]);
 
   if (!user) return null;
 

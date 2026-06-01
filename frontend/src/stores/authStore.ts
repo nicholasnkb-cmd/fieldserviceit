@@ -30,9 +30,11 @@ interface AuthState {
   company: CompanyInfo | null;
   activeCompanyContext: CompanyInfo | null;
   isAuthenticated: boolean;
+  authChecked: boolean;
   setUser: (user: User) => void;
   setCompany: (company: CompanyInfo) => void;
   setActiveCompanyContext: (company: CompanyInfo | null) => void;
+  setAuthChecked: (checked: boolean) => void;
   logout: () => void;
 }
 
@@ -41,8 +43,10 @@ export const useAuthStore = create<AuthState>((set) => ({
   company: null,
   activeCompanyContext: getCompanyContextFromStorage(),
   isAuthenticated: !!getUserFromToken(),
-  setUser: (user) => set({ user, isAuthenticated: true }),
+  authChecked: false,
+  setUser: (user) => set({ user, isAuthenticated: true, authChecked: true }),
   setCompany: (company) => set({ company }),
+  setAuthChecked: (checked) => set({ authChecked: checked }),
   setActiveCompanyContext: (company) => {
     if (typeof window !== 'undefined') {
       if (company) {
@@ -65,6 +69,6 @@ export const useAuthStore = create<AuthState>((set) => ({
       clearSessionTokens();
       localStorage.removeItem(COMPANY_CONTEXT_KEY);
     }
-    set({ user: null, company: null, activeCompanyContext: null, isAuthenticated: false });
+    set({ user: null, company: null, activeCompanyContext: null, isAuthenticated: false, authChecked: true });
   },
 }));

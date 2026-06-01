@@ -40,7 +40,7 @@ const menuItems: (
 ];
 
 export function BannerMenu() {
-  const { user, company, activeCompanyContext, isAuthenticated, setActiveCompanyContext, logout } = useAuthStore();
+  const { user, company, activeCompanyContext, authChecked, isAuthenticated, setActiveCompanyContext, logout } = useAuthStore();
   const pathname = usePathname();
   const router = useRouter();
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
@@ -82,17 +82,17 @@ export function BannerMenu() {
   }, []);
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!authChecked || !isAuthenticated) return;
     fetchNotifCount();
     api.get('/users/me/favorites').then((items) => {
       setFavoritePaths(new Set((items || []).map((item: any) => item.path)));
     }).catch(() => {});
     const interval = setInterval(fetchNotifCount, 30000);
     return () => clearInterval(interval);
-  }, [isAuthenticated, fetchNotifCount]);
+  }, [authChecked, isAuthenticated, fetchNotifCount]);
 
   useEffect(() => {
-    if (!isAuthenticated || user?.role !== 'SUPER_ADMIN') return;
+    if (!authChecked || !isAuthenticated || user?.role !== 'SUPER_ADMIN') return;
 
     let active = true;
     api.get('/admin/companies?limit=100')
@@ -110,7 +110,7 @@ export function BannerMenu() {
     return () => {
       active = false;
     };
-  }, [activeCompanyContext, isAuthenticated, setActiveCompanyContext, user?.role]);
+  }, [activeCompanyContext, authChecked, isAuthenticated, setActiveCompanyContext, user?.role]);
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {

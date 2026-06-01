@@ -6,7 +6,7 @@ import { api } from '../lib/api';
 import { ToastProvider } from '../components/ui/Toast';
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
-  const { setUser, logout } = useAuthStore();
+  const { setUser, setAuthChecked, logout } = useAuthStore();
   const hydrated = useRef(false);
 
   useEffect(() => {
@@ -17,13 +17,15 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
       if (u) setUser(u);
     }).catch((err: any) => {
       if (err?.status === 401) logout();
+    }).finally(() => {
+      setAuthChecked(true);
     });
 
     try {
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
     } catch {}
-  }, [logout, setUser]);
+  }, [logout, setAuthChecked, setUser]);
 
   useEffect(() => {
     const report = (message: string, stack?: string, metadata?: Record<string, any>) => {

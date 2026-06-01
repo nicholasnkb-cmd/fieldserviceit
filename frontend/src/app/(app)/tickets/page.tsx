@@ -26,7 +26,7 @@ export default function TicketsPage() {
   const [bulkUserId, setBulkUserId] = useState('');
   const [bulkStatus, setBulkStatus] = useState('');
   const [error, setError] = useState('');
-  const { user, activeCompanyContext } = useAuthStore();
+  const { user, activeCompanyContext, authChecked } = useAuthStore();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -56,6 +56,8 @@ export default function TicketsPage() {
   }, [activeCompanyContext, filter, debouncedSearch, page, user?.role]);
 
   useEffect(() => {
+    if (!authChecked) return;
+    if (!user) { router.push('/login'); return; }
     if (user && user.userType !== 'BUSINESS') { router.push('/my-tickets'); return; }
     fetchTickets();
     if (user?.role === 'SUPER_ADMIN' && !activeCompanyContext) {
@@ -63,7 +65,7 @@ export default function TicketsPage() {
     } else {
       api.get('/users?limit=200').then((d) => setUsers(d.data || [])).catch(() => {});
     }
-  }, [activeCompanyContext, user, fetchTickets, router]);
+  }, [activeCompanyContext, authChecked, user, fetchTickets, router]);
 
   useEffect(() => {
     if (!user?.companyId) return;

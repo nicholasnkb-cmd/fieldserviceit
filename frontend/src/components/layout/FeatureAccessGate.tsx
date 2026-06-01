@@ -1,27 +1,42 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { api } from '../../lib/api';
 import { featureForPath, featureLabel } from '../../lib/features';
 import { useAuthStore } from '../../stores/authStore';
 
 export function FeatureAccessGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { isAuthenticated } = useAuthStore();
+  const router = useRouter();
+  const { authChecked, isAuthenticated } = useAuthStore();
   const [features, setFeatures] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!authChecked || !isAuthenticated) return;
     api.get('/users/me/features')
       .then((data) => setFeatures(data.features || {}))
       .catch(() => {});
-  }, [isAuthenticated]);
+  }, [authChecked, isAuthenticated]);
+
+  useEffect(() => {
+    if (authChecked && !isAuthenticated) {
+      router.replace('/login');
+    }
+  }, [authChecked, isAuthenticated, router]);
 
   const disabledFeature = useMemo(() => {
     const feature = featureForPath(pathname);
     return feature && features[feature] === false ? feature : null;
   }, [features, pathname]);
+
+  if (!authChecked) {
+    return <div className="p-8 text-sm text-gray-500">Loading...</div>;
+  }
+
+  if (!isAuthenticated) {
+    return <div className="p-8 text-sm text-gray-500">Redirecting...</div>;
+  }
 
   if (disabledFeature) {
     return (

@@ -31,7 +31,7 @@ export default function AdminUsersPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState({ email: '', password: '', firstName: '', lastName: '', role: 'CLIENT', companyId: '' });
   const [message, setMessage] = useState('');
-  const { user } = useAuthStore();
+  const { user, authChecked } = useAuthStore();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -54,7 +54,8 @@ export default function AdminUsersPage() {
   }, [debouncedSearch, searchParams]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!authChecked) return;
+    if (!user) { router.push('/login'); return; }
     if (user && user.role !== 'SUPER_ADMIN') { router.push('/dashboard'); return; }
     const params = new URLSearchParams();
     const userType = searchParams.get('userType');
@@ -67,12 +68,12 @@ export default function AdminUsersPage() {
       setCompanies(c.data || []);
       setMessage('');
     }).catch((err: any) => setMessage(err.message || 'Failed to load user management data')).finally(() => setLoading(false));
-  }, [router, searchParams, user]);
+  }, [authChecked, router, searchParams, user]);
 
   useEffect(() => {
-    if (!user || user.role !== 'SUPER_ADMIN') return;
+    if (!authChecked || !user || user.role !== 'SUPER_ADMIN') return;
     fetchUsers();
-  }, [debouncedSearch, fetchUsers, user]);
+  }, [authChecked, debouncedSearch, fetchUsers, user]);
 
   const handleRoleChange = async (userId: string) => {
     try { await api.patch(`/admin/users/${userId}/role`, { role: newRole }); setMessage('Role updated'); setEditing(null); fetchUsers(); }
