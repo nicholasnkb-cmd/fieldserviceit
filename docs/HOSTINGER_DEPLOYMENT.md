@@ -114,3 +114,42 @@ Confirm Production readiness shows:
 - Frontend URL: ok
 - CORS origin: ok
 - JWT secret: ok
+
+## 6. Production Smoke Automation
+
+Create these GitHub production environment secrets:
+
+```env
+SMOKE_EMAIL=smoke-superadmin@fieldserviceit.com
+SMOKE_PASSWORD=<the smoke super admin password stored in your password manager>
+```
+
+Optional production environment variables:
+
+```env
+SMOKE_BASE_URL=https://fieldserviceit.com
+SMOKE_API_URL=https://api.fieldserviceit.com
+SMOKE_MUTATIONS=false
+```
+
+Use `SMOKE_MUTATIONS=true` only for a deliberate controlled run. It creates, edits, and deactivates temporary smoke records.
+
+The smoke workflows are:
+
+- `.github/workflows/production-smoke.yml` for scheduled/manual API and browser smoke tests.
+- `.github/workflows/deploy.yml` post-deploy smoke checks after backend and frontend deploy jobs.
+
+## 7. Database Credential Rotation
+
+The database credential previously used in chat should be considered exposed. Rotate it from Hostinger hPanel because the current MySQL account does not have `CREATE USER` privileges from the app connection.
+
+Safe rotation order:
+
+1. In Hostinger hPanel, create a new MySQL user for `u209468809_FieldserviceIT`.
+2. Grant it the application privileges needed by the backend.
+3. Update the backend `DATABASE_URL` to use the new user/password.
+4. Redeploy or restart the backend app.
+5. Run `node scripts/production-smoke.mjs` with `SMOKE_MUTATIONS=true`.
+6. After smoke passes, remove or change the old exposed MySQL user password.
+
+Do not revoke the old credential before step 5 passes, or the live app can lose database access.

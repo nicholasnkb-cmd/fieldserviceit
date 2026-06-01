@@ -1,0 +1,65 @@
+name: Production Smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      mutations:
+        description: Create, edit, and deactivate temporary smoke records
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+  schedule:
+    - cron: '17 10 * * *'
+
+jobs:
+  smoke:
+    name: API Smoke
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run production smoke
+        env:
+          SMOKE_BASE_URL: ${{ vars.SMOKE_BASE_URL || 'https://fieldserviceit.com' }}
+          SMOKE_API_URL: ${{ vars.SMOKE_API_URL || 'https://api.fieldserviceit.com' }}
+          SMOKE_EMAIL: ${{ secrets.SMOKE_EMAIL }}
+          SMOKE_PASSWORD: ${{ secrets.SMOKE_PASSWORD }}
+          SMOKE_MUTATIONS: ${{ github.event.inputs.mutations || 'false' }}
+        run: node scripts/production-smoke.mjs
+
+  browser-smoke:
+    name: Browser Smoke
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install browser
+        working-directory: frontend
+        run: npx playwright install chromium
+
+      - name: Run browser smoke
+        working-directory: frontend
+        env:
+          E2E_BASE_URL: ${{ vars.SMOKE_BASE_URL || 'https://fieldserviceit.com' }}
+          E2E_EMAIL: ${{ secrets.SMOKE_EMAIL }}
+          E2E_PASSWORD: ${{ secrets.SMOKE_PASSWORD }}
+        run: npm run test:e2e:prod

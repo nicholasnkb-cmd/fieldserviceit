@@ -73,8 +73,7 @@ jobs:
 
       - run: npm ci
       - run: npx prisma generate
-      - run: npx prisma migrate deploy
-      - run: npm run prisma:seed
+      - run: npm run seed
       - run: npm test
 
   backend-e2e:
@@ -112,8 +111,7 @@ jobs:
 
       - run: npm ci
       - run: npx prisma generate
-      - run: npx prisma migrate deploy
-      - run: npm run prisma:seed
+      - run: npm run seed
       - run: npm run test:e2e -- --testPathPattern="app.e2e-spec|auth-ticket-lifecycle.e2e-spec|permissions.e2e-spec"
 
   frontend:
@@ -135,6 +133,7 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm run lint
+      - run: npm test -- --runInBand
 
   security-check:
     name: Security Audit

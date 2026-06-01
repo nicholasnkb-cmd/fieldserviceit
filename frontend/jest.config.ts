@@ -10,7 +10,8 @@ const config: Config = {
     '^@/(.*)$': '<rootDir>/src/$1',
     '^lucide-react$': '<rootDir>/__mocks__/lucide-react.tsx',
   },
-  testPathIgnorePatterns: ['<rootDir>/.next/', '<rootDir>/node_modules/'],
+  modulePathIgnorePatterns: ['<rootDir>/.next/'],
+  testPathIgnorePatterns: ['<rootDir>/.next/', '<rootDir>/node_modules/', '<rootDir>/tests/prod/'],
   transform: {
     '^.+\\.(ts|tsx)$': ['ts-jest', { tsconfig: 'tsconfig.json' }],
   },

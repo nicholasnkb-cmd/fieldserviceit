@@ -78,3 +78,24 @@ jobs:
         run: node deploy-frontend.js
         env:
           HOSTINGER_API_TOKEN: ${{ secrets.HOSTINGER_API_TOKEN }}
+
+  production-smoke:
+    name: Production Smoke Tests
+    needs: [deploy-backend, deploy-frontend]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run API smoke checks
+        env:
+          SMOKE_BASE_URL: ${{ vars.SMOKE_BASE_URL || 'https://fieldserviceit.com' }}
+          SMOKE_API_URL: ${{ vars.SMOKE_API_URL || 'https://api.fieldserviceit.com' }}
+          SMOKE_EMAIL: ${{ secrets.SMOKE_EMAIL }}
+          SMOKE_PASSWORD: ${{ secrets.SMOKE_PASSWORD }}
+          SMOKE_MUTATIONS: ${{ vars.SMOKE_MUTATIONS || 'false' }}
+        run: node scripts/production-smoke.mjs
