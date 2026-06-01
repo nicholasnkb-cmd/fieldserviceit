@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { api } from '../../lib/api';
+import { api, getListData } from '../../lib/api';
 
 interface Notification {
   id: string;
@@ -29,7 +29,7 @@ export function NotificationBell() {
   const fetchRecent = useCallback(async () => {
     try {
       const data = await api.get('/notifications?limit=10');
-      setNotifications(data.data || []);
+      setNotifications(getListData<Notification>(data));
     } catch {}
   }, []);
 

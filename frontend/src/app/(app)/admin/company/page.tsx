@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { api } from '../../../../lib/api';
+import { api, getListData } from '../../../../lib/api';
 import { useAuthStore } from '../../../../stores/authStore';
 
 interface CompanyUser {
@@ -31,7 +31,7 @@ export default function TenantAdminPage() {
   const fetchUsers = useCallback(() => {
     const params = debouncedSearch ? `?search=${encodeURIComponent(debouncedSearch)}` : '';
     api.get(`/admin/company/users${params}`)
-      .then((data) => setUsers(data.data || []))
+      .then((data) => setUsers(getListData<CompanyUser>(data)))
       .catch(() => {});
   }, [debouncedSearch]);
 

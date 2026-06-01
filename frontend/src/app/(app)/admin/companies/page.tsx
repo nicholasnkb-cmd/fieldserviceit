@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { api } from '../../../../lib/api';
+import { api, getListData } from '../../../../lib/api';
 import { useAuthStore } from '../../../../stores/authStore';
 
 interface Company {
@@ -15,12 +15,6 @@ interface Company {
   inviteCode?: string;
   _count: { users: number; tickets: number; assets: number };
   createdAt: string;
-}
-
-function getListData<T>(response: any): T[] {
-  if (Array.isArray(response)) return response;
-  if (Array.isArray(response?.data)) return response.data;
-  return [];
 }
 
 function countFor(company: Company, key: 'users' | 'tickets' | 'assets') {

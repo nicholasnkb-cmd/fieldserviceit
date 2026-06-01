@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { api } from '../../../lib/api';
+import { api, getListData } from '../../../lib/api';
 import { useAuthStore } from '../../../stores/authStore';
 import { useRouter } from 'next/navigation';
 
@@ -35,7 +35,7 @@ export default function BillingPage() {
       api.get('/plans'),
       api.get('/billing/current-plan').catch(() => null),
     ]).then(([plansData, current]) => {
-      setPlans((plansData.data || []).filter((plan: Plan) => plan.name === 'Business'));
+      setPlans(getListData<Plan>(plansData).filter((plan: Plan) => plan.name === 'Business'));
       setCurrentPlan(current?.plan || null);
       setLoadingInvoices(true);
       api.get('/billing/invoices').then((inv: any) => setInvoices(inv || [])).catch(() => {}).finally(() => setLoadingInvoices(false));

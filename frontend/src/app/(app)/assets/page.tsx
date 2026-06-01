@@ -19,7 +19,7 @@ import {
   Tablet,
   Wifi,
 } from 'lucide-react';
-import { api } from '../../../lib/api';
+import { api, getListData } from '../../../lib/api';
 import { formatDate } from '../../../lib/utils';
 import { RequireCompanyContext } from '../../../components/layout/RequireCompanyContext';
 import { useAuthStore } from '../../../stores/authStore';
@@ -167,7 +167,7 @@ export default function AssetsPage() {
       api.get('/assets/mdm/summary').catch(() => null),
     ])
       .then(([assetData, summaryData]) => {
-        setDevices(assetData.data || []);
+        setDevices(getListData<Device>(assetData));
         if (summaryData) setSummary(summaryData);
       })
       .catch((err) => setMessage(err.message || 'Failed to load devices'))

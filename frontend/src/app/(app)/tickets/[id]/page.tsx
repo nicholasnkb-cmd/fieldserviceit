@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { api, unwrapResponseBody } from '../../../../lib/api';
+import { api, getListData, unwrapResponseBody } from '../../../../lib/api';
 import { formatDate, getStatusColor } from '../../../../lib/utils';
 import { useAuthStore } from '../../../../stores/authStore';
 import { connectSocket, disconnectSocket, onSocketEvent } from '../../../../lib/socket';
@@ -37,7 +37,7 @@ export default function TicketDetailPage() {
       api.get('/users?limit=100'),
     ]).then(([t, u]) => {
       setTicket(t);
-      setUsers(u.data || []);
+      setUsers(getListData(u));
       setSelectedUser(t.assignedTo?.id || '');
     }).catch(() => router.push('/tickets'))
     .finally(() => setLoading(false));

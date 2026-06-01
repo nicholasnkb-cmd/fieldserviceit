@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { api } from '../../../../lib/api';
+import { api, getListData, getResponseMeta } from '../../../../lib/api';
 import { useAuthStore } from '../../../../stores/authStore';
 import { Pagination } from '../../../../components/ui/Pagination';
 import { TableSkeleton } from '../../../../components/ui/Skeleton';
@@ -28,7 +28,7 @@ export default function AuditLogsPage() {
     if (user.role !== 'SUPER_ADMIN') { router.push('/dashboard'); return; }
     setLoading(true);
     const params = `?page=${page}&limit=25${debouncedSearch ? `&search=${encodeURIComponent(debouncedSearch)}` : ''}`;
-    api.get(`/admin/audit-logs${params}`).then((d) => { setLogs(d.data || []); setMeta(d.meta); }).catch(() => {}).finally(() => setLoading(false));
+    api.get(`/admin/audit-logs${params}`).then((d) => { setLogs(getListData(d)); setMeta(getResponseMeta(d)); }).catch(() => {}).finally(() => setLoading(false));
   }, [page, debouncedSearch, user, router]);
 
   return (

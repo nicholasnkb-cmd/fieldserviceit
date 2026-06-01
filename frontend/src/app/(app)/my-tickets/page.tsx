@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { api } from '../../../lib/api';
+import { api, getListData } from '../../../lib/api';
 import { formatDate, getStatusColor } from '../../../lib/utils';
 import { ResponsiveTable } from '../../../components/ui/ResponsiveTable';
 import { TableSkeleton } from '../../../components/ui/Skeleton';
@@ -27,7 +27,7 @@ export default function MyTicketsPage() {
   useEffect(() => {
     const params = filter ? `?status=${filter}` : '';
     api.get(`/tickets${params}`)
-      .then((data) => setTickets(data.data || []))
+      .then((data) => setTickets(getListData<Ticket>(data)))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [router, filter]);

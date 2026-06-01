@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '../../stores/authStore';
 import { cn, formatDate } from '../../lib/utils';
-import { api } from '../../lib/api';
+import { api, getListData } from '../../lib/api';
 import { DarkModeToggle } from '../ui/DarkModeToggle';
 
 interface CompanyOption {
@@ -78,7 +78,7 @@ export function BannerMenu() {
   }, []);
 
   const fetchNotifications = useCallback(async () => {
-    try { const d = await api.get('/notifications?limit=10'); setNotifications(d.data || []); } catch {}
+    try { const d = await api.get('/notifications?limit=10'); setNotifications(getListData(d)); } catch {}
   }, []);
 
   useEffect(() => {
@@ -98,7 +98,7 @@ export function BannerMenu() {
     api.get('/admin/companies?limit=100')
       .then((data) => {
         if (!active) return;
-        const companies = data.data || [];
+        const companies = getListData<CompanyOption>(data);
         setCompanyOptions(companies);
 
         if (activeCompanyContext && !companies.some((item: CompanyOption) => item.id === activeCompanyContext.id)) {

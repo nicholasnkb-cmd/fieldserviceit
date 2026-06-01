@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { api } from '../../../../lib/api';
+import { api, getListData } from '../../../../lib/api';
 import { useAuthStore } from '../../../../stores/authStore';
 
 interface Plan {
@@ -88,13 +88,13 @@ export default function SystemControlsPage() {
     ])
       .then(([data, readinessData, companyData, userData, functionData]) => {
         if (readinessData) setReadiness(readinessData);
-        setCompanies(companyData.data || []);
-        setUsers(userData.data || []);
-        setFunctions(functionData || []);
+        setCompanies(getListData<CompanyOption>(companyData));
+        setUsers(getListData<UserOption>(userData));
+        setFunctions(getListData<FunctionControl>(functionData));
         return data;
       })
       .then((data) => {
-        const rows = data || [];
+        const rows = getListData<Plan>(data);
         setPlans(rows);
         setDrafts(Object.fromEntries(rows.map((plan: Plan) => [plan.id, { ...plan, features: plan.features || {} }])));
       })

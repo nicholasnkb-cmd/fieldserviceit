@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { api } from '../../../lib/api';
+import { api, getListData } from '../../../lib/api';
 import { useAuthStore } from '../../../stores/authStore';
 import { formatDate, getStatusColor } from '../../../lib/utils';
 
@@ -71,8 +71,8 @@ export default function AdminPage() {
     ])
       .then(([statsResult, usersResult, ticketsResult]) => {
         if (statsResult.status === 'fulfilled') setStats(statsResult.value);
-        if (usersResult.status === 'fulfilled') setRecentUsers(usersResult.value.data || []);
-        if (ticketsResult.status === 'fulfilled') setRecentTickets(ticketsResult.value.data || []);
+        if (usersResult.status === 'fulfilled') setRecentUsers(getListData<AdminUserRow>(usersResult.value));
+        if (ticketsResult.status === 'fulfilled') setRecentTickets(getListData<TicketRow>(ticketsResult.value));
 
         const errors = [statsResult, usersResult, ticketsResult]
           .filter((result): result is PromiseRejectedResult => result.status === 'rejected')

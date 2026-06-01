@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { api } from '../../../../lib/api';
+import { api, getListData } from '../../../../lib/api';
 import { useAuthStore } from '../../../../stores/authStore';
 import { useToast } from '../../../../components/ui/Toast';
 
@@ -26,12 +26,6 @@ interface Role {
   companyId: string | null;
   permissions: RolePermission[];
   _count: { userRoles: number };
-}
-
-function getListData<T>(response: any): T[] {
-  if (Array.isArray(response)) return response;
-  if (Array.isArray(response?.data)) return response.data;
-  return [];
 }
 
 function rolePermissions(role: Role): RolePermission[] {

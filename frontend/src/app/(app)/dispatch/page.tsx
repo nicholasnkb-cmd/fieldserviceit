@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { api, unwrapResponseBody } from '../../../lib/api';
+import { api, getListData, unwrapResponseBody } from '../../../lib/api';
 import { formatDate, getStatusColor } from '../../../lib/utils';
 import { useAuthStore } from '../../../stores/authStore';
 import { connectSocket, disconnectSocket, onSocketEvent } from '../../../lib/socket';
@@ -42,8 +42,8 @@ export default function DispatchPage() {
       api.get('/dispatch'),
       api.get('/users?limit=100'),
     ]).then(([d, u]) => {
-      setDispatches(d || []);
-      setUsers(u.data || []);
+      setDispatches(getListData<DispatchItem>(d));
+      setUsers(getListData(u));
     }).catch(() => {}).finally(() => setLoading(false));
   }, []);
 

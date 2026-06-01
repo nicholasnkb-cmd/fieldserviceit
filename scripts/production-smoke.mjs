@@ -4,6 +4,7 @@ const email = process.env.SMOKE_EMAIL;
 const password = process.env.SMOKE_PASSWORD;
 const expectedFrontend = process.env.SMOKE_EXPECT_FRONTEND_VERSION;
 const expectedBackend = process.env.SMOKE_EXPECT_BACKEND_VERSION;
+const runMutations = process.env.SMOKE_MUTATIONS === 'true';
 const cookieJar = new Map();
 
 function storeCookies(res) {
@@ -40,6 +41,104 @@ async function expectOk(url, init) {
   return res;
 }
 
+function unwrap(body) {
+  if (body && typeof body === 'object' && 'success' in body && 'data' in body && 'timestamp' in body) {
+    return body.meta ? { data: body.data, meta: body.meta } : body.data;
+  }
+  return body;
+}
+
+async function expectJson(url, init) {
+  const res = await expectOk(url, init);
+  return unwrap(await res.json());
+}
+
+function listData(body) {
+  if (Array.isArray(body)) return body;
+  if (Array.isArray(body?.data)) return body.data;
+  throw new Error('Expected list response');
+}
+
+async function expectList(name, url) {
+  await check(name, async () => {
+    const body = await expectJson(url);
+    listData(body);
+  });
+}
+
+async function expectMutationListPreserved() {
+  await check('admin role permission no-op update', async () => {
+    const roles = listData(await expectJson(`${apiUrl}/v1/admin/roles`));
+    const editable = roles.find((role) => role?.id && Array.isArray(role.permissions));
+    if (!editable) throw new Error('No role available to verify permission update');
+    const permissionSlugs = editable.permissions
+      .map((entry) => entry?.permission?.slug)
+      .filter(Boolean);
+    const updated = await expectJson(`${apiUrl}/v1/admin/roles/${editable.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ permissionSlugs }),
+    });
+    if (!Array.isArray(updated?.permissions)) throw new Error('Updated role did not include permissions');
+  });
+}
+
+async function runTemporaryAdminMutations() {
+  const suffix = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+  const companyPayload = {
+    name: `Smoke Test Company ${suffix}`,
+    slug: `smoke-test-${suffix}`,
+    domain: `smoke-${suffix}.example.com`,
+  };
+  let company;
+  await check('admin company create', async () => {
+    company = await expectJson(`${apiUrl}/v1/admin/companies`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(companyPayload),
+    });
+    if (!company?.id) throw new Error('Company id missing');
+  });
+
+  await check('admin company edit', async () => {
+    const updated = await expectJson(`${apiUrl}/v1/admin/companies/${company.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ domain: `updated-${companyPayload.domain}` }),
+    });
+    if (updated?.domain !== `updated-${companyPayload.domain}`) throw new Error('Company edit did not persist');
+  });
+
+  let user;
+  await check('admin user create', async () => {
+    user = await expectJson(`${apiUrl}/v1/admin/users`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: `smoke-${suffix}@example.com`,
+        password: `Smoke-${suffix}!`,
+        firstName: 'Smoke',
+        lastName: 'User',
+        role: 'CLIENT',
+        companyId: company.id,
+      }),
+    });
+    if (!user?.id) throw new Error('User id missing');
+  });
+
+  await check('admin user edit', async () => {
+    const updated = await expectJson(`${apiUrl}/v1/admin/users/${user.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ firstName: 'SmokeEdited' }),
+    });
+    if (updated?.firstName !== 'SmokeEdited') throw new Error('User edit did not persist');
+  });
+
+  await check('admin user deactivate', () => expectOk(`${apiUrl}/v1/admin/users/${user.id}`, { method: 'DELETE' }));
+  await check('admin company deactivate', () => expectOk(`${apiUrl}/v1/admin/companies/${company.id}`, { method: 'DELETE' }));
+}
+
 await check('frontend login page', () => expectOk(`${baseUrl}/login`));
 await check('frontend network page shell', () => expectOk(`${baseUrl}/network`));
 await check('frontend about page', () => expectOk(`${baseUrl}/about`));
@@ -62,6 +161,7 @@ await check('protected AI route is registered', async () => {
 });
 
 if (email && password) {
+  let currentUser;
   await check('auth login', async () => {
     const res = await expectOk(`${apiUrl}/v1/auth/login`, {
       method: 'POST',
@@ -69,7 +169,8 @@ if (email && password) {
       body: JSON.stringify({ email, password }),
     });
     const body = await res.json();
-    if (!(body?.data?.user || body?.user)) throw new Error('No user returned');
+    currentUser = unwrap(body)?.user || body?.user;
+    if (!currentUser) throw new Error('No user returned');
     if (!cookieJar.has('fsit_access') || !cookieJar.has('fsit_refresh')) throw new Error('Auth cookies were not set');
   });
 
@@ -79,6 +180,21 @@ if (email && password) {
   await check('RMM providers API', () => expectOk(`${apiUrl}/v1/integrations/rmm/providers`));
   await check('ticket search API', () => expectOk(`${apiUrl}/v1/tickets?limit=1`));
   await check('asset list API', () => expectOk(`${apiUrl}/v1/assets?limit=1`));
+  if (currentUser?.role === 'SUPER_ADMIN') {
+    await expectList('admin users list API', `${apiUrl}/v1/admin/users?limit=5`);
+    await expectList('admin companies list API', `${apiUrl}/v1/admin/companies?limit=5`);
+    await expectList('admin roles list API', `${apiUrl}/v1/admin/roles`);
+    await expectList('admin audit logs list API', `${apiUrl}/v1/admin/audit-logs?limit=5`);
+    await expectList('admin tickets list API', `${apiUrl}/v1/admin/tickets?limit=5`);
+    await expectMutationListPreserved();
+    if (runMutations) {
+      await runTemporaryAdminMutations();
+    } else {
+      console.log('SKIP admin create/edit/deactivate mutations: set SMOKE_MUTATIONS=true to enable temporary smoke records.');
+    }
+  } else {
+    console.log(`SKIP super admin checks: authenticated role is ${currentUser?.role || 'unknown'}.`);
+  }
   if (expectedFrontend || expectedBackend) {
     await check('system readiness versions', async () => {
       const res = await expectOk(`${apiUrl}/v1/admin/system-readiness`);

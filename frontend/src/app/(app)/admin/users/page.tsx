@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { api } from '../../../../lib/api';
+import { api, getListData } from '../../../../lib/api';
 import { useAuthStore } from '../../../../stores/authStore';
 
 interface AdminUser {
@@ -21,12 +21,6 @@ interface AdminUser {
 interface Company { id: string; name: string }
 
 const GLOBAL_USER_ROLES = ['SUPER_ADMIN', 'GLOBAL_TECH'];
-
-function getListData<T>(response: any): T[] {
-  if (Array.isArray(response)) return response;
-  if (Array.isArray(response?.data)) return response.data;
-  return [];
-}
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);

@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { api } from '../../../lib/api';
+import { api, getListData, getResponseMeta } from '../../../lib/api';
 import { formatDate, getStatusColor } from '../../../lib/utils';
 import { useAuthStore } from '../../../stores/authStore';
 import { ResponsiveTable } from '../../../components/ui/ResponsiveTable';
@@ -50,7 +50,7 @@ export default function TicketsPage() {
     setError('');
     const endpoint = user?.role === 'SUPER_ADMIN' && !activeCompanyContext ? '/admin/tickets' : '/tickets';
     api.get(`${endpoint}?${params}`)
-      .then((data) => { setTickets(data.data || []); setMeta(data.meta); })
+      .then((data) => { setTickets(getListData(data)); setMeta(getResponseMeta(data)); })
       .catch((err: any) => { setError(err.message || 'Failed to load tickets'); setTickets([]); })
       .finally(() => setLoading(false));
   }, [activeCompanyContext, filter, debouncedSearch, page, user?.role]);
@@ -63,7 +63,7 @@ export default function TicketsPage() {
     if ((user?.role === 'SUPER_ADMIN' && !activeCompanyContext) || user?.role === 'GLOBAL_TECH') {
       setUsers([]);
     } else {
-      api.get('/users?limit=200').then((d) => setUsers(d.data || [])).catch(() => {});
+      api.get('/users?limit=200').then((d) => setUsers(getListData(d))).catch(() => {});
     }
   }, [activeCompanyContext, authChecked, user, fetchTickets, router]);
 

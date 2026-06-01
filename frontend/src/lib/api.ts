@@ -14,6 +14,16 @@ export function unwrapResponseBody(body: any): any {
   return body;
 }
 
+export function getListData<T = any>(response: any): T[] {
+  if (Array.isArray(response)) return response;
+  if (Array.isArray(response?.data)) return response.data;
+  return [];
+}
+
+export function getResponseMeta(response: any): any {
+  return response && typeof response === 'object' && !Array.isArray(response) ? response.meta : undefined;
+}
+
 export class ApiError extends Error {
   status: number;
   body: any;

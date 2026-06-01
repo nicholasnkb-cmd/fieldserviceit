@@ -1,4 +1,4 @@
-import { unwrapResponseBody } from './api';
+import { getListData, getResponseMeta, unwrapResponseBody } from './api';
 
 describe('unwrapResponseBody', () => {
   it('preserves paginated list metadata from the backend envelope', () => {
@@ -23,5 +23,16 @@ describe('unwrapResponseBody', () => {
     };
 
     expect(unwrapResponseBody(body)).toEqual({ id: 'user-1' });
+  });
+
+  it('extracts list data from raw arrays and paginated objects', () => {
+    expect(getListData([{ id: 'a' }])).toEqual([{ id: 'a' }]);
+    expect(getListData({ data: [{ id: 'b' }], meta: { total: 1 } })).toEqual([{ id: 'b' }]);
+    expect(getListData({ value: [] })).toEqual([]);
+  });
+
+  it('extracts response metadata only from object responses', () => {
+    expect(getResponseMeta({ data: [], meta: { total: 2 } })).toEqual({ total: 2 });
+    expect(getResponseMeta([])).toBeUndefined();
   });
 });
