@@ -181,11 +181,50 @@ async function runTemporaryTicketMutations() {
   await check('ticket delete mutation', () => expectOk(`${apiUrl}/v1/tickets/${ticket.id}`, { method: 'DELETE' }));
 }
 
+async function runTemporaryKnowledgeBaseMutations(extraHeaders = {}) {
+  const suffix = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+  let article;
+  await check('knowledge base article create', async () => {
+    article = await expectJson(`${apiUrl}/v1/knowledge-base`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...extraHeaders },
+      body: JSON.stringify({
+        title: `Smoke KB Article ${suffix}`,
+        summary: 'Temporary smoke article for knowledge base coverage.',
+        content: 'Steps\n1. Confirm the issue.\n2. Apply the documented fix.\n3. Verify the customer outcome.',
+        category: 'Smoke Tests',
+        tags: 'smoke,kb',
+        status: 'DRAFT',
+        visibility: 'INTERNAL',
+        articleType: 'RUNBOOK',
+        aiEnabled: false,
+      }),
+    });
+    if (!article?.id) throw new Error('Knowledge article id missing');
+  });
+
+  await check('knowledge base article update', async () => {
+    const updated = await expectJson(`${apiUrl}/v1/knowledge-base/${article.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...extraHeaders },
+      body: JSON.stringify({ status: 'PUBLISHED', aiEnabled: true }),
+    });
+    if (updated?.status !== 'PUBLISHED') throw new Error(`Expected PUBLISHED, got ${updated?.status}`);
+    if (!updated?.aiEnabled) throw new Error('AI source flag did not persist');
+  });
+
+  await check('knowledge base article archive', () => expectOk(`${apiUrl}/v1/knowledge-base/${article.id}`, {
+    method: 'DELETE',
+    headers: extraHeaders,
+  }));
+}
+
 await check('frontend login page', () => expectOk(`${baseUrl}/login`));
 await check('frontend network page shell', () => expectOk(`${baseUrl}/network`));
 await check('frontend about page', () => expectOk(`${baseUrl}/about`));
 await check('frontend contact page', () => expectOk(`${baseUrl}/contact`));
 await check('frontend legal disclaimer page', () => expectOk(`${baseUrl}/legal-disclaimer`));
+await check('frontend knowledge base page shell', () => expectOk(`${baseUrl}/knowledge-base`));
 await check('backend health', () => expectOk(`${apiUrl}/v1/health`));
 
 await check('protected admin plans route is registered', async () => {
@@ -230,17 +269,24 @@ if (email && password) {
     await expectList('admin roles list API', `${apiUrl}/v1/admin/roles`);
     await expectList('admin audit logs list API', `${apiUrl}/v1/admin/audit-logs?limit=5`);
     await expectList('admin tickets list API', `${apiUrl}/v1/admin/tickets?limit=5`);
+    let companyContextHeaders = {};
     if (!currentUser?.companyId) {
       await check('asset list API with company context', async () => {
         const companies = listData(await expectJson(`${apiUrl}/v1/admin/companies?limit=5`));
         const company = companies.find((item) => item?.id && item.isActive !== false);
         if (!company) throw new Error('No active company available for asset context check');
+        companyContextHeaders = { 'X-Company-Context': company.id };
         await expectOk(`${apiUrl}/v1/assets?limit=1`, { headers: { 'X-Company-Context': company.id } });
       });
     }
+    await check('knowledge base list API', async () => {
+      const body = await expectJson(`${apiUrl}/v1/knowledge-base?limit=5`, { headers: companyContextHeaders });
+      listData(body);
+    });
     await expectMutationListPreserved();
     if (runMutations) {
       await runTemporaryTicketMutations();
+      await runTemporaryKnowledgeBaseMutations(companyContextHeaders);
       await runTemporaryAdminMutations();
     } else {
       console.log('SKIP admin create/edit/deactivate mutations: set SMOKE_MUTATIONS=true to enable temporary smoke records.');

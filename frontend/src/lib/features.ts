@@ -8,7 +8,7 @@ export const routeFeatureMap: Array<{ prefix: string; feature: string }> = [
   { prefix: '/alerting', feature: 'network' },
   { prefix: '/topology', feature: 'network' },
   { prefix: '/ai-agent', feature: 'aiAgent' },
-  { prefix: '/knowledge-base', feature: 'aiAgent' },
+  { prefix: '/knowledge-base', feature: 'kb' },
   { prefix: '/dispatch', feature: 'dispatch' },
   { prefix: '/technician-mobile', feature: 'dispatch' },
   { prefix: '/maintenance', feature: 'dispatch' },

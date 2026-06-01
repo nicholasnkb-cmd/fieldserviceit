@@ -60,7 +60,7 @@ const navItems = {
     { label: 'Quotes & Invoices', href: '/quotes-invoices', icon: CreditCard, feature: 'billing' },
     { label: 'SLA Tracking', href: '/sla', icon: Gauge, feature: 'tickets' },
     { label: 'Maintenance', href: '/maintenance', icon: CalendarClock, feature: 'dispatch' },
-    { label: 'Knowledge Base', href: '/knowledge-base', icon: ClipboardList, feature: 'aiAgent' },
+    { label: 'Knowledge Base', href: '/knowledge-base', icon: ClipboardList, feature: 'kb' },
     { label: 'Advanced Alerting', href: '/alerting', icon: AlertTriangle, feature: 'network' },
     { label: 'Topology Map', href: '/topology', icon: Map, feature: 'network' },
     { label: 'Security Center', href: '/security-center', icon: ShieldCheck, feature: 'auditLogs' },
@@ -72,7 +72,7 @@ const navItems = {
     { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { label: 'Tickets', href: '/tickets', icon: Ticket, feature: 'tickets' },
     { label: 'Technician Mobile', href: '/technician-mobile', icon: Smartphone, feature: 'dispatch' },
-    { label: 'Knowledge Base', href: '/knowledge-base', icon: ClipboardList, feature: 'aiAgent' },
+    { label: 'Knowledge Base', href: '/knowledge-base', icon: ClipboardList, feature: 'kb' },
   ],
   admin: [
     { label: 'Super Admin', href: '/admin', icon: LayoutDashboard },
