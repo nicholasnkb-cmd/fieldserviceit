@@ -3,6 +3,7 @@ import { FeatureWorkspace } from '../../../components/features/FeatureWorkspace'
 export default function KnowledgeBasePage() {
   return (
     <FeatureWorkspace
+      moduleKey="knowledge-base"
       eyebrow="Support Intelligence"
       title="Knowledge Base"
       description="Create internal technician articles, customer help articles, reusable runbooks, and AI-answerable service knowledge."

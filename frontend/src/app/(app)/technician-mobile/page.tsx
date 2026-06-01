@@ -3,6 +3,7 @@ import { FeatureWorkspace } from '../../../components/features/FeatureWorkspace'
 export default function TechnicianMobilePage() {
   return (
     <FeatureWorkspace
+      moduleKey="technician-mobile"
       eyebrow="Field Operations"
       title="Technician Mobile Workflow"
       description="A field-ready workspace for clock events, route status, parts used, notes, before-and-after photos, customer signatures, and offline job capture."

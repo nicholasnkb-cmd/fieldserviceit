@@ -3,6 +3,7 @@ import { FeatureWorkspace } from '../../../components/features/FeatureWorkspace'
 export default function SlaPage() {
   return (
     <FeatureWorkspace
+      moduleKey="sla"
       eyebrow="Service Performance"
       title="SLA Tracking"
       description="Define business hours, priority timers, response and resolution targets, breach warnings, and SLA reporting."

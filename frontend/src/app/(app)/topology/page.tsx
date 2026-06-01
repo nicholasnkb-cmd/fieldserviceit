@@ -3,6 +3,7 @@ import { FeatureWorkspace } from '../../../components/features/FeatureWorkspace'
 export default function TopologyPage() {
   return (
     <FeatureWorkspace
+      moduleKey="topology"
       eyebrow="Network Visibility"
       title="Network Topology Map"
       description="Map sites, switches, access points, firewalls, uplinks, WAN status, connected devices, and affected services."

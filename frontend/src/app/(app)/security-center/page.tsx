@@ -3,6 +3,7 @@ import { FeatureWorkspace } from '../../../components/features/FeatureWorkspace'
 export default function SecurityCenterPage() {
   return (
     <FeatureWorkspace
+      moduleKey="security-center"
       eyebrow="Governance"
       title="Compliance and Security Center"
       description="Centralize audit exports, role permission review, MFA enforcement, suspicious login alerts, credential rotation, and security posture reporting."

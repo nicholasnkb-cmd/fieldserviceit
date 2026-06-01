@@ -3,6 +3,7 @@ import { FeatureWorkspace } from '../../../components/features/FeatureWorkspace'
 export default function CustomerPortalPage() {
   return (
     <FeatureWorkspace
+      moduleKey="customer-portal"
       eyebrow="Customer Experience"
       title="Customer Portal"
       description="Give customers a single place to review ticket history, approve work, upload photos, sign off on completion, and rate service quality."

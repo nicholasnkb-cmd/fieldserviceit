@@ -3,6 +3,7 @@ import { FeatureWorkspace } from '../../../components/features/FeatureWorkspace'
 export default function AlertingPage() {
   return (
     <FeatureWorkspace
+      moduleKey="alerting"
       eyebrow="Monitoring Response"
       title="Advanced Alerting"
       description="Group related alerts, acknowledge incidents, define maintenance windows, run escalation schedules, and manage on-call response."

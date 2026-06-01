@@ -3,6 +3,7 @@ import { FeatureWorkspace } from '../../../components/features/FeatureWorkspace'
 export default function MaintenancePage() {
   return (
     <FeatureWorkspace
+      moduleKey="maintenance"
       eyebrow="Preventive Service"
       title="Recurring Maintenance"
       description="Schedule recurring site visits, inspections, config backups, firmware reviews, and network health checks."

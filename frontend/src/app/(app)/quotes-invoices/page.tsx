@@ -3,6 +3,7 @@ import { FeatureWorkspace } from '../../../components/features/FeatureWorkspace'
 export default function QuotesInvoicesPage() {
   return (
     <FeatureWorkspace
+      moduleKey="quotes-invoices"
       eyebrow="Revenue Workflow"
       title="Quotes and Invoices"
       description="Convert ticket work into estimates, approved jobs, invoices, and payment links while preserving the service history."

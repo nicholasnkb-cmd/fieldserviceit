@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   ArrowRight,
@@ -32,6 +32,7 @@ type Workflow = {
 };
 
 type FeatureWorkspaceProps = {
+  moduleKey: string;
   eyebrow: string;
   title: string;
   description: string;
@@ -68,6 +69,7 @@ function recordSubtext(record: any) {
 }
 
 export function FeatureWorkspace({
+  moduleKey,
   eyebrow,
   title,
   description,
@@ -81,39 +83,84 @@ export function FeatureWorkspace({
   automationItems,
 }: FeatureWorkspaceProps) {
   const [records, setRecords] = useState<any[]>([]);
+  const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
   const [query, setQuery] = useState('');
   const [mode, setMode] = useState('Active');
+  const [form, setForm] = useState({ title: '', description: '', priority: 'MEDIUM' });
 
-  useEffect(() => {
-    let mounted = true;
+  const loadData = useCallback(() => {
     setLoading(true);
+    const status = mode.toUpperCase();
 
-    Promise.all(
-      apiSources.map((source) => {
+    return Promise.all([
+      api.get(`/operations/${moduleKey}/items?status=${encodeURIComponent(status)}&limit=25`).catch(() => []),
+      ...apiSources.map((source) => {
         if (source === 'assets') return api.get('/assets?limit=6').catch(() => []);
         if (source === 'users') return api.get('/users?limit=6').catch(() => []);
         return api.get('/tickets?limit=6').catch(() => []);
       }),
-    )
+    ])
       .then((responses) => {
-        if (!mounted) return;
-        setRecords(responses.flatMap((response) => getListData(response)).slice(0, 8));
+        setItems(getListData(responses[0]));
+        setRecords(responses.slice(1).flatMap((response) => getListData(response)).slice(0, 8));
       })
-      .finally(() => {
-        if (mounted) setLoading(false);
-      });
+      .finally(() => setLoading(false));
+  }, [apiSources, mode, moduleKey]);
 
+  useEffect(() => {
+    let mounted = true;
+    loadData().finally(() => {
+      if (!mounted) return;
+    });
     return () => {
       mounted = false;
     };
-  }, [apiSources]);
+  }, [loadData]);
 
   const filteredRecords = useMemo(() => {
     const needle = query.trim().toLowerCase();
     if (!needle) return records;
     return records.filter((record) => JSON.stringify(record).toLowerCase().includes(needle));
   }, [query, records]);
+
+  const filteredItems = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return items;
+    return items.filter((item) => JSON.stringify(item).toLowerCase().includes(needle));
+  }, [items, query]);
+
+  const createItem = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!form.title.trim()) return;
+    setSaving(true);
+    try {
+      await api.post('/operations/items', {
+        moduleKey,
+        title: form.title.trim(),
+        description: form.description.trim() || undefined,
+        priority: form.priority,
+        status: mode.toUpperCase(),
+      });
+      setForm({ title: '', description: '', priority: 'MEDIUM' });
+      setShowCreate(false);
+      await loadData();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const updateStatus = async (id: string, status: string) => {
+    setSaving(true);
+    try {
+      await api.patch(`/operations/items/${id}`, { status });
+      await loadData();
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="space-y-6 p-6">
@@ -125,7 +172,7 @@ export function FeatureWorkspace({
             <p className="mt-2 text-sm leading-6 text-gray-600">{description}</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary-700">
+            <button onClick={() => setShowCreate((value) => !value)} className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary-700">
               <Plus size={16} />
               {primaryAction}
             </button>
@@ -136,6 +183,36 @@ export function FeatureWorkspace({
           </div>
         </div>
       </section>
+
+      {showCreate && (
+        <form onSubmit={createItem} className="grid gap-3 rounded-lg border border-gray-200 bg-white p-4 lg:grid-cols-[1fr_1fr_160px_auto]">
+          <input
+            value={form.title}
+            onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
+            className="rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary"
+            placeholder="Work item title"
+          />
+          <input
+            value={form.description}
+            onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
+            className="rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary"
+            placeholder="Notes or next step"
+          />
+          <select
+            value={form.priority}
+            onChange={(event) => setForm((current) => ({ ...current, priority: event.target.value }))}
+            className="rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary"
+          >
+            <option value="LOW">Low</option>
+            <option value="MEDIUM">Medium</option>
+            <option value="HIGH">High</option>
+            <option value="CRITICAL">Critical</option>
+          </select>
+          <button disabled={saving} className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+            Save
+          </button>
+        </form>
+      )}
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {metrics.map((metric) => (
@@ -180,27 +257,55 @@ export function FeatureWorkspace({
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 className="w-full border-0 text-sm outline-none"
-                placeholder="Search linked records"
+                placeholder="Search work items and linked records"
               />
             </label>
           </div>
           <div className="divide-y divide-gray-100">
             {loading ? (
-              <div className="p-4 text-sm text-gray-500">Loading linked records...</div>
-            ) : filteredRecords.length === 0 ? (
-              <div className="p-4 text-sm text-gray-500">No linked records found yet.</div>
+              <div className="p-4 text-sm text-gray-500">Loading workspace records...</div>
+            ) : filteredItems.length === 0 && filteredRecords.length === 0 ? (
+              <div className="p-4 text-sm text-gray-500">No workspace records found yet.</div>
             ) : (
-              filteredRecords.map((record) => (
-                <div key={`${record.id}-${recordLabel(record)}`} className="flex items-center justify-between gap-4 p-4">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-gray-950">{recordLabel(record)}</p>
-                    <p className="mt-1 truncate text-xs text-gray-500">{recordSubtext(record)}</p>
+              <>
+                {filteredItems.map((item) => (
+                  <div key={item.id} className="flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">Workspace</span>
+                        <p className="truncate text-sm font-semibold text-gray-950">{item.title}</p>
+                      </div>
+                      <p className="mt-1 truncate text-xs text-gray-500">{[item.status, item.priority, item.description].filter(Boolean).join(' · ')}</p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {['ACTIVE', 'PLANNED', 'REVIEW', 'DONE'].map((status) => (
+                        <button
+                          key={status}
+                          disabled={saving || item.status === status}
+                          onClick={() => updateStatus(item.id, status)}
+                          className="rounded-md border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400"
+                        >
+                          {status}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                  <div className="hidden text-xs text-gray-500 sm:block">
-                    {record?.updatedAt || record?.createdAt ? formatDate(record.updatedAt || record.createdAt) : 'No date'}
+                ))}
+                {filteredRecords.map((record) => (
+                  <div key={`${record.id}-${recordLabel(record)}`} className="flex items-center justify-between gap-4 p-4">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-500">Linked</span>
+                        <p className="truncate text-sm font-semibold text-gray-950">{recordLabel(record)}</p>
+                      </div>
+                      <p className="mt-1 truncate text-xs text-gray-500">{recordSubtext(record)}</p>
+                    </div>
+                    <div className="hidden text-xs text-gray-500 sm:block">
+                      {record?.updatedAt || record?.createdAt ? formatDate(record.updatedAt || record.createdAt) : 'No date'}
+                    </div>
                   </div>
-                </div>
-              ))
+                ))}
+              </>
             )}
           </div>
         </div>

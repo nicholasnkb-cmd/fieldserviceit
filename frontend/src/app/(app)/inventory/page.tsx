@@ -3,6 +3,7 @@ import { FeatureWorkspace } from '../../../components/features/FeatureWorkspace'
 export default function InventoryPage() {
   return (
     <FeatureWorkspace
+      moduleKey="inventory"
       eyebrow="Parts Control"
       title="Inventory and Parts"
       description="Track warehouse and van stock, low inventory alerts, parts assigned to tickets, and purchase order requests."
