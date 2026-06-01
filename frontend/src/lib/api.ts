@@ -30,7 +30,6 @@ interface FetchOptions extends RequestInit {
 async function refreshAccessToken(): Promise<string | null> {
   try {
     const refreshToken = getSessionRefreshToken();
-    if (!refreshToken) return null;
     const res = await fetch(`${API_BASE}/v1/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -38,7 +37,10 @@ async function refreshAccessToken(): Promise<string | null> {
       body: JSON.stringify(refreshToken ? { refreshToken } : {}),
     });
 
-    if (!res.ok) return null;
+    if (!res.ok) {
+      clearSessionTokens();
+      return null;
+    }
 
     const body = await res.json();
     const data = unwrapResponseBody(body);
@@ -47,6 +49,7 @@ async function refreshAccessToken(): Promise<string | null> {
     }
     return data.accessToken || getSessionAccessToken() || 'cookie';
   } catch {
+    clearSessionTokens();
     return null;
   }
 }
@@ -99,6 +102,7 @@ export async function apiClient<T = any>(endpoint: string, options: FetchOptions
 
       if (!res.ok) {
         const error = await res.json().catch(() => ({ message: 'Request failed' }));
+        if (res.status === 401 && !skipAuth) clearSessionTokens();
         throw new ApiError(error.message || `HTTP ${res.status}`, res.status, error);
       }
 
