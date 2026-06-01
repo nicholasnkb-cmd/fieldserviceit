@@ -67,7 +67,7 @@ export default function AdminPage() {
     Promise.all([
       api.get('/admin/stats'),
       api.get('/admin/users?limit=8'),
-      api.get('/tickets?limit=8'),
+      api.get('/admin/tickets?limit=8'),
     ])
       .then(([statsData, usersData, ticketsData]) => {
         setStats(statsData);

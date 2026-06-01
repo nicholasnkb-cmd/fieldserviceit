@@ -25,6 +25,7 @@ export default function TicketsPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [bulkUserId, setBulkUserId] = useState('');
   const [bulkStatus, setBulkStatus] = useState('');
+  const [error, setError] = useState('');
   const { user, activeCompanyContext } = useAuthStore();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -46,9 +47,10 @@ export default function TicketsPage() {
     if (debouncedSearch) params.set('search', debouncedSearch);
     params.set('page', String(page));
     params.set('limit', '25');
+    setError('');
     api.get(`/tickets?${params}`)
       .then((data) => { setTickets(data.data || []); setMeta(data.meta); })
-      .catch(() => {})
+      .catch((err: any) => { setError(err.message || 'Failed to load tickets'); setTickets([]); })
       .finally(() => setLoading(false));
   }, [filter, debouncedSearch, page]);
 
@@ -165,6 +167,7 @@ export default function TicketsPage() {
       )}
 
       <div className="mb-4">
+        {error && <div className="mb-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
         <input
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
@@ -218,6 +221,9 @@ export default function TicketsPage() {
                 <td className="px-6 py-4 text-sm text-gray-500">{formatDate(ticket.createdAt)}</td>
               </tr>
             ))}
+            {tickets.length === 0 && (
+              <tr><td colSpan={9} className="px-6 py-10 text-center text-sm text-gray-500">{error ? 'Tickets could not be loaded.' : 'No tickets found.'}</td></tr>
+            )}
           </tbody>
         </table>
       </ResponsiveTable>
