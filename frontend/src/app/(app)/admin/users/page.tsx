@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '../../../../lib/api';
 import { useAuthStore } from '../../../../stores/authStore';
 
@@ -33,6 +33,7 @@ export default function AdminUsersPage() {
   const [message, setMessage] = useState('');
   const { user } = useAuthStore();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     const handle = window.setTimeout(() => setDebouncedSearch(search.trim()), 350);
@@ -40,20 +41,32 @@ export default function AdminUsersPage() {
   }, [search]);
 
   const fetchUsers = useCallback(() => {
-    const params = debouncedSearch ? `?search=${encodeURIComponent(debouncedSearch)}` : '';
-    api.get(`/admin/users${params}`)
+    const params = new URLSearchParams();
+    if (debouncedSearch) params.set('search', debouncedSearch);
+    const userType = searchParams.get('userType');
+    const companyId = searchParams.get('companyId');
+    if (userType) params.set('userType', userType);
+    if (companyId) params.set('companyId', companyId);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    api.get(`/admin/users${query}`)
       .then((data) => setUsers(data.data || []))
       .catch(() => {});
-  }, [debouncedSearch]);
+  }, [debouncedSearch, searchParams]);
 
   useEffect(() => {
     if (!user) return;
     if (user && user.role !== 'SUPER_ADMIN') { router.push('/dashboard'); return; }
-    Promise.all([api.get('/admin/users'), api.get('/admin/companies')]).then(([u, c]) => {
+    const params = new URLSearchParams();
+    const userType = searchParams.get('userType');
+    const companyId = searchParams.get('companyId');
+    if (userType) params.set('userType', userType);
+    if (companyId) params.set('companyId', companyId);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    Promise.all([api.get(`/admin/users${query}`), api.get('/admin/companies')]).then(([u, c]) => {
       setUsers(u.data || []);
       setCompanies(c.data || []);
     }).catch(() => {}).finally(() => setLoading(false));
-  }, [router, user]);
+  }, [router, searchParams, user]);
 
   useEffect(() => {
     if (!user || user.role !== 'SUPER_ADMIN') return;
@@ -82,7 +95,15 @@ export default function AdminUsersPage() {
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">User Management</h1>
+        <div>
+          <h1 className="text-2xl font-bold">User Management</h1>
+          {(searchParams.get('userType') || searchParams.get('companyId')) && (
+            <p className="mt-1 text-sm text-gray-500">
+              Filtered by {searchParams.get('userType') || 'company'}.
+              <button onClick={() => router.push('/admin/users')} className="ml-2 text-primary hover:underline">Clear filter</button>
+            </p>
+          )}
+        </div>
         <button onClick={() => setShowCreate(!showCreate)} className="px-4 py-2 bg-primary text-white text-sm rounded-md hover:bg-primary/90">
           {showCreate ? 'Cancel' : 'Create User'}
         </button>

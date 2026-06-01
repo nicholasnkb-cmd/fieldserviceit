@@ -25,8 +25,13 @@ export default function AdminCompaniesPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editCompany, setEditCompany] = useState({ name: '', slug: '', domain: '', isActive: true });
   const [message, setMessage] = useState('');
-  const { user } = useAuthStore();
+  const { user, setActiveCompanyContext } = useAuthStore();
   const router = useRouter();
+
+  const openCompanyArea = (company: Company, path: string) => {
+    setActiveCompanyContext({ id: company.id, name: company.name, slug: company.slug });
+    router.push(path);
+  };
 
   const fetchCompanies = useCallback(() => {
     api.get('/admin/companies')
@@ -210,9 +215,21 @@ export default function AdminCompaniesPage() {
                     </span>
                   )}
                 </td>
-                <td className="px-6 py-4 text-sm text-gray-600">{c._count.users}</td>
-                <td className="px-6 py-4 text-sm text-gray-600">{c._count.tickets}</td>
-                <td className="px-6 py-4 text-sm text-gray-600">{c._count.assets}</td>
+                <td className="px-6 py-4 text-sm text-gray-600">
+                  <button onClick={() => router.push(`/admin/users?companyId=${encodeURIComponent(c.id)}`)} className="text-primary hover:underline">
+                    {c._count.users}
+                  </button>
+                </td>
+                <td className="px-6 py-4 text-sm text-gray-600">
+                  <button onClick={() => openCompanyArea(c, '/tickets')} className="text-primary hover:underline">
+                    {c._count.tickets}
+                  </button>
+                </td>
+                <td className="px-6 py-4 text-sm text-gray-600">
+                  <button onClick={() => openCompanyArea(c, '/assets')} className="text-primary hover:underline">
+                    {c._count.assets}
+                  </button>
+                </td>
                 <td className="px-6 py-4 text-sm font-mono text-gray-600">{c.inviteCode || '-'}</td>
                 <td className="px-6 py-4">
                   <div className="flex flex-wrap gap-2">
