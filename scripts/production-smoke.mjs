@@ -139,6 +139,48 @@ async function runTemporaryAdminMutations() {
   await check('admin company deactivate', () => expectOk(`${apiUrl}/v1/admin/companies/${company.id}`, { method: 'DELETE' }));
 }
 
+async function runTemporaryTicketMutations() {
+  const suffix = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+  let ticket;
+  await check('ticket create mutation', async () => {
+    ticket = await expectJson(`${apiUrl}/v1/tickets`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: `Smoke managed ticket ${suffix}`,
+        description: 'Temporary smoke ticket for status management regression coverage.',
+        contactName: 'Smoke Tester',
+        contactEmail: `ticket-smoke-${suffix}@example.com`,
+        contactPhone: '555-0100',
+        priority: 'LOW',
+        type: 'REQUEST',
+      }),
+    });
+    if (!ticket?.id) throw new Error('Ticket id missing');
+  });
+
+  await check('ticket resolve mutation', async () => {
+    const resolved = await expectJson(`${apiUrl}/v1/tickets/${ticket.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'RESOLVED', resolution: 'Resolved by production smoke.' }),
+    });
+    if (resolved?.status !== 'RESOLVED') throw new Error(`Expected RESOLVED, got ${resolved?.status}`);
+    if (!resolved?.resolvedAt) throw new Error('Resolved timestamp missing');
+  });
+
+  await check('ticket close mutation', async () => {
+    const closed = await expectJson(`${apiUrl}/v1/tickets/${ticket.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'CLOSED' }),
+    });
+    if (closed?.status !== 'CLOSED') throw new Error(`Expected CLOSED, got ${closed?.status}`);
+  });
+
+  await check('ticket delete mutation', () => expectOk(`${apiUrl}/v1/tickets/${ticket.id}`, { method: 'DELETE' }));
+}
+
 await check('frontend login page', () => expectOk(`${baseUrl}/login`));
 await check('frontend network page shell', () => expectOk(`${baseUrl}/network`));
 await check('frontend about page', () => expectOk(`${baseUrl}/about`));
@@ -198,6 +240,7 @@ if (email && password) {
     }
     await expectMutationListPreserved();
     if (runMutations) {
+      await runTemporaryTicketMutations();
       await runTemporaryAdminMutations();
     } else {
       console.log('SKIP admin create/edit/deactivate mutations: set SMOKE_MUTATIONS=true to enable temporary smoke records.');
