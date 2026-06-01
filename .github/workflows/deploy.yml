@@ -1,14 +1,14 @@
-name: Deploy
+name: Production Validation
 
 on:
   push:
     branches: [master]
+  workflow_dispatch:
 
 jobs:
-  deploy-backend:
-    name: Deploy Backend to hPanel
+  build-backend:
+    name: Build Backend
     runs-on: ubuntu-latest
-    environment: production
     steps:
       - uses: actions/checkout@v4
 
@@ -30,24 +30,9 @@ jobs:
         working-directory: backend
         run: npm run build
 
-      - name: Install hostinger script dependencies
-        working-directory: hostinger
-        run: npm ci
-
-      - name: Create deployment archive
-        working-directory: backend
-        run: node ../hostinger/create-backend-archive.js
-
-      - name: Deploy via Hostinger API
-        working-directory: hostinger
-        run: node deploy-backend.js
-        env:
-          HOSTINGER_API_TOKEN: ${{ secrets.HOSTINGER_API_TOKEN }}
-
-  deploy-frontend:
-    name: Deploy Frontend to hPanel
+  build-frontend:
+    name: Build Frontend
     runs-on: ubuntu-latest
-    environment: production
     steps:
       - uses: actions/checkout@v4
 
@@ -65,23 +50,26 @@ jobs:
         working-directory: frontend
         run: npm run build
 
-      - name: Install hostinger script dependencies
-        working-directory: hostinger
-        run: npm ci
+  hostinger-preflight:
+    name: Hostinger API Preflight
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
 
-      - name: Create deployment archive
-        working-directory: frontend
-        run: node ../hostinger/create-frontend-archive.js
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
-      - name: Deploy via Hostinger API
-        working-directory: hostinger
-        run: node deploy-frontend.js
+      - name: Verify Hostinger token and live domains
         env:
           HOSTINGER_API_TOKEN: ${{ secrets.HOSTINGER_API_TOKEN }}
+          HOSTINGER_EXPECTED_DOMAINS: ${{ vars.HOSTINGER_EXPECTED_DOMAINS || 'fieldserviceit.com,api.fieldserviceit.com' }}
+        run: node scripts/hostinger-preflight.mjs
 
   production-smoke:
     name: Production Smoke Tests
-    needs: [deploy-backend, deploy-frontend]
+    needs: [build-backend, build-frontend, hostinger-preflight]
     runs-on: ubuntu-latest
     environment: production
     steps:

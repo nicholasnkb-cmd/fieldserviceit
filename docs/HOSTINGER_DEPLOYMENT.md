@@ -120,6 +120,7 @@ Confirm Production readiness shows:
 Create these GitHub production environment secrets:
 
 ```env
+HOSTINGER_API_TOKEN=<Hostinger API token from hPanel>
 SMOKE_EMAIL=smoke-superadmin@fieldserviceit.com
 SMOKE_PASSWORD=<the smoke super admin password stored in your password manager>
 ```
@@ -127,6 +128,7 @@ SMOKE_PASSWORD=<the smoke super admin password stored in your password manager>
 Optional production environment variables:
 
 ```env
+HOSTINGER_EXPECTED_DOMAINS=fieldserviceit.com,api.fieldserviceit.com
 SMOKE_BASE_URL=https://fieldserviceit.com
 SMOKE_API_URL=https://api.fieldserviceit.com
 SMOKE_MUTATIONS=false
@@ -137,7 +139,13 @@ Use `SMOKE_MUTATIONS=true` only for a deliberate controlled run. It creates, edi
 The smoke workflows are:
 
 - `.github/workflows/production-smoke.yml` for scheduled/manual API and browser smoke tests.
-- `.github/workflows/deploy.yml` post-deploy smoke checks after backend and frontend deploy jobs.
+- `.github/workflows/deploy.yml` for push-time backend/frontend builds, Hostinger API preflight, and production smoke checks.
+
+Hostinger's public API can verify account access and hosted websites, but it does not currently provide a shared-hosting Node.js file upload/redeploy endpoint in the public OpenAPI surface. Keep production deployment manual in hPanel until one of these deploy transports is configured:
+
+- Hostinger Git deployment/webhook.
+- SSH/SFTP deployment credentials.
+- VPS/Docker deployment, where Hostinger's API exposes Docker project update/restart endpoints.
 
 ## 7. Database Credential Rotation
 
