@@ -20,6 +20,7 @@ export interface User {
 
 export enum UserRole {
   SUPER_ADMIN = 'SUPER_ADMIN',
+  GLOBAL_TECH = 'GLOBAL_TECH',
   TENANT_ADMIN = 'TENANT_ADMIN',
   TECHNICIAN = 'TECHNICIAN',
   CLIENT = 'CLIENT',

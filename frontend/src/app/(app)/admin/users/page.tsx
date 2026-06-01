@@ -20,6 +20,8 @@ interface AdminUser {
 
 interface Company { id: string; name: string }
 
+const GLOBAL_USER_ROLES = ['SUPER_ADMIN', 'GLOBAL_TECH'];
+
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -134,13 +136,14 @@ export default function AdminUsersPage() {
                 className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm">
                 <option value="CLIENT">CLIENT</option>
                 <option value="TECHNICIAN">TECHNICIAN</option>
+                <option value="GLOBAL_TECH">GLOBAL_TECH</option>
                 <option value="TENANT_ADMIN">TENANT_ADMIN</option>
                 <option value="READ_ONLY">READ_ONLY</option>
               </select></div>
-            <div className="col-span-2"><label className="block text-sm font-medium text-gray-700">Company *</label>
-              <select required value={createForm.companyId} onChange={(e) => setCreateForm({ ...createForm, companyId: e.target.value })}
+            <div className="col-span-2"><label className="block text-sm font-medium text-gray-700">Company {GLOBAL_USER_ROLES.includes(createForm.role) ? '' : '*'}</label>
+              <select required={!GLOBAL_USER_ROLES.includes(createForm.role)} value={createForm.companyId} onChange={(e) => setCreateForm({ ...createForm, companyId: e.target.value })}
                 className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm">
-                <option value="">Select company...</option>
+                <option value="">{GLOBAL_USER_ROLES.includes(createForm.role) ? 'No tenant/global user' : 'Select company...'}</option>
                 {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select></div>
             <div className="col-span-2">
@@ -183,6 +186,7 @@ export default function AdminUsersPage() {
                       <select value={newRole} onChange={(e) => setNewRole(e.target.value)} className="text-xs rounded border px-1 py-0.5">
                         <option value="CLIENT">CLIENT</option>
                         <option value="TECHNICIAN">TECHNICIAN</option>
+                        <option value="GLOBAL_TECH">GLOBAL_TECH</option>
                         <option value="TENANT_ADMIN">TENANT_ADMIN</option>
                         <option value="SUPER_ADMIN">SUPER_ADMIN</option>
                         <option value="READ_ONLY">READ_ONLY</option>

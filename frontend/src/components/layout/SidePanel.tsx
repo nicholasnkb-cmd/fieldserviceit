@@ -23,6 +23,10 @@ const navItems = {
     { label: 'RMM Integrations', href: '/integrations/rmm', icon: '🔄', feature: 'rmmIntegration' },
     { label: 'Settings', href: '/settings', icon: '⚙️', feature: 'settings' },
   ],
+  globalTech: [
+    { label: 'Dashboard', href: '/dashboard', icon: '📊' },
+    { label: 'Tickets', href: '/tickets', icon: '🎫', feature: 'tickets' },
+  ],
   admin: [
     { label: 'Super Admin', href: '/admin', icon: '📊' },
     { label: 'All Tickets', href: '/tickets', icon: '🎫' },
@@ -54,7 +58,7 @@ export function SidePanel() {
   if (!user) return null;
 
   const items = [
-    ...(user.userType === 'PUBLIC' ? navItems.public : navItems.business),
+    ...(user.role === 'GLOBAL_TECH' ? navItems.globalTech : user.userType === 'PUBLIC' ? navItems.public : navItems.business),
     ...(user.role === 'SUPER_ADMIN' ? navItems.admin : []),
     ...(user.role === 'TENANT_ADMIN' ? navItems.tenantAdmin : []),
   ].filter((item) => !('feature' in item) || !item.feature || features[item.feature] !== false);

@@ -56,6 +56,10 @@ export default function DashboardPage() {
       router.push('/my-tickets');
       return;
     }
+    if (user.role === 'GLOBAL_TECH') {
+      router.push('/tickets');
+      return;
+    }
   }, [user, router]);
 
   const fetchSummary = useCallback(() => {

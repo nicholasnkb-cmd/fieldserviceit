@@ -60,7 +60,7 @@ export default function TicketsPage() {
     if (!user) { router.push('/login'); return; }
     if (user && user.userType !== 'BUSINESS') { router.push('/my-tickets'); return; }
     fetchTickets();
-    if (user?.role === 'SUPER_ADMIN' && !activeCompanyContext) {
+    if ((user?.role === 'SUPER_ADMIN' && !activeCompanyContext) || user?.role === 'GLOBAL_TECH') {
       setUsers([]);
     } else {
       api.get('/users?limit=200').then((d) => setUsers(d.data || [])).catch(() => {});
@@ -115,7 +115,7 @@ export default function TicketsPage() {
 
   if (loading) return <div className="p-8"><TableSkeleton rows={8} cols={8} /></div>;
 
-  const techUsers = users.filter((u: any) => u.role === 'TECHNICIAN' || u.role === 'TENANT_ADMIN');
+  const techUsers = users.filter((u: any) => u.role === 'TECHNICIAN' || u.role === 'TENANT_ADMIN' || u.role === 'GLOBAL_TECH');
 
   return (
     <RequireCompanyContext area="Tickets" allowGlobal>
@@ -126,11 +126,18 @@ export default function TicketsPage() {
           {user?.role === 'SUPER_ADMIN' && !activeCompanyContext && (
             <p className="mt-1 text-sm text-gray-500">Global view: showing tickets across all businesses and public/free users.</p>
           )}
+          {user?.role === 'GLOBAL_TECH' && (
+            <p className="mt-1 text-sm text-gray-500">Global tech view: showing tickets from free and starter individual users.</p>
+          )}
         </div>
         <div className="flex items-center gap-2">
-          <Link href="/tickets/new" className="px-4 py-2 bg-primary text-white text-sm rounded-md hover:bg-primary/90">+ Create</Link>
+          {user?.role !== 'GLOBAL_TECH' && (
+            <Link href="/tickets/new" className="px-4 py-2 bg-primary text-white text-sm rounded-md hover:bg-primary/90">+ Create</Link>
+          )}
           <Link href="/tickets/board" className="px-4 py-2 bg-gray-100 text-gray-700 text-sm rounded-md hover:bg-gray-200">Board</Link>
-          <button onClick={exportCsv} className="px-4 py-2 bg-gray-100 text-gray-700 text-sm rounded-md hover:bg-gray-200">Export CSV</button>
+          {user?.role !== 'GLOBAL_TECH' && (
+            <button onClick={exportCsv} className="px-4 py-2 bg-gray-100 text-gray-700 text-sm rounded-md hover:bg-gray-200">Export CSV</button>
+          )}
           <div className="flex gap-2 flex-wrap">
             {['', 'OPEN', 'ASSIGNED', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'].map((s) => (
               <button key={s} onClick={() => { setFilter(s); setPage(1); setSelected(new Set()); }}

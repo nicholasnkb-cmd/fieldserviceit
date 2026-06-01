@@ -28,7 +28,8 @@ export default function TicketDetailPage() {
 
   const { user } = useAuthStore();
   const isAdmin = user?.role === 'TENANT_ADMIN' || user?.role === 'SUPER_ADMIN';
-  const isTech = user?.role === 'TECHNICIAN' || isAdmin;
+  const isGlobalTech = user?.role === 'GLOBAL_TECH';
+  const isTech = user?.role === 'TECHNICIAN' || isGlobalTech || isAdmin;
 
   useEffect(() => {
     Promise.all([
@@ -156,7 +157,7 @@ export default function TicketDetailPage() {
   if (!ticket) return null;
 
   const techUsers = users.filter((u: any) =>
-    u.role === 'TECHNICIAN' || u.role === 'TENANT_ADMIN'
+    u.role === 'TECHNICIAN' || u.role === 'TENANT_ADMIN' || u.role === 'GLOBAL_TECH'
   );
 
   return (
