@@ -22,6 +22,12 @@ interface Company { id: string; name: string }
 
 const GLOBAL_USER_ROLES = ['SUPER_ADMIN', 'GLOBAL_TECH'];
 
+function getListData<T>(response: any): T[] {
+  if (Array.isArray(response)) return response;
+  if (Array.isArray(response?.data)) return response.data;
+  return [];
+}
+
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -50,9 +56,17 @@ export default function AdminUsersPage() {
     if (userType) params.set('userType', userType);
     if (companyId) params.set('companyId', companyId);
     const query = params.toString() ? `?${params.toString()}` : '';
+    setMessage('');
     api.get(`/admin/users${query}`)
-      .then((data) => setUsers(data.data || []))
-      .catch((err: any) => setMessage(err.message || 'Failed to load users'));
+      .then((data) => {
+        setUsers(getListData<AdminUser>(data));
+        setMessage('');
+      })
+      .catch((err: any) => {
+        setUsers([]);
+        setMessage(err.message || 'Failed to load users');
+      })
+      .finally(() => setLoading(false));
   }, [debouncedSearch, searchParams]);
 
   useEffect(() => {
@@ -65,11 +79,21 @@ export default function AdminUsersPage() {
     if (userType) params.set('userType', userType);
     if (companyId) params.set('companyId', companyId);
     const query = params.toString() ? `?${params.toString()}` : '';
-    Promise.all([api.get(`/admin/users${query}`), api.get('/admin/companies')]).then(([u, c]) => {
-      setUsers(u.data || []);
-      setCompanies(c.data || []);
-      setMessage('');
-    }).catch((err: any) => setMessage(err.message || 'Failed to load user management data')).finally(() => setLoading(false));
+    setMessage('');
+    Promise.allSettled([api.get(`/admin/users${query}`), api.get('/admin/companies')]).then(([usersResult, companiesResult]) => {
+      if (usersResult.status === 'fulfilled') {
+        setUsers(getListData<AdminUser>(usersResult.value));
+      } else {
+        setUsers([]);
+        setMessage(usersResult.reason?.message || 'Failed to load users');
+      }
+
+      if (companiesResult.status === 'fulfilled') {
+        setCompanies(getListData<Company>(companiesResult.value));
+      } else {
+        setCompanies([]);
+      }
+    }).finally(() => setLoading(false));
   }, [authChecked, router, searchParams, user]);
 
   useEffect(() => {
@@ -210,6 +234,13 @@ export default function AdminUsersPage() {
                 </td>
               </tr>
             ))}
+            {users.length === 0 && (
+              <tr>
+                <td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-500">
+                  {message ? 'Users could not be loaded.' : 'No users found.'}
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
