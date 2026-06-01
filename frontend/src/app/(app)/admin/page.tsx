@@ -43,10 +43,10 @@ export default function AdminPage() {
   if (!stats) return null;
 
   const statCards = [
-    ['Users', stats.totalUsers],
-    ['Businesses', stats.totalCompanies],
-    ['Tickets', stats.totalTickets],
-    ['Devices', stats.totalAssets],
+    ['Users', stats.totalUsers, '/admin/users'],
+    ['Businesses', stats.totalCompanies, '/admin/companies'],
+    ['Tickets', stats.totalTickets, '/tickets'],
+    ['Devices', stats.totalAssets, '/assets'],
   ];
 
   return (
@@ -60,11 +60,11 @@ export default function AdminPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        {statCards.map(([label, value]) => (
-          <div key={label} className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+        {statCards.map(([label, value, href]) => (
+          <Link key={label} href={String(href)} className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm transition hover:border-primary/40 hover:shadow">
             <p className="text-sm font-medium text-gray-500">{label}</p>
             <p className="mt-2 text-3xl font-bold text-gray-950">{value}</p>
-          </div>
+          </Link>
         ))}
       </div>
 
@@ -81,19 +81,19 @@ export default function AdminPage() {
         <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
           <h2 className="text-lg font-semibold mb-4">Users by Type</h2>
           {stats.usersByType.map((t) => (
-            <div key={t.userType} className="flex items-center justify-between border-t border-gray-100 py-3 first:border-t-0">
+            <Link key={t.userType} href={`/admin/users?userType=${encodeURIComponent(t.userType)}`} className="flex items-center justify-between border-t border-gray-100 py-3 first:border-t-0 hover:bg-gray-50">
               <span className="text-sm text-gray-600">{t.userType}</span>
               <span className="text-sm font-medium">{t._count}</span>
-            </div>
+            </Link>
           ))}
         </div>
         <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
           <h2 className="text-lg font-semibold mb-4">Tickets by Status</h2>
           {stats.ticketsByStatus.map((s) => (
-            <div key={s.status} className="flex items-center justify-between border-t border-gray-100 py-3 first:border-t-0">
+            <Link key={s.status} href={`/tickets?status=${encodeURIComponent(s.status)}`} className="flex items-center justify-between border-t border-gray-100 py-3 first:border-t-0 hover:bg-gray-50">
               <span className="text-sm text-gray-600">{s.status}</span>
               <span className="text-sm font-medium">{s._count}</span>
-            </div>
+            </Link>
           ))}
         </div>
       </div>

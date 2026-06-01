@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '../../../lib/api';
 import { formatDate, getStatusColor } from '../../../lib/utils';
@@ -27,7 +27,13 @@ export default function TicketsPage() {
   const [bulkStatus, setBulkStatus] = useState('');
   const { user, activeCompanyContext } = useAuthStore();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
+
+  useEffect(() => {
+    const status = searchParams.get('status') || '';
+    setFilter(status);
+  }, [searchParams]);
 
   useEffect(() => {
     const handle = window.setTimeout(() => setDebouncedSearch(search.trim()), 350);
@@ -35,10 +41,6 @@ export default function TicketsPage() {
   }, [search]);
 
   const fetchTickets = useCallback(() => {
-    if (user?.role === 'SUPER_ADMIN' && !activeCompanyContext) {
-      setLoading(false);
-      return;
-    }
     const params = new URLSearchParams();
     if (filter) params.set('status', filter);
     if (debouncedSearch) params.set('search', debouncedSearch);
@@ -48,16 +50,16 @@ export default function TicketsPage() {
       .then((data) => { setTickets(data.data || []); setMeta(data.meta); })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [activeCompanyContext, filter, debouncedSearch, page, user?.role]);
+  }, [filter, debouncedSearch, page]);
 
   useEffect(() => {
     if (user && user.userType !== 'BUSINESS') { router.push('/my-tickets'); return; }
-    if (user?.role === 'SUPER_ADMIN' && !activeCompanyContext) {
-      setLoading(false);
-      return;
-    }
     fetchTickets();
-    api.get('/users?limit=200').then((d) => setUsers(d.data || [])).catch(() => {});
+    if (user?.role === 'SUPER_ADMIN' && !activeCompanyContext) {
+      setUsers([]);
+    } else {
+      api.get('/users?limit=200').then((d) => setUsers(d.data || [])).catch(() => {});
+    }
   }, [activeCompanyContext, user, fetchTickets, router]);
 
   useEffect(() => {
@@ -111,10 +113,15 @@ export default function TicketsPage() {
   const techUsers = users.filter((u: any) => u.role === 'TECHNICIAN' || u.role === 'TENANT_ADMIN');
 
   return (
-    <RequireCompanyContext area="Tickets">
+    <RequireCompanyContext area="Tickets" allowGlobal>
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Tickets</h1>
+        <div>
+          <h1 className="text-2xl font-bold">Tickets</h1>
+          {user?.role === 'SUPER_ADMIN' && !activeCompanyContext && (
+            <p className="mt-1 text-sm text-gray-500">Global view: showing tickets across all businesses and public/free users.</p>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           <Link href="/tickets/new" className="px-4 py-2 bg-primary text-white text-sm rounded-md hover:bg-primary/90">+ Create</Link>
           <Link href="/tickets/board" className="px-4 py-2 bg-gray-100 text-gray-700 text-sm rounded-md hover:bg-gray-200">Board</Link>

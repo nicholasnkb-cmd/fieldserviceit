@@ -4,10 +4,10 @@ import Link from 'next/link';
 import { Building2 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 
-export function RequireCompanyContext({ children, area }: { children: React.ReactNode; area: string }) {
+export function RequireCompanyContext({ children, area, allowGlobal = false }: { children: React.ReactNode; area: string; allowGlobal?: boolean }) {
   const { user, activeCompanyContext } = useAuthStore();
 
-  if (user?.role === 'SUPER_ADMIN' && !activeCompanyContext) {
+  if (user?.role === 'SUPER_ADMIN' && !activeCompanyContext && !allowGlobal) {
     return (
       <div className="p-8">
         <div className="mx-auto flex min-h-[360px] max-w-xl flex-col items-center justify-center rounded border border-gray-200 bg-white px-6 py-10 text-center">
@@ -28,4 +28,3 @@ export function RequireCompanyContext({ children, area }: { children: React.Reac
 
   return <>{children}</>;
 }
-
