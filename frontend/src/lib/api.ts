@@ -6,6 +6,9 @@ const SESSION_REFRESH_TOKEN_KEY = 'fsit.refreshToken';
 
 export function unwrapResponseBody(body: any): any {
   if (body && typeof body === 'object' && 'success' in body && 'data' in body && 'timestamp' in body) {
+    if ('meta' in body) {
+      return { data: body.data, meta: body.meta };
+    }
     return body.data;
   }
   return body;
