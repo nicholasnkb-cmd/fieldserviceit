@@ -28,6 +28,16 @@ interface Role {
   _count: { userRoles: number };
 }
 
+function getListData<T>(response: any): T[] {
+  if (Array.isArray(response)) return response;
+  if (Array.isArray(response?.data)) return response.data;
+  return [];
+}
+
+function rolePermissions(role: Role): RolePermission[] {
+  return Array.isArray(role.permissions) ? role.permissions : [];
+}
+
 export default function AdminRolesPage() {
   const [roles, setRoles] = useState<Role[]>([]);
   const [permissions, setPermissions] = useState<Permission[]>([]);
@@ -38,6 +48,7 @@ export default function AdminRolesPage() {
   const [saving, setSaving] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [newRole, setNewRole] = useState({ name: '', slug: '', description: '', permissionSlugs: [] as string[] });
+  const [message, setMessage] = useState('');
   const { user } = useAuthStore();
   const router = useRouter();
   const { toast } = useToast();
@@ -49,9 +60,14 @@ export default function AdminRolesPage() {
       api.get('/admin/permissions'),
       api.get('/admin/roles'),
     ]).then(([permsData, rolesData]) => {
-      setPermissions(permsData);
-      setRoles(rolesData);
-    }).catch(() => {}).finally(() => setLoading(false));
+      setPermissions(getListData<Permission>(permsData));
+      setRoles(getListData<Role>(rolesData));
+      setMessage('');
+    }).catch((err: any) => {
+      setPermissions([]);
+      setRoles([]);
+      setMessage(err.message || 'Failed to load roles');
+    }).finally(() => setLoading(false));
   }, [router, user]);
 
   const toggleExpand = (roleId: string) => {
@@ -61,7 +77,7 @@ export default function AdminRolesPage() {
 
   const startEdit = (role: Role) => {
     setEditing(role.id);
-    setEditPerms(role.permissions.map((rp) => rp.permission.slug));
+    setEditPerms(rolePermissions(role).map((rp) => rp.permission.slug));
     setExpandedRole(null);
   };
 
@@ -137,6 +153,10 @@ export default function AdminRolesPage() {
         </button>
       </div>
 
+      {message && (
+        <div className="p-3 rounded text-sm mb-4 bg-red-50 text-red-600">{message}</div>
+      )}
+
       {showCreate && (
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           <h2 className="text-lg font-semibold mb-4">New Role</h2>
@@ -175,7 +195,7 @@ export default function AdminRolesPage() {
                 {role.name}
               </span>
               <span className="text-xs text-gray-500">{role.slug}</span>
-              <span className="text-xs text-gray-400">{role._count.userRoles} users</span>
+              <span className="text-xs text-gray-400">{role._count?.userRoles ?? 0} users</span>
             </div>
             <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
               <button onClick={() => startEdit(role)}
@@ -192,7 +212,7 @@ export default function AdminRolesPage() {
             <div className="px-6 pb-4 border-t border-gray-100 pt-3">
               {role.description && <p className="text-sm text-gray-600 mb-3">{role.description}</p>}
               <div className="flex flex-wrap gap-2">
-                {role.permissions.map((rp) => (
+                {rolePermissions(role).map((rp) => (
                   <span key={rp.permission.id}
                     className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs">
                     {rp.permission.name}
@@ -234,6 +254,11 @@ export default function AdminRolesPage() {
           )}
         </div>
       ))}
+      {roles.length === 0 && (
+        <div className="bg-white rounded-lg shadow p-8 text-center text-sm text-gray-500">
+          {message ? 'Roles could not be loaded.' : 'No roles found.'}
+        </div>
+      )}
     </div>
   );
 }
