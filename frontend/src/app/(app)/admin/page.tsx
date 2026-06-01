@@ -64,19 +64,20 @@ export default function AdminPage() {
       return;
     }
     setLoading(true);
-    Promise.all([
+    Promise.allSettled([
       api.get('/admin/stats'),
       api.get('/admin/users?limit=8'),
       api.get('/admin/tickets?limit=8'),
     ])
-      .then(([statsData, usersData, ticketsData]) => {
-        setStats(statsData);
-        setRecentUsers(usersData.data || []);
-        setRecentTickets(ticketsData.data || []);
-        setMessage('');
-      })
-      .catch((err: any) => {
-        setMessage(err.message || 'Unable to load super admin data');
+      .then(([statsResult, usersResult, ticketsResult]) => {
+        if (statsResult.status === 'fulfilled') setStats(statsResult.value);
+        if (usersResult.status === 'fulfilled') setRecentUsers(usersResult.value.data || []);
+        if (ticketsResult.status === 'fulfilled') setRecentTickets(ticketsResult.value.data || []);
+
+        const errors = [statsResult, usersResult, ticketsResult]
+          .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+          .map((result) => result.reason?.message || 'Request failed');
+        setMessage(errors.join(' ') || '');
       })
       .finally(() => setLoading(false));
   }, [user, router]);

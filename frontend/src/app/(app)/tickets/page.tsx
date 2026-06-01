@@ -48,11 +48,12 @@ export default function TicketsPage() {
     params.set('page', String(page));
     params.set('limit', '25');
     setError('');
-    api.get(`/tickets?${params}`)
+    const endpoint = user?.role === 'SUPER_ADMIN' && !activeCompanyContext ? '/admin/tickets' : '/tickets';
+    api.get(`${endpoint}?${params}`)
       .then((data) => { setTickets(data.data || []); setMeta(data.meta); })
       .catch((err: any) => { setError(err.message || 'Failed to load tickets'); setTickets([]); })
       .finally(() => setLoading(false));
-  }, [filter, debouncedSearch, page]);
+  }, [activeCompanyContext, filter, debouncedSearch, page, user?.role]);
 
   useEffect(() => {
     if (user && user.userType !== 'BUSINESS') { router.push('/my-tickets'); return; }
