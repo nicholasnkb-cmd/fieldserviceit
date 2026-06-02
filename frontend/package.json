@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "postbuild": "node postbuild.js",
-    "start": "bash start-hostinger.sh",
+    "start": "node .next/standalone/server.js",
     "start:standalone": "node .next/standalone/server.js",
     "start:next": "next start",
     "lint": "next lint",
