@@ -297,6 +297,49 @@ async function runTemporaryQuotesInvoicesMutations(extraHeaders = {}) {
   });
 }
 
+async function runTemporaryInventoryMutations(extraHeaders = {}) {
+  const suffix = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+  let location;
+  let part;
+  await check('inventory location create', async () => {
+    location = await expectJson(`${apiUrl}/v1/inventory/locations`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...extraHeaders },
+      body: JSON.stringify({ name: `Smoke Warehouse ${suffix}`, locationType: 'WAREHOUSE' }),
+    });
+    if (!location?.id) throw new Error('Inventory location id missing');
+  });
+
+  await check('inventory part create', async () => {
+    part = await expectJson(`${apiUrl}/v1/inventory/parts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...extraHeaders },
+      body: JSON.stringify({
+        sku: `SMK-${suffix}`,
+        name: `Smoke Part ${suffix}`,
+        category: 'Smoke',
+        vendor: 'Smoke Vendor',
+        locationId: location.id,
+        quantityOnHand: 2,
+        reorderPoint: 1,
+        reorderQuantity: 5,
+        unitCost: 1,
+        unitPrice: 2,
+      }),
+    });
+    if (!part?.id) throw new Error('Inventory part id missing');
+  });
+
+  await check('inventory stock reserve', async () => {
+    const updated = await expectJson(`${apiUrl}/v1/inventory/movements`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...extraHeaders },
+      body: JSON.stringify({ partId: part.id, movementType: 'RESERVE', quantity: 1, notes: 'Smoke reservation' }),
+    });
+    if (Number(updated?.quantityReserved || 0) < 1) throw new Error('Reserved stock did not update');
+  });
+}
+
 await check('frontend login page', () => expectOk(`${baseUrl}/login`));
 await check('frontend network page shell', () => expectOk(`${baseUrl}/network`));
 await check('frontend about page', () => expectOk(`${baseUrl}/about`));
@@ -305,6 +348,7 @@ await check('frontend legal disclaimer page', () => expectOk(`${baseUrl}/legal-d
 await check('frontend knowledge base page shell', () => expectOk(`${baseUrl}/knowledge-base`));
 await check('frontend alerting page shell', () => expectOk(`${baseUrl}/alerting`));
 await check('frontend quotes invoices page shell', () => expectOk(`${baseUrl}/quotes-invoices`));
+await check('frontend inventory page shell', () => expectOk(`${baseUrl}/inventory`));
 await check('backend health', () => expectOk(`${apiUrl}/v1/health`));
 
 await check('protected admin plans route is registered', async () => {
@@ -379,12 +423,21 @@ if (email && password) {
       const body = await expectJson(`${apiUrl}/v1/quotes-invoices/invoices?limit=5`, { headers: companyContextHeaders });
       listData(body);
     });
+    await check('inventory parts list API', async () => {
+      const body = await expectJson(`${apiUrl}/v1/inventory/parts?limit=5`, { headers: companyContextHeaders });
+      listData(body);
+    });
+    await check('inventory locations list API', async () => {
+      const body = await expectJson(`${apiUrl}/v1/inventory/locations`, { headers: companyContextHeaders });
+      listData(body);
+    });
     await expectMutationListPreserved();
     if (runMutations) {
       await runTemporaryTicketMutations();
       await runTemporaryKnowledgeBaseMutations(companyContextHeaders);
       await runTemporaryAlertingMutations(companyContextHeaders);
       await runTemporaryQuotesInvoicesMutations(companyContextHeaders);
+      await runTemporaryInventoryMutations(companyContextHeaders);
       await runTemporaryAdminMutations();
     } else {
       console.log('SKIP admin create/edit/deactivate mutations: set SMOKE_MUTATIONS=true to enable temporary smoke records.');
