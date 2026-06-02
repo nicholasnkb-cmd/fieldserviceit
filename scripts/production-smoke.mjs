@@ -385,6 +385,7 @@ await check('frontend contact page', () => expectOk(`${baseUrl}/contact`));
 await check('frontend legal disclaimer page', () => expectOk(`${baseUrl}/legal-disclaimer`));
 await check('frontend knowledge base page shell', () => expectOk(`${baseUrl}/knowledge-base`));
 await check('frontend alerting page shell', () => expectOk(`${baseUrl}/alerting`));
+await check('frontend topology page shell', () => expectOk(`${baseUrl}/topology`));
 await check('frontend quotes invoices page shell', () => expectOk(`${baseUrl}/quotes-invoices`));
 await check('frontend inventory page shell', () => expectOk(`${baseUrl}/inventory`));
 await check('frontend maintenance page shell', () => expectOk(`${baseUrl}/maintenance`));
@@ -456,6 +457,14 @@ if (email && password) {
     await check('alerting rules list API', async () => {
       const body = await expectJson(`${apiUrl}/v1/assets/network/alert-rules`, { headers: companyContextHeaders });
       listData(body);
+    });
+    await check('topology map API', async () => {
+      const body = await expectJson(`${apiUrl}/v1/topology/map`, { headers: companyContextHeaders });
+      listData(body?.nodes || []);
+      listData(body?.links || []);
+    });
+    await check('topology summary API', async () => {
+      await expectJson(`${apiUrl}/v1/topology/summary`, { headers: companyContextHeaders });
     });
     await check('quotes invoices quotes list API', async () => {
       const body = await expectJson(`${apiUrl}/v1/quotes-invoices/quotes?limit=5`, { headers: companyContextHeaders });
