@@ -408,6 +408,20 @@ await check('protected AI route is registered', async () => {
   if (![401, 403].includes(res.status)) throw new Error(`Expected 401/403, got ${res.status}`);
 });
 
+await check('protected topology layout route is registered', async () => {
+  const res = await fetch(`${apiUrl}/v1/topology/layout`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ positions: [] }),
+  });
+  if (![401, 403].includes(res.status)) throw new Error(`Expected 401/403, got ${res.status}`);
+});
+
+await check('protected topology change detection route is registered', async () => {
+  const res = await fetch(`${apiUrl}/v1/topology/changes/detect`, { method: 'POST' });
+  if (![401, 403].includes(res.status)) throw new Error(`Expected 401/403, got ${res.status}`);
+});
+
 if (email && password) {
   let currentUser;
   await check('auth login', async () => {
