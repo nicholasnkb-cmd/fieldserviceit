@@ -350,6 +350,7 @@ await check('frontend alerting page shell', () => expectOk(`${baseUrl}/alerting`
 await check('frontend quotes invoices page shell', () => expectOk(`${baseUrl}/quotes-invoices`));
 await check('frontend inventory page shell', () => expectOk(`${baseUrl}/inventory`));
 await check('frontend technician mobile page shell', () => expectOk(`${baseUrl}/technician-mobile`));
+await check('frontend customer portal page shell', () => expectOk(`${baseUrl}/customer-portal`));
 await check('backend health', () => expectOk(`${apiUrl}/v1/health`));
 
 await check('protected admin plans route is registered', async () => {
@@ -434,6 +435,9 @@ if (email && password) {
     });
     await check('technician mobile summary API', async () => {
       await expectJson(`${apiUrl}/v1/dispatch/mobile/summary`, { headers: companyContextHeaders });
+    });
+    await check('customer portal summary API', async () => {
+      await expectJson(`${apiUrl}/v1/customer-portal/summary`, { headers: companyContextHeaders });
     });
     await expectMutationListPreserved();
     if (runMutations) {
