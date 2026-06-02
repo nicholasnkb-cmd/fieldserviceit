@@ -388,6 +388,7 @@ await check('frontend alerting page shell', () => expectOk(`${baseUrl}/alerting`
 await check('frontend quotes invoices page shell', () => expectOk(`${baseUrl}/quotes-invoices`));
 await check('frontend inventory page shell', () => expectOk(`${baseUrl}/inventory`));
 await check('frontend maintenance page shell', () => expectOk(`${baseUrl}/maintenance`));
+await check('frontend security center page shell', () => expectOk(`${baseUrl}/security-center`));
 await check('frontend technician mobile page shell', () => expectOk(`${baseUrl}/technician-mobile`));
 await check('frontend customer portal page shell', () => expectOk(`${baseUrl}/customer-portal`));
 await check('backend health', () => expectOk(`${apiUrl}/v1/health`));
@@ -478,6 +479,13 @@ if (email && password) {
     });
     await check('maintenance summary API', async () => {
       await expectJson(`${apiUrl}/v1/maintenance/summary`, { headers: companyContextHeaders });
+    });
+    await check('security center findings list API', async () => {
+      const body = await expectJson(`${apiUrl}/v1/security-center/findings?limit=5`, { headers: companyContextHeaders });
+      listData(body);
+    });
+    await check('security center summary API', async () => {
+      await expectJson(`${apiUrl}/v1/security-center/summary`, { headers: companyContextHeaders });
     });
     await check('technician mobile summary API', async () => {
       await expectJson(`${apiUrl}/v1/dispatch/mobile/summary`, { headers: companyContextHeaders });
