@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Archive, BookOpen, Bot, CheckCircle2, Edit3, FilePlus2, Filter, Search, Tag, Ticket, X } from 'lucide-react';
+import { Archive, BookOpen, Bot, Building2, CheckCircle2, Edit3, FilePlus2, Filter, Search, Tag, Ticket, X } from 'lucide-react';
 import { api, getListData } from '../../../lib/api';
 import { formatDate } from '../../../lib/utils';
 import { useToast } from '../../../components/ui/Toast';
+import { useAuthStore } from '../../../stores/authStore';
 
 type Article = {
   id: string;
@@ -22,6 +23,7 @@ type Article = {
   createdAt: string;
   sourceTicket?: { id: string; ticketNumber?: string; title?: string } | null;
   owner?: { firstName?: string; lastName?: string } | null;
+  company?: { id: string; name?: string | null } | null;
 };
 
 const blankForm = {
@@ -35,6 +37,7 @@ const blankForm = {
   articleType: 'ARTICLE',
   aiEnabled: false,
   sourceTicketId: '',
+  companyId: '',
   reviewDueAt: '',
 };
 
@@ -51,7 +54,9 @@ function statusClass(status: string) {
 
 export default function KnowledgeBasePage() {
   const { toast } = useToast();
+  const { user, activeCompanyContext } = useAuthStore();
   const [articles, setArticles] = useState<Article[]>([]);
+  const [companies, setCompanies] = useState<Array<{ id: string; name: string }>>([]);
   const [summary, setSummary] = useState<any>(null);
   const [selected, setSelected] = useState<Article | null>(null);
   const [loading, setLoading] = useState(true);
@@ -64,6 +69,7 @@ export default function KnowledgeBasePage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(blankForm);
+  const canPickCompany = user?.role === 'SUPER_ADMIN' && !activeCompanyContext?.id;
 
   const categories = useMemo(() => {
     const names = new Set<string>();
@@ -108,9 +114,16 @@ export default function KnowledgeBasePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (!canPickCompany) return;
+    api.get('/admin/companies?limit=100')
+      .then((data) => setCompanies(getListData(data).filter((company: any) => company?.id && company.isActive !== false)))
+      .catch(() => setCompanies([]));
+  }, [canPickCompany]);
+
   const openNew = () => {
     setEditingId(null);
-    setForm(blankForm);
+    setForm({ ...blankForm, companyId: activeCompanyContext?.id || companies[0]?.id || '' });
     setFormOpen(true);
   };
 
@@ -127,6 +140,7 @@ export default function KnowledgeBasePage() {
       articleType: article.articleType || 'ARTICLE',
       aiEnabled: article.aiEnabled,
       sourceTicketId: article.sourceTicket?.id || '',
+      companyId: article.company?.id || activeCompanyContext?.id || '',
       reviewDueAt: article.reviewDueAt ? article.reviewDueAt.slice(0, 10) : '',
     });
     setFormOpen(true);
@@ -137,11 +151,16 @@ export default function KnowledgeBasePage() {
       toast('error', 'Title and content are required');
       return;
     }
+    if (canPickCompany && !form.companyId) {
+      toast('error', 'Select a company for this article');
+      return;
+    }
     setSaving(true);
     try {
       const payload = {
         ...form,
         tags: form.tags,
+        companyId: form.companyId || undefined,
         sourceTicketId: form.sourceTicketId || undefined,
         reviewDueAt: form.reviewDueAt || null,
       };
@@ -292,6 +311,7 @@ export default function KnowledgeBasePage() {
                   <span className={`rounded-full border px-2 py-0.5 text-xs font-medium ${statusClass(article.status)}`}>{article.status}</span>
                   <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">{article.visibility}</span>
                   {article.aiEnabled && <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700"><Bot className="h-3 w-3" /> AI</span>}
+                  {article.company?.name && <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600"><Building2 className="h-3 w-3" /> {article.company.name}</span>}
                 </div>
                 <h3 className="mt-2 text-sm font-semibold text-gray-900">{article.title}</h3>
                 <p className="mt-1 line-clamp-2 text-sm text-gray-500">{article.summary || article.content}</p>
@@ -330,6 +350,9 @@ export default function KnowledgeBasePage() {
                   ))}
                   {selected.sourceTicket && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-1 text-xs text-blue-700"><Ticket className="h-3 w-3" /> {selected.sourceTicket.ticketNumber}</span>
+                  )}
+                  {selected.company?.name && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600"><Building2 className="h-3 w-3" /> {selected.company.name}</span>
                   )}
                 </div>
                 <div className="rounded-md border border-gray-100 bg-gray-50 p-3">
@@ -402,6 +425,16 @@ export default function KnowledgeBasePage() {
                 </label>
               </div>
               <div className="grid gap-4 md:grid-cols-3">
+                {canPickCompany && (
+                  <label className="block">
+                    <span className="text-sm font-medium text-gray-700">Company</span>
+                    <select value={form.companyId} onChange={(event) => setForm({ ...form, companyId: event.target.value })}
+                      className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+                      <option value="">Select company...</option>
+                      {companies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
+                    </select>
+                  </label>
+                )}
                 <label className="block">
                   <span className="text-sm font-medium text-gray-700">Status</span>
                   <select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })}
