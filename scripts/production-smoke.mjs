@@ -340,6 +340,44 @@ async function runTemporaryInventoryMutations(extraHeaders = {}) {
   });
 }
 
+async function runTemporaryMaintenanceMutations(extraHeaders = {}) {
+  const suffix = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+  let plan;
+  await check('maintenance plan create', async () => {
+    plan = await expectJson(`${apiUrl}/v1/maintenance/plans`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...extraHeaders },
+      body: JSON.stringify({
+        name: `Smoke recurring maintenance ${suffix}`,
+        description: 'Temporary smoke maintenance plan.',
+        frequency: 'CUSTOM',
+        intervalDays: 30,
+        nextDueAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        checklist: ['Inspect asset health', 'Document results'],
+      }),
+    });
+    if (!plan?.id) throw new Error('Maintenance plan id missing');
+  });
+
+  await check('maintenance ticket generate', async () => {
+    const result = await expectJson(`${apiUrl}/v1/maintenance/plans/${plan.id}/generate-ticket`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...extraHeaders },
+      body: JSON.stringify({}),
+    });
+    if (!result?.ticket?.id) throw new Error('Maintenance ticket id missing');
+  });
+
+  await check('maintenance plan complete', async () => {
+    const result = await expectJson(`${apiUrl}/v1/maintenance/plans/${plan.id}/complete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...extraHeaders },
+      body: JSON.stringify({ notes: 'Completed by smoke test' }),
+    });
+    if (!result?.run?.id) throw new Error('Maintenance completion run missing');
+  });
+}
+
 await check('frontend login page', () => expectOk(`${baseUrl}/login`));
 await check('frontend network page shell', () => expectOk(`${baseUrl}/network`));
 await check('frontend about page', () => expectOk(`${baseUrl}/about`));
@@ -349,6 +387,7 @@ await check('frontend knowledge base page shell', () => expectOk(`${baseUrl}/kno
 await check('frontend alerting page shell', () => expectOk(`${baseUrl}/alerting`));
 await check('frontend quotes invoices page shell', () => expectOk(`${baseUrl}/quotes-invoices`));
 await check('frontend inventory page shell', () => expectOk(`${baseUrl}/inventory`));
+await check('frontend maintenance page shell', () => expectOk(`${baseUrl}/maintenance`));
 await check('frontend technician mobile page shell', () => expectOk(`${baseUrl}/technician-mobile`));
 await check('frontend customer portal page shell', () => expectOk(`${baseUrl}/customer-portal`));
 await check('backend health', () => expectOk(`${apiUrl}/v1/health`));
@@ -433,6 +472,13 @@ if (email && password) {
       const body = await expectJson(`${apiUrl}/v1/inventory/locations`, { headers: companyContextHeaders });
       listData(body);
     });
+    await check('maintenance plans list API', async () => {
+      const body = await expectJson(`${apiUrl}/v1/maintenance/plans?limit=5`, { headers: companyContextHeaders });
+      listData(body);
+    });
+    await check('maintenance summary API', async () => {
+      await expectJson(`${apiUrl}/v1/maintenance/summary`, { headers: companyContextHeaders });
+    });
     await check('technician mobile summary API', async () => {
       await expectJson(`${apiUrl}/v1/dispatch/mobile/summary`, { headers: companyContextHeaders });
     });
@@ -446,6 +492,7 @@ if (email && password) {
       await runTemporaryAlertingMutations(companyContextHeaders);
       await runTemporaryQuotesInvoicesMutations(companyContextHeaders);
       await runTemporaryInventoryMutations(companyContextHeaders);
+      await runTemporaryMaintenanceMutations(companyContextHeaders);
       await runTemporaryAdminMutations();
     } else {
       console.log('SKIP admin create/edit/deactivate mutations: set SMOKE_MUTATIONS=true to enable temporary smoke records.');
