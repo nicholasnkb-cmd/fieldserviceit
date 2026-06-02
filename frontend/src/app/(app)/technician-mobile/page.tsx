@@ -78,7 +78,7 @@ export default function TechnicianMobilePage() {
       setMessage(`Status updated to ${status}`);
       await loadData();
     } catch (err: any) {
-      setError(err.message || 'Failed to update status');
+      setError(contextMessage(err.message || 'Failed to update status'));
     } finally {
       setSaving(false);
     }
@@ -93,7 +93,7 @@ export default function TechnicianMobilePage() {
       setMessage('Job notes saved');
       await loadData();
     } catch (err: any) {
-      setError(err.message || 'Failed to save notes');
+      setError(contextMessage(err.message || 'Failed to save notes'));
     } finally {
       setSaving(false);
     }
@@ -110,7 +110,7 @@ export default function TechnicianMobilePage() {
       setMessage('Photo links saved');
       await loadData();
     } catch (err: any) {
-      setError(err.message || 'Failed to save photos');
+      setError(contextMessage(err.message || 'Failed to save photos'));
     } finally {
       setSaving(false);
     }
@@ -125,7 +125,7 @@ export default function TechnicianMobilePage() {
       setMessage('Signature captured and job completed');
       await loadData();
     } catch (err: any) {
-      setError(err.message || 'Failed to save signature');
+      setError(contextMessage(err.message || 'Failed to save signature'));
     } finally {
       setSaving(false);
     }
@@ -146,7 +146,7 @@ export default function TechnicianMobilePage() {
       setMessage('Part usage recorded');
       await loadData();
     } catch (err: any) {
-      setError(err.message || 'Failed to record part usage');
+      setError(contextMessage(err.message || 'Failed to record part usage'));
     } finally {
       setSaving(false);
     }
@@ -298,4 +298,11 @@ function parsePhotos(raw?: string) {
   } catch {
     return [];
   }
+}
+
+function contextMessage(message: string) {
+  if (message === 'No company context available') {
+    return 'Select a company context before changing dispatch records.';
+  }
+  return message;
 }
