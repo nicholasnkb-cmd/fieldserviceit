@@ -24,7 +24,7 @@ type PublicLink = {
   inferred?: boolean;
 };
 
-export default function PublicTopologyPage({ params }: { params: Promise<{ token: string }> }) {
+export default function SharedTopologyPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params);
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState('');

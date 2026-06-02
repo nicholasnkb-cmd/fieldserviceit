@@ -563,7 +563,7 @@ export default function TopologyPage() {
                 <input type="checkbox" checked={settings.shareEnabled !== false && settings.shareEnabled !== 0} onChange={(e) => saveSettings({ shareEnabled: e.target.checked })} />
               </label>
               <button onClick={createShare} disabled={saving || settings.shareEnabled === false || settings.shareEnabled === 0} className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-700 disabled:opacity-40"><Eye size={16} />Create share link</button>
-              {shares.slice(0, 3).map((share) => <p key={share.id} className="break-all rounded bg-gray-50 p-2 text-xs text-gray-600">{`${origin || ''}/public/topology/${share.token}`}</p>)}
+              {shares.slice(0, 3).map((share) => <p key={share.id} className="break-all rounded bg-gray-50 p-2 text-xs text-gray-600">{`${origin || ''}/topology/shared/${share.token}`}</p>)}
             </div>
           </Panel>
 
