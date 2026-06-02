@@ -1,8 +1,11 @@
 #!/bin/bash
+cd "$(dirname "$0")"
+export HOSTNAME="${HOSTNAME:-0.0.0.0}"
 echo "$(date) START.SH: Starting frontend..." >> /home/u209468809/domains/fieldserviceit.com/backend.log 2>&1
 echo "$(date) START.SH: Node version: $(node --version)" >> /home/u209468809/domains/fieldserviceit.com/backend.log 2>&1
 echo "$(date) START.SH: PWD: $(pwd)" >> /home/u209468809/domains/fieldserviceit.com/backend.log 2>&1
 echo "$(date) START.SH: PORT: $PORT" >> /home/u209468809/domains/fieldserviceit.com/backend.log 2>&1
+echo "$(date) START.SH: HOSTNAME: $HOSTNAME" >> /home/u209468809/domains/fieldserviceit.com/backend.log 2>&1
 
 if [ ! -f ".next/standalone/server.js" ]; then
   echo "$(date) START.SH: Missing .next/standalone/server.js, running npm run build..." >> /home/u209468809/domains/fieldserviceit.com/backend.log 2>&1
