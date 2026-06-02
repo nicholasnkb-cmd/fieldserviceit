@@ -16,7 +16,6 @@ const PUBLIC_PATHS = [
   '/register',
   '/register-business',
   '/reset-password',
-  '/status',
   '/submit-ticket',
   '/topology/shared',
   '/track',
@@ -74,12 +73,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
           path: window.location.pathname,
           userId: state.user?.id,
           companyId: state.user?.companyId,
-          metadata: {
-            ...metadata,
-            href: window.location.href,
-            userAgent: navigator.userAgent,
-            viewport: `${window.innerWidth}x${window.innerHeight}`,
-          },
+          metadata,
         });
         navigator.sendBeacon?.(`${apiUrl}/v1/error-reports`, new Blob([payload], { type: 'application/json' }));
       } catch {}

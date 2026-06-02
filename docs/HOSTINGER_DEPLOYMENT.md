@@ -136,22 +136,6 @@ SMOKE_MUTATIONS=false
 
 Use `SMOKE_MUTATIONS=true` only for a deliberate controlled run. It creates, edits, and deactivates temporary smoke records.
 
-For a faster post-deploy health gate, run:
-
-```bash
-node scripts/deploy-health-gate.mjs
-```
-
-This catches unexpected `503`, `500`, `404`, and protected-route registration failures across the frontend, API, database health, and key application shells.
-
-Open the live status page at:
-
-```text
-https://fieldserviceit.com/status
-```
-
-See `docs/DEPLOYMENT_HEALTH_AND_ROLLBACK.md` for rollback steps and the static app shell rule.
-
 The smoke workflows are:
 
 - `.github/workflows/production-smoke.yml` for scheduled/manual API and browser smoke tests.

@@ -65,9 +65,6 @@ export function Header() {
               <Link href="/contact" className="hidden text-sm font-medium text-gray-600 hover:text-gray-950 sm:inline">
                 Contact
               </Link>
-              <Link href="/status" className="hidden text-sm font-medium text-gray-600 hover:text-gray-950 sm:inline">
-                Status
-              </Link>
               <Link
                 href="/login"
                 className="text-sm text-primary hover:text-primary-700 font-medium"

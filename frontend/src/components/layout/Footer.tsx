@@ -24,7 +24,6 @@ export function Footer() {
           <h3 className="text-white font-semibold mb-3">Support</h3>
           <ul className="space-y-2 text-sm">
             <li><Link href="/contact" className="hover:text-white transition-colors">Contact Us</Link></li>
-            <li><Link href="/status" className="hover:text-white transition-colors">System Status</Link></li>
             <li><Link href="/legal-disclaimer" className="hover:text-white transition-colors">Legal Disclaimer</Link></li>
             <li><a href="mailto:support@fieldserviceit.com" className="hover:text-white transition-colors">Contact Support</a></li>
           </ul>
