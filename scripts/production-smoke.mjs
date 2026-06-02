@@ -219,12 +219,52 @@ async function runTemporaryKnowledgeBaseMutations(extraHeaders = {}) {
   }));
 }
 
+async function runTemporaryAlertingMutations(extraHeaders = {}) {
+  const suffix = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+  await check('alerting rule create', async () => {
+    const rule = await expectJson(`${apiUrl}/v1/assets/network/alert-rules`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...extraHeaders },
+      body: JSON.stringify({
+        name: `Smoke alert rule ${suffix}`,
+        metric: 'latency',
+        operator: '>',
+        threshold: '500',
+        durationSec: 60,
+        severity: 'WARNING',
+      }),
+    });
+    if (!rule?.id) throw new Error('Alert rule id missing');
+  });
+
+  await check('alerting maintenance window create', async () => {
+    const startsAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    const endsAt = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
+    const window = await expectJson(`${apiUrl}/v1/assets/network/maintenance-windows`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...extraHeaders },
+      body: JSON.stringify({ name: `Smoke maintenance ${suffix}`, startsAt, endsAt, suppressAlerts: true }),
+    });
+    if (!window?.id) throw new Error('Maintenance window id missing');
+  });
+
+  await check('alerting escalation policy create', async () => {
+    const policy = await expectJson(`${apiUrl}/v1/assets/network/escalation-policies`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...extraHeaders },
+      body: JSON.stringify({ name: `Smoke escalation ${suffix}`, severity: 'WARNING', firstDelayMin: 0, secondDelayMin: 5, managerDelayMin: 10 }),
+    });
+    if (!policy?.id) throw new Error('Escalation policy id missing');
+  });
+}
+
 await check('frontend login page', () => expectOk(`${baseUrl}/login`));
 await check('frontend network page shell', () => expectOk(`${baseUrl}/network`));
 await check('frontend about page', () => expectOk(`${baseUrl}/about`));
 await check('frontend contact page', () => expectOk(`${baseUrl}/contact`));
 await check('frontend legal disclaimer page', () => expectOk(`${baseUrl}/legal-disclaimer`));
 await check('frontend knowledge base page shell', () => expectOk(`${baseUrl}/knowledge-base`));
+await check('frontend alerting page shell', () => expectOk(`${baseUrl}/alerting`));
 await check('backend health', () => expectOk(`${apiUrl}/v1/health`));
 
 await check('protected admin plans route is registered', async () => {
@@ -283,10 +323,19 @@ if (email && password) {
       const body = await expectJson(`${apiUrl}/v1/knowledge-base?limit=5`, { headers: companyContextHeaders });
       listData(body);
     });
+    await check('alerting events list API', async () => {
+      const body = await expectJson(`${apiUrl}/v1/assets/network/alert-events?status=ALL`, { headers: companyContextHeaders });
+      listData(body);
+    });
+    await check('alerting rules list API', async () => {
+      const body = await expectJson(`${apiUrl}/v1/assets/network/alert-rules`, { headers: companyContextHeaders });
+      listData(body);
+    });
     await expectMutationListPreserved();
     if (runMutations) {
       await runTemporaryTicketMutations();
       await runTemporaryKnowledgeBaseMutations(companyContextHeaders);
+      await runTemporaryAlertingMutations(companyContextHeaders);
       await runTemporaryAdminMutations();
     } else {
       console.log('SKIP admin create/edit/deactivate mutations: set SMOKE_MUTATIONS=true to enable temporary smoke records.');
