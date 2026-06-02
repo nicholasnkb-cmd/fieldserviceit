@@ -258,6 +258,45 @@ async function runTemporaryAlertingMutations(extraHeaders = {}) {
   });
 }
 
+async function runTemporaryQuotesInvoicesMutations(extraHeaders = {}) {
+  const suffix = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+  let quote;
+  await check('quotes invoices quote create', async () => {
+    quote = await expectJson(`${apiUrl}/v1/quotes-invoices/quotes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...extraHeaders },
+      body: JSON.stringify({
+        title: `Smoke quote ${suffix}`,
+        customerName: 'Smoke Customer',
+        customerEmail: `quote-smoke-${suffix}@example.com`,
+        taxRate: 0,
+        lines: [
+          { description: 'Smoke service labor', quantity: 1, unitPrice: 25, taxable: true },
+        ],
+      }),
+    });
+    if (!quote?.id) throw new Error('Quote id missing');
+  });
+
+  await check('quotes invoices quote approve', async () => {
+    const updated = await expectJson(`${apiUrl}/v1/quotes-invoices/quotes/${quote.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...extraHeaders },
+      body: JSON.stringify({ status: 'APPROVED' }),
+    });
+    if (updated?.status !== 'APPROVED') throw new Error(`Expected APPROVED, got ${updated?.status}`);
+  });
+
+  await check('quotes invoices quote convert', async () => {
+    const invoice = await expectJson(`${apiUrl}/v1/quotes-invoices/quotes/${quote.id}/convert`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...extraHeaders },
+      body: JSON.stringify({}),
+    });
+    if (!invoice?.id) throw new Error('Invoice id missing');
+  });
+}
+
 await check('frontend login page', () => expectOk(`${baseUrl}/login`));
 await check('frontend network page shell', () => expectOk(`${baseUrl}/network`));
 await check('frontend about page', () => expectOk(`${baseUrl}/about`));
@@ -265,6 +304,7 @@ await check('frontend contact page', () => expectOk(`${baseUrl}/contact`));
 await check('frontend legal disclaimer page', () => expectOk(`${baseUrl}/legal-disclaimer`));
 await check('frontend knowledge base page shell', () => expectOk(`${baseUrl}/knowledge-base`));
 await check('frontend alerting page shell', () => expectOk(`${baseUrl}/alerting`));
+await check('frontend quotes invoices page shell', () => expectOk(`${baseUrl}/quotes-invoices`));
 await check('backend health', () => expectOk(`${apiUrl}/v1/health`));
 
 await check('protected admin plans route is registered', async () => {
@@ -331,11 +371,20 @@ if (email && password) {
       const body = await expectJson(`${apiUrl}/v1/assets/network/alert-rules`, { headers: companyContextHeaders });
       listData(body);
     });
+    await check('quotes invoices quotes list API', async () => {
+      const body = await expectJson(`${apiUrl}/v1/quotes-invoices/quotes?limit=5`, { headers: companyContextHeaders });
+      listData(body);
+    });
+    await check('quotes invoices invoices list API', async () => {
+      const body = await expectJson(`${apiUrl}/v1/quotes-invoices/invoices?limit=5`, { headers: companyContextHeaders });
+      listData(body);
+    });
     await expectMutationListPreserved();
     if (runMutations) {
       await runTemporaryTicketMutations();
       await runTemporaryKnowledgeBaseMutations(companyContextHeaders);
       await runTemporaryAlertingMutations(companyContextHeaders);
+      await runTemporaryQuotesInvoicesMutations(companyContextHeaders);
       await runTemporaryAdminMutations();
     } else {
       console.log('SKIP admin create/edit/deactivate mutations: set SMOKE_MUTATIONS=true to enable temporary smoke records.');
