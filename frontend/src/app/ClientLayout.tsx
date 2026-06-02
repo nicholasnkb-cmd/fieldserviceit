@@ -17,6 +17,7 @@ const PUBLIC_PATHS = [
   '/register-business',
   '/reset-password',
   '/submit-ticket',
+  '/topology/shared',
   '/track',
   '/verify-email',
 ];
