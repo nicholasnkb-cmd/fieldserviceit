@@ -380,8 +380,8 @@ async function runTemporaryMaintenanceMutations(extraHeaders = {}) {
 
 await check('frontend login page', () => expectOk(`${baseUrl}/login`));
 await check('frontend status page', () => expectOk(`${baseUrl}/status`));
-await check('frontend client health endpoint', async () => {
-  const body = await expectJson(`${baseUrl}/api/client-health`);
+  await check('frontend asset health endpoint', async () => {
+    const body = await expectJson(`${baseUrl}/client-health.json`);
   if (body?.status !== 'ok') throw new Error(`Expected frontend health ok, got ${body?.status || 'unknown'}`);
 });
 await check('frontend network page shell', () => expectOk(`${baseUrl}/network`));

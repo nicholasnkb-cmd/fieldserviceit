@@ -27,7 +27,7 @@ node scripts/deploy-health-gate.mjs
 The gate checks:
 
 - Frontend shell routes: `/`, `/login`, `/network`, `/topology`, `/status`
-- Frontend runtime endpoint: `/api/client-health`
+- Frontend static asset probe: `/client-health.json`
 - Backend health: `/v1/health`
 - Protected API registration: `/v1/topology/summary`
 - Optional latest Hostinger frontend/backend build state when `HOSTINGER_API_TOKEN` is set

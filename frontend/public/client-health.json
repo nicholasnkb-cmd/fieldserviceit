@@ -1,0 +1,6 @@
+{
+  "status": "ok",
+  "service": "frontend",
+  "runtime": "static",
+  "version": "0.1.0"
+}

@@ -12,7 +12,7 @@ const checks = [
   { name: 'frontend network shell', url: `${baseUrl}/network`, expect: [200] },
   { name: 'frontend topology shell', url: `${baseUrl}/topology`, expect: [200] },
   { name: 'frontend status page', url: `${baseUrl}/status`, expect: [200] },
-  { name: 'frontend client health', url: `${baseUrl}/api/client-health`, expect: [200], jsonStatus: 'ok' },
+  { name: 'frontend asset health', url: `${baseUrl}/client-health.json`, expect: [200], jsonStatus: 'ok' },
   { name: 'backend health', url: `${apiUrl}/v1/health`, expect: [200], jsonStatus: 'ok' },
   { name: 'protected topology route', url: `${apiUrl}/v1/topology/summary`, expect: [401, 403] },
 ];

@@ -28,11 +28,11 @@ export default function StatusPage() {
   const load = async () => {
     setLoading(true);
     const next: CheckState[] = [];
-    const frontend = await timedJson('/api/client-health');
+    const frontend = await timedJson('/client-health.json');
     next.push({
       name: 'Frontend runtime',
       status: frontend.ok ? 'ok' : 'error',
-      detail: frontend.ok ? `${frontend.body?.service || 'frontend'} online` : frontend.error,
+      detail: frontend.ok ? `${frontend.body?.service || 'frontend'} assets online` : frontend.error,
       latencyMs: frontend.latencyMs,
     });
 
