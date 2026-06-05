@@ -33,6 +33,13 @@ const menuItems: (
       { label: 'View assets', href: '/assets' },
     ],
   },
+  {
+    label: 'Catalog',
+    children: [
+      { label: 'Browse catalog', href: '/catalog-requests' },
+      { label: 'Custom request', href: '/catalog-requests/new' },
+    ],
+  },
   { label: 'Favorites', href: '/favorites' },
   { label: 'History', href: '/history' },
   { label: 'Dashboards', href: '/dashboards' },

@@ -10,7 +10,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <BannerMenu />
       <div className="flex flex-1">
         <SidePanel />
-        <main className="flex-1 bg-gray-50">
+        <main className="min-w-0 flex-1 bg-gray-50">
           <TenantContextBanner />
           <FeatureAccessGate>{children}</FeatureAccessGate>
         </main>
