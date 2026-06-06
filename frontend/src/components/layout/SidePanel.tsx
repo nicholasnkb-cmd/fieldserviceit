@@ -10,6 +10,7 @@ import {
   Boxes,
   Building2,
   CalendarClock,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ClipboardList,
@@ -44,72 +45,154 @@ type NavItem = {
   feature?: string;
 };
 
-const SIDE_PANEL_COLLAPSED_KEY = 'fsit.sidePanelCollapsed';
+type NavGroup = {
+  id: string;
+  label: string;
+  items: NavItem[];
+};
 
-const navItems = {
+const SIDE_PANEL_COLLAPSED_KEY = 'fsit.sidePanelCollapsed';
+const SIDE_PANEL_GROUPS_KEY = 'fsit.sidePanelGroups';
+
+const navGroups = {
   public: [
-    { label: 'My Tickets', href: '/my-tickets', icon: Ticket, feature: 'tickets' },
-    { label: 'Service Catalog', href: '/catalog-requests', icon: ShoppingCart, feature: 'catalogRequests' },
-    { label: 'Customer Portal', href: '/customer-portal', icon: Home, feature: 'tickets' },
-    { label: 'Submit Ticket', href: '/submit-ticket', icon: FileText, feature: 'tickets' },
+    {
+      id: 'support',
+      label: 'Support',
+      items: [
+        { label: 'My Tickets', href: '/my-tickets', icon: Ticket, feature: 'tickets' },
+        { label: 'Submit Ticket', href: '/submit-ticket', icon: FileText, feature: 'tickets' },
+        { label: 'Customer Portal', href: '/customer-portal', icon: Home, feature: 'tickets' },
+      ],
+    },
+    {
+      id: 'requests',
+      label: 'Requests',
+      items: [
+        { label: 'Service Catalog', href: '/catalog-requests', icon: ShoppingCart, feature: 'catalogRequests' },
+      ],
+    },
   ],
   business: [
-    { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { label: 'Tickets', href: '/tickets', icon: Ticket, feature: 'tickets' },
-    { label: 'Assets', href: '/assets', icon: PackageSearch, feature: 'assets' },
-    { label: 'Service Catalog', href: '/catalog-requests', icon: ShoppingCart, feature: 'catalogRequests' },
-    { label: 'Network', href: '/network', icon: GitFork, feature: 'network' },
-    { label: 'AI Agent', href: '/ai-agent', icon: Bot, feature: 'aiAgent' },
-    { label: 'Customer Portal', href: '/customer-portal', icon: Home, feature: 'tickets' },
-    { label: 'Technician Mobile', href: '/technician-mobile', icon: Smartphone, feature: 'dispatch' },
-    { label: 'Field Service', href: '/dispatch', icon: Route, feature: 'dispatch' },
-    { label: 'Inventory', href: '/inventory', icon: Boxes, feature: 'assets' },
-    { label: 'Quotes & Invoices', href: '/quotes-invoices', icon: CreditCard, feature: 'billing' },
-    { label: 'SLA Tracking', href: '/sla', icon: Gauge, feature: 'tickets' },
-    { label: 'Maintenance', href: '/maintenance', icon: CalendarClock, feature: 'dispatch' },
-    { label: 'Knowledge Base', href: '/knowledge-base', icon: ClipboardList, feature: 'kb' },
-    { label: 'Advanced Alerting', href: '/alerting', icon: AlertTriangle, feature: 'network' },
-    { label: 'Topology Map', href: '/topology', icon: Map, feature: 'network' },
-    { label: 'Security Center', href: '/security-center', icon: ShieldCheck, feature: 'auditLogs' },
-    { label: 'Reports', href: '/reports', icon: BarChart3, feature: 'reporting' },
-    { label: 'RMM Integrations', href: '/integrations/rmm', icon: RefreshCw, feature: 'rmmIntegration' },
-    { label: 'Settings', href: '/settings', icon: Settings, feature: 'settings' },
+    {
+      id: 'overview',
+      label: 'Overview',
+      items: [
+        { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+      ],
+    },
+    {
+      id: 'service-desk',
+      label: 'Service Desk',
+      items: [
+        { label: 'Tickets', href: '/tickets', icon: Ticket, feature: 'tickets' },
+        { label: 'Service Catalog', href: '/catalog-requests', icon: ShoppingCart, feature: 'catalogRequests' },
+        { label: 'Customer Portal', href: '/customer-portal', icon: Home, feature: 'tickets' },
+        { label: 'SLA Tracking', href: '/sla', icon: Gauge, feature: 'tickets' },
+        { label: 'Knowledge Base', href: '/knowledge-base', icon: ClipboardList, feature: 'kb' },
+        { label: 'AI Agent', href: '/ai-agent', icon: Bot, feature: 'aiAgent' },
+      ],
+    },
+    {
+      id: 'field-operations',
+      label: 'Field Operations',
+      items: [
+        { label: 'Field Service', href: '/dispatch', icon: Route, feature: 'dispatch' },
+        { label: 'Technician Mobile', href: '/technician-mobile', icon: Smartphone, feature: 'dispatch' },
+        { label: 'Maintenance', href: '/maintenance', icon: CalendarClock, feature: 'dispatch' },
+        { label: 'Inventory', href: '/inventory', icon: Boxes, feature: 'assets' },
+      ],
+    },
+    {
+      id: 'infrastructure',
+      label: 'Infrastructure',
+      items: [
+        { label: 'Assets', href: '/assets', icon: PackageSearch, feature: 'assets' },
+        { label: 'Network', href: '/network', icon: GitFork, feature: 'network' },
+        { label: 'Advanced Alerting', href: '/alerting', icon: AlertTriangle, feature: 'network' },
+        { label: 'Topology Map', href: '/topology', icon: Map, feature: 'network' },
+        { label: 'RMM Integrations', href: '/integrations/rmm', icon: RefreshCw, feature: 'rmmIntegration' },
+      ],
+    },
+    {
+      id: 'business',
+      label: 'Business',
+      items: [
+        { label: 'Quotes & Invoices', href: '/quotes-invoices', icon: CreditCard, feature: 'billing' },
+        { label: 'Reports', href: '/reports', icon: BarChart3, feature: 'reporting' },
+      ],
+    },
+    {
+      id: 'administration',
+      label: 'Administration',
+      items: [
+        { label: 'Security Center', href: '/security-center', icon: ShieldCheck, feature: 'auditLogs' },
+        { label: 'Settings', href: '/settings', icon: Settings, feature: 'settings' },
+      ],
+    },
   ],
   globalTech: [
-    { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { label: 'Tickets', href: '/tickets', icon: Ticket, feature: 'tickets' },
-    { label: 'Technician Mobile', href: '/technician-mobile', icon: Smartphone, feature: 'dispatch' },
-    { label: 'Knowledge Base', href: '/knowledge-base', icon: ClipboardList, feature: 'kb' },
+    {
+      id: 'overview',
+      label: 'Overview',
+      items: [
+        { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+      ],
+    },
+    {
+      id: 'service-desk',
+      label: 'Service Desk',
+      items: [
+        { label: 'Tickets', href: '/tickets', icon: Ticket, feature: 'tickets' },
+        { label: 'Technician Mobile', href: '/technician-mobile', icon: Smartphone, feature: 'dispatch' },
+        { label: 'Knowledge Base', href: '/knowledge-base', icon: ClipboardList, feature: 'kb' },
+      ],
+    },
   ],
   admin: [
-    { label: 'Super Admin', href: '/admin', icon: LayoutDashboard },
-    { label: 'All Tickets', href: '/tickets', icon: Ticket },
-    { label: 'Users', href: '/admin/users', icon: Users },
-    { label: 'Companies', href: '/admin/companies', icon: Building2 },
-    { label: 'System Controls', href: '/admin/system', icon: Settings },
-    { label: 'Security Center', href: '/security-center', icon: ShieldCheck },
-    { label: 'Audit Logs', href: '/admin/audit-logs', icon: ClipboardList, feature: 'auditLogs' },
-    { label: 'Permissions', href: '/admin/permissions', icon: Lock },
-    { label: 'Roles', href: '/admin/roles', icon: KeyRound },
+    {
+      id: 'platform-administration',
+      label: 'Platform Administration',
+      items: [
+        { label: 'Super Admin', href: '/admin', icon: LayoutDashboard },
+        { label: 'All Tickets', href: '/tickets', icon: Ticket },
+        { label: 'Users', href: '/admin/users', icon: Users },
+        { label: 'Companies', href: '/admin/companies', icon: Building2 },
+        { label: 'System Controls', href: '/admin/system', icon: Settings },
+        { label: 'Security Center', href: '/security-center', icon: ShieldCheck },
+        { label: 'Audit Logs', href: '/admin/audit-logs', icon: ClipboardList, feature: 'auditLogs' },
+        { label: 'Permissions', href: '/admin/permissions', icon: Lock },
+        { label: 'Roles', href: '/admin/roles', icon: KeyRound },
+      ],
+    },
   ],
   tenantAdmin: [
-    { label: 'Company Users', href: '/admin/company', icon: Users },
-    { label: 'Roles', href: '/admin/roles', icon: KeyRound },
-    { label: 'Security Center', href: '/security-center', icon: ShieldCheck },
-    { label: 'RMM Integrations', href: '/integrations/rmm', icon: RefreshCw, feature: 'rmmIntegration' },
-    { label: 'Settings', href: '/settings', icon: Settings, feature: 'settings' },
+    {
+      id: 'company-administration',
+      label: 'Company Administration',
+      items: [
+        { label: 'Company Users', href: '/admin/company', icon: Users },
+        { label: 'Roles', href: '/admin/roles', icon: KeyRound },
+        { label: 'Security Center', href: '/security-center', icon: ShieldCheck },
+        { label: 'RMM Integrations', href: '/integrations/rmm', icon: RefreshCw, feature: 'rmmIntegration' },
+        { label: 'Settings', href: '/settings', icon: Settings, feature: 'settings' },
+      ],
+    },
   ],
-} satisfies Record<string, NavItem[]>;
+} satisfies Record<string, NavGroup[]>;
 
 export function SidePanel() {
   const pathname = usePathname();
   const { user, authChecked, isAuthenticated } = useAuthStore();
   const [features, setFeatures] = useState<Record<string, boolean>>({});
   const [collapsed, setCollapsed] = useState(false);
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     try {
       setCollapsed(localStorage.getItem(SIDE_PANEL_COLLAPSED_KEY) === 'true');
+      const storedGroups = localStorage.getItem(SIDE_PANEL_GROUPS_KEY);
+      if (storedGroups) setCollapsedGroups(JSON.parse(storedGroups));
     } catch {}
   }, []);
 
@@ -120,15 +203,23 @@ export function SidePanel() {
 
   if (!user) return null;
 
-  const items = [
-    ...(user.role === 'GLOBAL_TECH' ? navItems.globalTech : user.userType === 'PUBLIC' ? navItems.public : navItems.business),
-    ...(user.role === 'SUPER_ADMIN' ? navItems.admin : []),
-    ...(user.role === 'TENANT_ADMIN' ? navItems.tenantAdmin : []),
-  ].filter((item, index, allItems) => {
-    const isFirstHref = allItems.findIndex((candidate) => candidate.href === item.href) === index;
-    const isEnabled = !item.feature || features[item.feature] !== false;
-    return isFirstHref && isEnabled;
-  });
+  const sourceGroups: NavGroup[] = [
+    ...(user.role === 'GLOBAL_TECH' ? navGroups.globalTech : user.userType === 'PUBLIC' ? navGroups.public : navGroups.business),
+    ...(user.role === 'SUPER_ADMIN' ? navGroups.admin : []),
+    ...(user.role === 'TENANT_ADMIN' ? navGroups.tenantAdmin : []),
+  ];
+  const seenHrefs = new Set<string>();
+  const groups = sourceGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => {
+        const isEnabled = !item.feature || features[item.feature] !== false;
+        if (!isEnabled || seenHrefs.has(item.href)) return false;
+        seenHrefs.add(item.href);
+        return true;
+      }),
+    }))
+    .filter((group) => group.items.length > 0);
 
   const toggleCollapsed = () => {
     setCollapsed((current) => {
@@ -140,9 +231,19 @@ export function SidePanel() {
     });
   };
 
+  const toggleGroup = (groupId: string) => {
+    setCollapsedGroups((current) => {
+      const next = { ...current, [groupId]: !current[groupId] };
+      try {
+        localStorage.setItem(SIDE_PANEL_GROUPS_KEY, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  };
+
   return (
     <aside className={cn(
-      'bg-white border-r border-gray-200 min-h-screen flex flex-col transition-[width] duration-200 ease-in-out',
+      'min-h-screen shrink-0 border-r border-gray-200 bg-white flex flex-col transition-[width] duration-200 ease-in-out',
       collapsed ? 'w-20' : 'w-64',
     )}>
       <div className={cn('flex items-center border-b border-gray-100 px-3 py-3', collapsed ? 'justify-center' : 'justify-between')}>
@@ -158,31 +259,74 @@ export function SidePanel() {
         </button>
       </div>
 
-      <nav className={cn('flex-1 py-4 space-y-1', collapsed ? 'px-2' : 'px-3')}>
-        {items.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+      <nav className={cn('flex-1 overflow-y-auto py-3', collapsed ? 'px-2' : 'px-3')}>
+        {groups.map((group, groupIndex) => {
+          const containsActiveRoute = group.items.some(
+            (item) => pathname === item.href || pathname.startsWith(item.href + '/'),
+          );
+          const isGroupOpen = !collapsedGroups[group.id];
+          const groupItemsId = `side-panel-${group.id}`;
+
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                'group relative flex h-10 items-center rounded-md text-sm font-medium transition-colors',
-                collapsed ? 'justify-center px-0' : 'gap-3 px-3',
-                isActive
-                  ? 'bg-primary/10 text-primary'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
-              )}
-              aria-label={collapsed ? item.label : undefined}
-              title={collapsed ? item.label : undefined}
+            <div
+              key={group.id}
+              className={cn(collapsed && groupIndex > 0 && 'mt-2 border-t border-gray-200 pt-2')}
             >
-              <item.icon size={17} className="shrink-0" />
-              {!collapsed && <span className="truncate">{item.label}</span>}
-              {collapsed && (
-                <span className="pointer-events-none absolute left-full top-1/2 z-50 ml-2 hidden -translate-y-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2.5 py-1.5 text-xs font-semibold text-white shadow-lg group-hover:block">
-                  {item.label}
-                </span>
+              {!collapsed && (
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(group.id)}
+                  className={cn(
+                    'flex h-8 w-full items-center justify-between rounded-md px-3 text-xs font-semibold uppercase hover:bg-gray-50',
+                    containsActiveRoute ? 'text-primary' : 'text-gray-500 hover:text-gray-800',
+                  )}
+                  aria-expanded={isGroupOpen}
+                  aria-controls={groupItemsId}
+                >
+                  <span className="truncate">{group.label}</span>
+                  <ChevronDown
+                    size={15}
+                    className={cn('shrink-0 transition-transform', !isGroupOpen && '-rotate-90')}
+                  />
+                </button>
               )}
-            </Link>
+
+              <div
+                id={groupItemsId}
+                className={cn('space-y-1', !collapsed && 'mb-2', !collapsed && !isGroupOpen && 'hidden')}
+              >
+                {group.items.map((item) => {
+                  const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+                  const compactLabel = `${group.label}: ${item.label}`;
+
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={cn(
+                        'group relative flex h-10 items-center rounded-md text-sm font-medium transition-colors',
+                        collapsed ? 'justify-center px-0' : 'gap-3 px-3',
+                        isActive
+                          ? 'bg-primary/10 text-primary'
+                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
+                      )}
+                      aria-label={collapsed ? compactLabel : undefined}
+                      title={collapsed ? compactLabel : undefined}
+                    >
+                      <item.icon size={17} className="shrink-0" />
+                      {!collapsed && <span className="truncate">{item.label}</span>}
+                      {collapsed && (
+                        <span className="pointer-events-none absolute left-full top-1/2 z-50 ml-2 hidden -translate-y-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2.5 py-1.5 text-xs font-semibold text-white shadow-lg group-hover:block">
+                          <span className="text-gray-300">{group.label}</span>
+                          <span className="px-1 text-gray-500">/</span>
+                          {item.label}
+                        </span>
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
           );
         })}
       </nav>
