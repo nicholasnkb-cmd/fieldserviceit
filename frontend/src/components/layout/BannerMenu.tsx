@@ -7,6 +7,8 @@ import { useAuthStore } from '../../stores/authStore';
 import { cn, formatDate } from '../../lib/utils';
 import { api, getListData } from '../../lib/api';
 import { DarkModeToggle } from '../ui/DarkModeToggle';
+import { Menu } from 'lucide-react';
+import { NAV_DRAWER_EVENT, NAV_FAVORITES_EVENT } from '../../lib/navigation';
 
 interface CompanyOption {
   id: string;
@@ -152,10 +154,12 @@ export function BannerMenu() {
         next.delete(pathname);
         return next;
       });
+      window.dispatchEvent(new Event(NAV_FAVORITES_EVENT));
       return;
     }
     await api.post('/users/me/favorites', { path: pathname, label: label.replace(/^./, (letter) => letter.toUpperCase()) });
     setFavoritePaths((current) => new Set(current).add(pathname));
+    window.dispatchEvent(new Event(NAV_FAVORITES_EVENT));
   };
 
   const handleCompanyContextChange = (companyId: string) => {
@@ -176,6 +180,15 @@ export function BannerMenu() {
       <div className="flex items-center justify-between h-14 px-4">
         {/* Logo */}
         <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new Event(NAV_DRAWER_EVENT))}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-900 md:hidden"
+            aria-label="Open navigation menu"
+            title="Open navigation menu"
+          >
+            <Menu size={20} />
+          </button>
           <Link href="/dashboard" className="text-lg font-bold text-primary whitespace-nowrap">
             {displayCompanyName}
           </Link>
@@ -256,7 +269,7 @@ export function BannerMenu() {
         </nav>
 
         {/* Search */}
-        <form onSubmit={handleSearch} className="flex items-center flex-1 max-w-md mx-4">
+        <form onSubmit={handleSearch} className="hidden flex-1 items-center max-w-md mx-4 sm:flex">
           <div className="relative w-full">
             <input
               ref={searchRef}
@@ -298,7 +311,9 @@ export function BannerMenu() {
             </select>
           )}
 
-          <DarkModeToggle />
+          <div className="hidden sm:block">
+            <DarkModeToggle />
+          </div>
 
           {/* Notification bell */}
           <div className="relative" ref={notifRef}>
@@ -348,10 +363,10 @@ export function BannerMenu() {
               {user.role}
             </span>
           )}
-          <Link href="/profile" className="text-sm text-gray-500 hover:text-gray-700">Profile</Link>
+          <Link href="/profile" className="hidden text-sm text-gray-500 hover:text-gray-700 lg:inline">Profile</Link>
           <button
             onClick={handleLogout}
-            className="text-sm text-gray-500 hover:text-gray-700"
+            className="hidden text-sm text-gray-500 hover:text-gray-700 lg:inline"
           >
             Sign out
           </button>
@@ -376,24 +391,6 @@ export function BannerMenu() {
           </select>
         </div>
       )}
-      <div className="md:hidden border-t border-gray-200 px-4 py-2 overflow-x-auto flex gap-2">
-        {menuItems.map((item) => {
-          const href = item.href ?? item.children?.[0]?.href ?? '#';
-          const isActive = pathname === href || pathname.startsWith(href + '/');
-          return (
-            <Link
-              key={item.label}
-              href={href}
-              className={cn(
-                'whitespace-nowrap px-3 py-1.5 text-sm rounded-md transition-colors',
-                isActive ? 'bg-primary/10 text-primary font-medium' : 'text-gray-600 hover:bg-gray-100',
-              )}
-            >
-              {item.label}
-            </Link>
-          );
-        })}
-      </div>
     </header>
   );
 }
