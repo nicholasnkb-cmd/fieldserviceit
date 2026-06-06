@@ -55,6 +55,25 @@ function getAuditDetail(entry: any) {
   return entry.comment || '';
 }
 
+function maskEmail(email: string) {
+  const [local = '', domain = ''] = String(email || '').split('@');
+  if (!domain) return email;
+  return `${local.slice(0, 2)}${'*'.repeat(Math.max(1, local.length - 2))}@${domain}`;
+}
+
+function emailStatusClass(status: string) {
+  const classes: Record<string, string> = {
+    SENT: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    QUEUED: 'border-blue-200 bg-blue-50 text-blue-700',
+    DIGEST_PENDING: 'border-indigo-200 bg-indigo-50 text-indigo-700',
+    SENDING: 'border-cyan-200 bg-cyan-50 text-cyan-700',
+    FAILED: 'border-red-200 bg-red-50 text-red-700',
+    BOUNCED: 'border-orange-200 bg-orange-50 text-orange-700',
+    SUPPRESSED: 'border-gray-200 bg-gray-50 text-gray-600',
+  };
+  return classes[status] || classes.SUPPRESSED;
+}
+
 export default function TicketDetailPage() {
   const { id } = useParams();
   const router = useRouter();
@@ -71,6 +90,7 @@ export default function TicketDetailPage() {
   const [commentIsInternal, setCommentIsInternal] = useState(false);
   const [submittingComment, setSubmittingComment] = useState(false);
   const [uploadingFiles, setUploadingFiles] = useState(false);
+  const [emailDeliveries, setEmailDeliveries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const { user } = useAuthStore();
@@ -89,6 +109,13 @@ export default function TicketDetailPage() {
     }).catch(() => router.push('/tickets'))
     .finally(() => setLoading(false));
   }, [id, router]);
+
+  useEffect(() => {
+    if (!isTech) return;
+    api.get(`/tickets/${id}/email-deliveries`)
+      .then((data) => setEmailDeliveries(getListData(data)))
+      .catch(() => setEmailDeliveries([]));
+  }, [id, isTech]);
 
   useEffect(() => {
     if (!user?.companyId) return;
@@ -110,6 +137,12 @@ export default function TicketDetailPage() {
     setTicket((prev: any) => ({ ...prev, timeline: getListData(timeline) }));
   };
 
+  const refreshEmailDeliveries = async () => {
+    if (!isTech) return;
+    const deliveries = await api.get(`/tickets/${id}/email-deliveries`);
+    setEmailDeliveries(getListData(deliveries));
+  };
+
   const updateTicket = async (body: any) => {
     setActionError('');
     try {
@@ -121,6 +154,7 @@ export default function TicketDetailPage() {
         attachments: updated.attachments || prev?.attachments,
       }));
       refreshTimeline().catch(() => undefined);
+      window.setTimeout(() => refreshEmailDeliveries().catch(() => undefined), 300);
       toast('success', 'Ticket updated');
       return updated;
     } catch (err: any) {
@@ -203,6 +237,7 @@ export default function TicketDetailPage() {
       }
       setTicket((prev: any) => ({ ...prev, attachments: [...(prev.attachments || []), ...newAttachments] }));
       refreshTimeline().catch(() => undefined);
+      window.setTimeout(() => refreshEmailDeliveries().catch(() => undefined), 300);
       toast('success', `${urls.length} file(s) uploaded`);
     } catch (err: any) {
       toast('error', err.message);
@@ -230,6 +265,7 @@ export default function TicketDetailPage() {
       setTicket((prev: any) => ({ ...prev, timeline: [entry, ...(prev.timeline || [])] }));
       setCommentText('');
       setCommentIsInternal(false);
+      if (!commentIsInternal) window.setTimeout(() => refreshEmailDeliveries().catch(() => undefined), 300);
       toast('success', 'Comment added');
     } catch (err: any) {
       toast('error', err.message);
@@ -481,6 +517,61 @@ export default function TicketDetailPage() {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {isTech && (
+          <div className="mt-4 border-t pt-4">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-medium text-gray-700">Email Delivery</h3>
+                <p className="text-xs text-gray-400">Customer and requester notification history for this ticket.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => refreshEmailDeliveries().catch(() => undefined)}
+                className="rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Refresh
+              </button>
+            </div>
+            {emailDeliveries.length === 0 ? (
+              <p className="rounded-md border border-dashed border-gray-200 p-4 text-sm text-gray-500">No ticket emails have been queued yet.</p>
+            ) : (
+              <div className="max-h-80 overflow-x-auto rounded-md border border-gray-200">
+                <table className="min-w-full divide-y divide-gray-200 text-left">
+                  <thead className="bg-gray-50 text-xs font-semibold uppercase text-gray-500">
+                    <tr>
+                      <th className="px-3 py-2">Recipient</th>
+                      <th className="px-3 py-2">Event</th>
+                      <th className="px-3 py-2">Status</th>
+                      <th className="px-3 py-2">Time</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 bg-white text-sm">
+                    {emailDeliveries.map((delivery) => (
+                      <tr key={delivery.id}>
+                        <td className="px-3 py-3">
+                          <div className="font-medium text-gray-900">{delivery.recipientName || 'Ticket participant'}</div>
+                          <div className="text-xs text-gray-500">{maskEmail(delivery.recipientEmail)}</div>
+                        </td>
+                        <td className="px-3 py-3 text-gray-700">
+                          <div>{delivery.eventType?.replaceAll('_', ' ')}</div>
+                          {delivery.errorMessage && <div className="mt-1 max-w-xs truncate text-xs text-red-600" title={delivery.errorMessage}>{delivery.errorMessage}</div>}
+                        </td>
+                        <td className="px-3 py-3">
+                          <span className={`inline-flex rounded border px-2 py-0.5 text-xs font-medium ${emailStatusClass(delivery.status)}`}>
+                            {delivery.status?.replaceAll('_', ' ')}
+                          </span>
+                          {delivery.attempts > 0 && <div className="mt-1 text-xs text-gray-400">{delivery.attempts} attempt{delivery.attempts === 1 ? '' : 's'}</div>}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-3 text-xs text-gray-500">{formatDate(delivery.sentAt || delivery.createdAt)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -12,6 +12,16 @@ export default function SettingsPage() {
   const [message, setMessage] = useState('');
   const [form, setForm] = useState({ name: '', domain: '', logo: '' });
   const [branding, setBranding] = useState({ primaryColor: '#2563eb', logoUrl: '', companyName: '' });
+  const [emailTemplate, setEmailTemplate] = useState<any>({
+    subjectTemplate: 'Ticket {{ticketNumber}}: {{action}}',
+    htmlTemplate: '',
+    senderName: '',
+    replyTo: '',
+    accentColor: '#2563eb',
+    headerText: '',
+    footerText: 'This is an automated ticket notification.',
+    enabled: true,
+  });
   const { user } = useAuthStore();
   const router = useRouter();
   const isAdmin = user?.role === 'TENANT_ADMIN' || user?.role === 'SUPER_ADMIN';
@@ -28,7 +38,12 @@ export default function SettingsPage() {
         companyName: data.branding?.companyName || data.name || '',
       });
     }).catch(() => {}).finally(() => setLoading(false));
-  }, [router, user]);
+    if (isAdmin) {
+      api.get('/notifications/email/templates/TICKET_PARTICIPANT')
+        .then((data) => setEmailTemplate((current: any) => ({ ...current, ...data, enabled: data.enabled !== false && data.enabled !== 0 })))
+        .catch(() => {});
+    }
+  }, [isAdmin, router, user]);
 
   const saveGeneral = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,6 +63,20 @@ export default function SettingsPage() {
       setMessage('Branding saved');
     } catch (err: any) { setMessage(err.message); }
     finally { setSaving(false); }
+  };
+
+  const saveEmailTemplate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      const updated = await api.put('/notifications/email/templates/TICKET_PARTICIPANT', emailTemplate);
+      setEmailTemplate((current: any) => ({ ...current, ...updated, enabled: updated.enabled !== false && updated.enabled !== 0 }));
+      setMessage('Email branding saved');
+    } catch (err: any) {
+      setMessage(err.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (loading) return <div className="p-8">Loading...</div>;
@@ -90,6 +119,66 @@ export default function SettingsPage() {
           </div>
         )}
       </div>
+
+      {isAdmin && (
+        <div className="mb-6 rounded-lg bg-white p-6 shadow">
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold">Ticket Email Branding</h2>
+            <p className="mt-1 text-sm text-gray-500">Customize the sender identity and wrapper used for ticket notifications.</p>
+          </div>
+          <form onSubmit={saveEmailTemplate} className="space-y-4">
+            <label className="flex items-center justify-between rounded border border-gray-200 p-3 text-sm text-gray-700">
+              Enable tenant-branded ticket emails
+              <input
+                type="checkbox"
+                checked={!!emailTemplate.enabled}
+                onChange={(e) => setEmailTemplate({ ...emailTemplate, enabled: e.target.checked })}
+                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+              />
+            </label>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Sender Name</label>
+                <input value={emailTemplate.senderName || ''} onChange={(e) => setEmailTemplate({ ...emailTemplate, senderName: e.target.value })}
+                  className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm" placeholder="Your support team" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Reply-To Address</label>
+                <input type="email" value={emailTemplate.replyTo || ''} onChange={(e) => setEmailTemplate({ ...emailTemplate, replyTo: e.target.value })}
+                  className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm" placeholder="support@example.com" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Header Text</label>
+                <input value={emailTemplate.headerText || ''} onChange={(e) => setEmailTemplate({ ...emailTemplate, headerText: e.target.value })}
+                  className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm" placeholder={branding.companyName || form.name || 'Company name'} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Accent Color</label>
+                <div className="mt-1 flex gap-2">
+                  <input type="color" value={emailTemplate.accentColor || '#2563eb'} onChange={(e) => setEmailTemplate({ ...emailTemplate, accentColor: e.target.value })}
+                    className="h-9 w-9 rounded border border-gray-300" />
+                  <input value={emailTemplate.accentColor || '#2563eb'} onChange={(e) => setEmailTemplate({ ...emailTemplate, accentColor: e.target.value })}
+                    className="min-w-0 flex-1 rounded border border-gray-300 px-3 py-2 text-sm" />
+                </div>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Subject Template</label>
+              <input value={emailTemplate.subjectTemplate || ''} onChange={(e) => setEmailTemplate({ ...emailTemplate, subjectTemplate: e.target.value })}
+                className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm" />
+              <p className="mt-1 text-xs text-gray-500">Available fields: {'{{ticketNumber}}'}, {'{{ticketTitle}}'}, {'{{action}}'}, {'{{companyName}}'}</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Footer Text</label>
+              <input value={emailTemplate.footerText || ''} onChange={(e) => setEmailTemplate({ ...emailTemplate, footerText: e.target.value })}
+                className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm" />
+            </div>
+            <button type="submit" disabled={saving} className="rounded-md bg-primary px-4 py-2 text-sm text-white hover:bg-primary/90 disabled:opacity-50">
+              {saving ? 'Saving...' : 'Save Email Branding'}
+            </button>
+          </form>
+        </div>
+      )}
 
       <div className="bg-white rounded-lg shadow p-6 mb-6">
         <h2 className="text-lg font-semibold mb-4">Branding</h2>
