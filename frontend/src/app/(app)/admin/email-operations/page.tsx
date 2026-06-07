@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { Mail, RefreshCw } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Mail, RefreshCw, Save, ShieldCheck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { api, getListData, getResponseMeta } from '../../../../lib/api';
 import { formatDate } from '../../../../lib/utils';
@@ -34,25 +34,50 @@ export default function EmailOperationsPage() {
   const [loading, setLoading] = useState(true);
   const [retryingId, setRetryingId] = useState('');
   const [total, setTotal] = useState(0);
+  const [smtpSaving, setSmtpSaving] = useState(false);
+  const [smtpTesting, setSmtpTesting] = useState(false);
+  const smtpInitialized = useRef(false);
+  const [smtpForm, setSmtpForm] = useState({
+    host: 'smtp.hostinger.com',
+    port: 465,
+    secure: true,
+    username: '',
+    password: '',
+    fromAddress: '',
+    replyTo: '',
+  });
 
   const load = useCallback(async () => {
     const params = new URLSearchParams({ limit: '100' });
     if (status) params.set('status', status);
     if (search.trim()) params.set('search', search.trim());
     try {
-      const [summaryData, deliveryData] = await Promise.all([
+      const [summaryData, deliveryData, configData] = await Promise.all([
         api.get('/notifications/email/summary'),
         api.get(`/notifications/email/deliveries?${params.toString()}`),
+        user?.role === 'SUPER_ADMIN' ? api.get('/notifications/email/config') : Promise.resolve(null),
       ]);
       setSummary(summaryData);
       setDeliveries(getListData(deliveryData));
       setTotal(Number(getResponseMeta(deliveryData)?.total || deliveryData?.meta?.total || 0));
+      if (configData && !smtpInitialized.current) {
+        setSmtpForm({
+          host: configData.host || 'smtp.hostinger.com',
+          port: Number(configData.port || 465),
+          secure: configData.secure ?? true,
+          username: configData.username || '',
+          password: '',
+          fromAddress: configData.from || '',
+          replyTo: configData.replyTo || '',
+        });
+        smtpInitialized.current = true;
+      }
     } catch (err: any) {
       toast('error', err.message || 'Failed to load email operations');
     } finally {
       setLoading(false);
     }
-  }, [search, status, toast]);
+  }, [search, status, toast, user?.role]);
 
   useEffect(() => {
     if (!user) return;
@@ -75,6 +100,34 @@ export default function EmailOperationsPage() {
       toast('error', err.message);
     } finally {
       setRetryingId('');
+    }
+  };
+
+  const saveSmtp = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setSmtpSaving(true);
+    try {
+      const updated = await api.put('/notifications/email/config', smtpForm);
+      setSummary((current: any) => ({ ...(current || {}), smtp: updated }));
+      setSmtpForm((current) => ({ ...current, password: '' }));
+      toast('success', 'SMTP settings saved and verified');
+    } catch (err: any) {
+      toast('error', err.message || 'SMTP verification failed');
+    } finally {
+      setSmtpSaving(false);
+    }
+  };
+
+  const testSmtp = async () => {
+    setSmtpTesting(true);
+    try {
+      const updated = await api.post('/notifications/email/config/test', {});
+      setSummary((current: any) => ({ ...(current || {}), smtp: updated }));
+      toast('success', 'SMTP connection verified');
+    } catch (err: any) {
+      toast('error', err.message || 'SMTP verification failed');
+    } finally {
+      setSmtpTesting(false);
     }
   };
 
@@ -124,6 +177,120 @@ export default function EmailOperationsPage() {
           </div>
         ))}
       </section>
+
+      {user?.role === 'SUPER_ADMIN' && (
+        <section className="rounded-lg border border-gray-200 bg-white">
+          <div className="flex flex-col gap-2 border-b border-gray-200 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="font-semibold text-gray-900">SMTP Provider</h2>
+              <p className="text-xs text-gray-500">
+                Credentials are encrypted at rest. Leave the password blank to keep the current password.
+              </p>
+            </div>
+            <div className="text-xs text-gray-500">
+              {summary?.smtp?.lastTestStatus
+                ? `Last test: ${summary.smtp.lastTestStatus}${summary.smtp.lastTestAt ? ` · ${formatDate(summary.smtp.lastTestAt)}` : ''}`
+                : 'Not tested'}
+            </div>
+          </div>
+          <form onSubmit={saveSmtp} className="p-4">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <label className="text-sm font-medium text-gray-700">
+                SMTP host
+                <input
+                  required
+                  value={smtpForm.host}
+                  onChange={(event) => setSmtpForm((current) => ({ ...current, host: event.target.value }))}
+                  className="mt-1 h-10 w-full rounded-md border border-gray-300 px-3 font-normal"
+                />
+              </label>
+              <label className="text-sm font-medium text-gray-700">
+                Port
+                <input
+                  required
+                  type="number"
+                  min={1}
+                  max={65535}
+                  value={smtpForm.port}
+                  onChange={(event) => setSmtpForm((current) => ({ ...current, port: Number(event.target.value) }))}
+                  className="mt-1 h-10 w-full rounded-md border border-gray-300 px-3 font-normal"
+                />
+              </label>
+              <label className="text-sm font-medium text-gray-700">
+                Username
+                <input
+                  required
+                  type="email"
+                  autoComplete="username"
+                  value={smtpForm.username}
+                  onChange={(event) => setSmtpForm((current) => ({ ...current, username: event.target.value }))}
+                  className="mt-1 h-10 w-full rounded-md border border-gray-300 px-3 font-normal"
+                />
+              </label>
+              <label className="text-sm font-medium text-gray-700">
+                Password
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  value={smtpForm.password}
+                  onChange={(event) => setSmtpForm((current) => ({ ...current, password: event.target.value }))}
+                  placeholder={summary?.smtp?.passwordConfigured ? 'Current password is stored' : 'Required'}
+                  className="mt-1 h-10 w-full rounded-md border border-gray-300 px-3 font-normal"
+                />
+              </label>
+              <label className="text-sm font-medium text-gray-700">
+                From address
+                <input
+                  required
+                  type="email"
+                  value={smtpForm.fromAddress}
+                  onChange={(event) => setSmtpForm((current) => ({ ...current, fromAddress: event.target.value }))}
+                  className="mt-1 h-10 w-full rounded-md border border-gray-300 px-3 font-normal"
+                />
+              </label>
+              <label className="text-sm font-medium text-gray-700">
+                Reply-to address
+                <input
+                  type="email"
+                  value={smtpForm.replyTo}
+                  onChange={(event) => setSmtpForm((current) => ({ ...current, replyTo: event.target.value }))}
+                  className="mt-1 h-10 w-full rounded-md border border-gray-300 px-3 font-normal"
+                />
+              </label>
+            </div>
+            <div className="mt-4 flex flex-col gap-3 border-t border-gray-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={smtpForm.secure}
+                  onChange={(event) => setSmtpForm((current) => ({ ...current, secure: event.target.checked }))}
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                Use implicit TLS/SSL
+              </label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={testSmtp}
+                  disabled={!summary?.smtp?.configured || smtpTesting}
+                  className="inline-flex h-10 items-center gap-2 rounded-md border border-gray-300 px-3 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  <ShieldCheck size={16} />
+                  {smtpTesting ? 'Testing...' : 'Test connection'}
+                </button>
+                <button
+                  type="submit"
+                  disabled={smtpSaving}
+                  className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-50"
+                >
+                  <Save size={16} />
+                  {smtpSaving ? 'Verifying...' : 'Save and verify'}
+                </button>
+              </div>
+            </div>
+          </form>
+        </section>
+      )}
 
       <section className="rounded-lg border border-gray-200 bg-white">
         <div className="flex flex-col gap-3 border-b border-gray-200 p-4 md:flex-row md:items-center">
