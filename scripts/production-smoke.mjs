@@ -393,6 +393,7 @@ await check('frontend security center page shell', () => expectOk(`${baseUrl}/se
 await check('frontend technician mobile page shell', () => expectOk(`${baseUrl}/technician-mobile`));
 await check('frontend customer portal page shell', () => expectOk(`${baseUrl}/customer-portal`));
 await check('backend health', () => expectOk(`${apiUrl}/v1/health`));
+await expectList('public SSO provider discovery API', `${apiUrl}/v1/auth/sso/providers`);
 
 await check('protected admin plans route is registered', async () => {
   const res = await fetch(`${apiUrl}/v1/admin/plans`);
@@ -422,6 +423,16 @@ await check('protected topology change detection route is registered', async () 
   if (![401, 403].includes(res.status)) throw new Error(`Expected 401/403, got ${res.status}`);
 });
 
+await check('protected platform security route is registered', async () => {
+  const res = await fetch(`${apiUrl}/v1/platform-security/dashboard`);
+  if (![401, 403].includes(res.status)) throw new Error(`Expected 401/403, got ${res.status}`);
+});
+
+await check('protected session management route is registered', async () => {
+  const res = await fetch(`${apiUrl}/v1/auth/sessions`);
+  if (![401, 403].includes(res.status)) throw new Error(`Expected 401/403, got ${res.status}`);
+});
+
 if (email && password) {
   let currentUser;
   await check('auth login', async () => {
@@ -437,6 +448,8 @@ if (email && password) {
   });
 
   await check('current user API', () => expectOk(`${apiUrl}/v1/users/me`));
+  await check('MFA status API', () => expectOk(`${apiUrl}/v1/auth/mfa/status`));
+  await expectList('session management API', `${apiUrl}/v1/auth/sessions`);
   await check('effective feature API', () => expectOk(`${apiUrl}/v1/users/me/features`));
   await check('AI tools API', () => expectOk(`${apiUrl}/v1/ai-agent/tools`));
   await check('RMM providers API', () => expectOk(`${apiUrl}/v1/integrations/rmm/providers`));
@@ -450,6 +463,10 @@ if (email && password) {
     await expectList('admin roles list API', `${apiUrl}/v1/admin/roles`);
     await expectList('admin audit logs list API', `${apiUrl}/v1/admin/audit-logs?limit=5`);
     await expectList('admin tickets list API', `${apiUrl}/v1/admin/tickets?limit=5`);
+    await check('platform security dashboard API', () => expectOk(`${apiUrl}/v1/platform-security/dashboard`));
+    await expectList('OIDC provider list API', `${apiUrl}/v1/platform-security/oidc`);
+    await expectList('network approval list API', `${apiUrl}/v1/platform-security/approvals`);
+    await expectList('backup history API', `${apiUrl}/v1/platform-security/backups`);
     let companyContextHeaders = {};
     if (!currentUser?.companyId) {
       await check('asset list API with company context', async () => {
