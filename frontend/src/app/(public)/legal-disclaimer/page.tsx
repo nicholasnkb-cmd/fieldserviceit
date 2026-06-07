@@ -14,8 +14,13 @@ const sections = [
   },
   {
     title: 'Monitoring and integrations',
-    body: 'Device status, SNMP results, syslog messages, RMM records, vendor API data, alerts, and vulnerability references may be delayed, incomplete, unavailable, or affected by third-party systems.',
+    body: 'Device status, SNMP results, syslog messages, RMM records, vendor API data, email delivery events, alerts, and vulnerability references may be delayed, incomplete, unavailable, or affected by third-party systems.',
     icon: ShieldAlert,
+  },
+  {
+    title: 'Email delivery analytics',
+    body: 'Transactional emails may include signed tracking links and a small tracking image to measure delivery acceptance, opens, and link clicks. Email clients and privacy proxies can make these measurements approximate.',
+    icon: FileText,
   },
   {
     title: 'No guarantee of uninterrupted service',
@@ -38,7 +43,7 @@ export default function LegalDisclaimerPage() {
               This disclaimer explains general limitations and user responsibilities when using the FieldserviceIT site,
               applications, monitoring features, integrations, automation, and administrative controls.
             </p>
-            <p className="mt-4 text-sm leading-6 text-gray-500">Last updated: May 31, 2026</p>
+            <p className="mt-4 text-sm leading-6 text-gray-500">Last updated: June 7, 2026</p>
           </div>
         </div>
       </section>

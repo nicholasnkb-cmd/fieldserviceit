@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Eye } from 'lucide-react';
 import { api } from '../../../lib/api';
 import { useAuthStore } from '../../../stores/authStore';
 
@@ -22,6 +23,8 @@ export default function SettingsPage() {
     footerText: 'This is an automated ticket notification.',
     enabled: true,
   });
+  const [emailPreview, setEmailPreview] = useState('');
+  const [previewing, setPreviewing] = useState(false);
   const { user } = useAuthStore();
   const router = useRouter();
   const isAdmin = user?.role === 'TENANT_ADMIN' || user?.role === 'SUPER_ADMIN';
@@ -76,6 +79,18 @@ export default function SettingsPage() {
       setMessage(err.message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const previewEmailTemplate = async () => {
+    setPreviewing(true);
+    try {
+      const preview = await api.post('/notifications/email/templates/TICKET_PARTICIPANT/preview', emailTemplate);
+      setEmailPreview(preview.htmlBody || '');
+    } catch (err: any) {
+      setMessage(err.message || 'Email preview could not be generated');
+    } finally {
+      setPreviewing(false);
     }
   };
 
@@ -173,9 +188,27 @@ export default function SettingsPage() {
               <input value={emailTemplate.footerText || ''} onChange={(e) => setEmailTemplate({ ...emailTemplate, footerText: e.target.value })}
                 className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm" />
             </div>
-            <button type="submit" disabled={saving} className="rounded-md bg-primary px-4 py-2 text-sm text-white hover:bg-primary/90 disabled:opacity-50">
-              {saving ? 'Saving...' : 'Save Email Branding'}
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button type="submit" disabled={saving} className="rounded-md bg-primary px-4 py-2 text-sm text-white hover:bg-primary/90 disabled:opacity-50">
+                {saving ? 'Saving...' : 'Save Email Branding'}
+              </button>
+              <button type="button" onClick={previewEmailTemplate} disabled={previewing}
+                className="inline-flex items-center gap-2 rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+                <Eye size={16} />
+                {previewing ? 'Generating...' : 'Preview'}
+              </button>
+            </div>
+            {emailPreview && (
+              <div className="border-t border-gray-200 pt-4">
+                <div className="mb-2 text-sm font-medium text-gray-700">Email preview</div>
+                <iframe
+                  title="Ticket email preview"
+                  srcDoc={emailPreview}
+                  sandbox=""
+                  className="h-[520px] w-full rounded-md border border-gray-300 bg-white"
+                />
+              </div>
+            )}
           </form>
         </div>
       )}
