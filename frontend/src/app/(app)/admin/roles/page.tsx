@@ -49,7 +49,7 @@ export default function AdminRolesPage() {
 
   useEffect(() => {
     if (!user) return;
-    if (user.role !== 'SUPER_ADMIN' && user.role !== 'TENANT_ADMIN') { router.push('/dashboard'); return; }
+    if (user.role !== 'SUPER_ADMIN') { router.push('/dashboard'); return; }
     Promise.all([
       api.get('/admin/permissions'),
       api.get('/admin/roles'),

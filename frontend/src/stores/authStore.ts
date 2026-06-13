@@ -7,10 +7,12 @@ interface CompanyInfo {
   name: string;
   slug?: string;
   logo?: string;
-  branding?: string;
+  settings?: Record<string, any>;
+  branding?: Record<string, any>;
 }
 
 const COMPANY_CONTEXT_KEY = 'superAdminCompanyContext';
+const COMPANY_BRANDING_KEY = 'tenantBranding';
 
 function getUserFromToken(): User | null {
   return null;
@@ -19,6 +21,15 @@ function getUserFromToken(): User | null {
 function getCompanyContextFromStorage(): CompanyInfo | null {
   try {
     const value = typeof window !== 'undefined' ? localStorage.getItem(COMPANY_CONTEXT_KEY) : null;
+    return value ? JSON.parse(value) : null;
+  } catch {
+    return null;
+  }
+}
+
+function getCompanyBrandingFromStorage(): CompanyInfo | null {
+  try {
+    const value = typeof window !== 'undefined' ? localStorage.getItem(COMPANY_BRANDING_KEY) : null;
     return value ? JSON.parse(value) : null;
   } catch {
     return null;
@@ -40,12 +51,15 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: getUserFromToken(),
-  company: null,
+  company: getCompanyBrandingFromStorage(),
   activeCompanyContext: getCompanyContextFromStorage(),
   isAuthenticated: !!getUserFromToken(),
   authChecked: false,
   setUser: (user) => set({ user, isAuthenticated: true, authChecked: true }),
-  setCompany: (company) => set({ company }),
+  setCompany: (company) => {
+    if (typeof window !== 'undefined') localStorage.setItem(COMPANY_BRANDING_KEY, JSON.stringify(company));
+    set({ company });
+  },
   setAuthChecked: (checked) => set({ authChecked: checked }),
   setActiveCompanyContext: (company) => {
     if (typeof window !== 'undefined') {
@@ -69,6 +83,6 @@ export const useAuthStore = create<AuthState>((set) => ({
       clearSessionTokens();
       localStorage.removeItem(COMPANY_CONTEXT_KEY);
     }
-    set({ user: null, company: null, activeCompanyContext: null, isAuthenticated: false, authChecked: true });
+    set({ user: null, activeCompanyContext: null, isAuthenticated: false, authChecked: true });
   },
 }));

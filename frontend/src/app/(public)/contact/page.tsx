@@ -1,5 +1,15 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRight, Building2, Headphones, Mail, MapPin, ShieldQuestion } from 'lucide-react';
+
+export const metadata: Metadata = {
+  title: 'Contact Sales and Support',
+  description:
+    'Contact FieldserviceIT for sales, business onboarding, billing, integrations, platform support, or security questions.',
+  alternates: {
+    canonical: '/contact',
+  },
+};
 
 const contactOptions = [
   {
@@ -93,7 +103,7 @@ export default function ContactPage() {
               ['Integration context', 'Vendor name, controller type, affected tenant or site, and whether the issue is test, sync, or live action related.'],
               ['Urgency context', 'Whether production service, customer access, billing, or monitoring alerts are affected.'],
             ].map(([title, body]) => (
-              <div key={title} className="rounded border border-white/15 bg-white/6 p-5">
+              <div key={title} className="rounded border border-white/15 bg-white/[0.06] p-5">
                 <h3 className="text-base font-semibold">{title}</h3>
                 <p className="mt-2 text-sm leading-6 text-gray-300">{body}</p>
               </div>

@@ -1,12 +1,17 @@
 'use client';
 
-import { Suspense, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '../../../stores/authStore';
 import { setSessionTokens, unwrapResponseBody } from '../../../lib/api';
 
-const individualPlans = ['Free', 'Starter'];
+interface PlanOption { id: string; name: string; monthlyPrice: number }
+const fallbackPlans: PlanOption[] = [
+  { id: 'free', name: 'Free', monthlyPrice: 0 },
+  { id: 'starter', name: 'Starter', monthlyPrice: 29 },
+  { id: 'business', name: 'Business', monthlyPrice: 79 },
+];
 
 function RegisterForm() {
   const [firstName, setFirstName] = useState('');
@@ -24,13 +29,28 @@ function RegisterForm() {
   const searchParams = useSearchParams();
   const initialPlan = useMemo(() => {
     const requestedPlan = searchParams.get('plan') || '';
-    return individualPlans.includes(requestedPlan) ? requestedPlan : 'Free';
+    return fallbackPlans.some((plan) => plan.name === requestedPlan) ? requestedPlan : 'Free';
   }, [searchParams]);
   const [selectedPlan, setSelectedPlan] = useState(initialPlan);
+  const [plans, setPlans] = useState<PlanOption[]>(fallbackPlans);
+
+  useEffect(() => {
+    fetch('/v1/plans')
+      .then((response) => response.ok ? response.json() : null)
+      .then((body) => {
+        const data = body?.data?.data || body?.data || body;
+        if (Array.isArray(data) && data.length) setPlans(data);
+      })
+      .catch(() => {});
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    if (selectedPlan === 'Business') {
+      router.push('/register-business?plan=Business');
+      return;
+    }
     setLoading(true);
 
     try {
@@ -93,6 +113,7 @@ function RegisterForm() {
                 id="firstName"
                 type="text"
                 required
+                maxLength={80}
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
@@ -106,6 +127,7 @@ function RegisterForm() {
                 id="lastName"
                 type="text"
                 required
+                maxLength={80}
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
                 className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
@@ -121,6 +143,7 @@ function RegisterForm() {
               id="email"
               type="email"
               required
+              maxLength={191}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
@@ -137,11 +160,14 @@ function RegisterForm() {
               onChange={(e) => setSelectedPlan(e.target.value)}
               className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
             >
-              <option value="Free">Free</option>
-              <option value="Starter">Starter - $29/month</option>
+              {plans.map((plan) => (
+                <option key={plan.id} value={plan.name}>
+                  {plan.name}{plan.monthlyPrice > 0 ? ` - $${plan.monthlyPrice}/month` : ''}
+                </option>
+              ))}
             </select>
             <p className="text-xs text-gray-400 mt-1">
-              Business signup is handled separately
+              Business plans continue through company registration.
             </p>
           </div>
 
@@ -153,6 +179,7 @@ function RegisterForm() {
               id="phone"
               type="tel"
               required
+              maxLength={24}
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
@@ -167,6 +194,7 @@ function RegisterForm() {
               <input
                 id="location"
                 type="text"
+                maxLength={160}
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 placeholder="City, state"
@@ -180,6 +208,7 @@ function RegisterForm() {
               <input
                 id="timezone"
                 type="text"
+                maxLength={80}
                 value={timezone}
                 onChange={(e) => setTimezone(e.target.value)}
                 placeholder="Eastern"
@@ -212,7 +241,8 @@ function RegisterForm() {
               id="password"
               type="password"
               required
-              minLength={6}
+              minLength={8}
+              maxLength={128}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"

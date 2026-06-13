@@ -1,6 +1,15 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   poweredByHeader: false,
+  distDir: process.env.NEXT_DIST_DIR || '.next',
+  async rewrites() {
+    return [
+      {
+        source: '/v1/:path*',
+        destination: `${process.env.API_PROXY_TARGET || 'http://localhost:4000'}/v1/:path*`,
+      },
+    ];
+  },
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: '*.fieldserviceit.com' },

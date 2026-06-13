@@ -1,10 +1,17 @@
 'use client';
 
-import { Suspense, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '../../../stores/authStore';
 import { setSessionTokens, unwrapResponseBody } from '../../../lib/api';
+
+interface PlanOption { id: string; name: string; monthlyPrice: number }
+const fallbackPlans: PlanOption[] = [
+  { id: 'free', name: 'Free', monthlyPrice: 0 },
+  { id: 'starter', name: 'Starter', monthlyPrice: 29 },
+  { id: 'business', name: 'Business', monthlyPrice: 79 },
+];
 
 function RegisterBusinessForm() {
   const [firstName, setFirstName] = useState('');
@@ -26,16 +33,29 @@ function RegisterBusinessForm() {
   const searchParams = useSearchParams();
   const initialPlan = useMemo(() => {
     const requestedPlan = searchParams.get('plan') || '';
-    return requestedPlan === 'Business' ? requestedPlan : 'Business';
+    return fallbackPlans.some((plan) => plan.name === requestedPlan) ? requestedPlan : 'Business';
   }, [searchParams]);
-  const selectedPlan = initialPlan;
+  const [selectedPlan, setSelectedPlan] = useState(initialPlan);
+  const [plans, setPlans] = useState<PlanOption[]>(fallbackPlans);
+
+  useEffect(() => {
+    fetch('/v1/plans')
+      .then((response) => response.ok ? response.json() : null)
+      .then((body) => {
+        const data = body?.data?.data || body?.data || body;
+        if (Array.isArray(data) && data.length) setPlans(data);
+      })
+      .catch(() => {});
+  }, []);
 
   const startCheckout = async (apiUrl: string, planName: string) => {
     const plansRes = await fetch(`${apiUrl}/v1/plans`, { credentials: 'include' });
     if (!plansRes.ok) throw new Error('Account created, but plans could not be loaded');
 
     const plansData = await plansRes.json();
-    const plan = (plansData.data || []).find((item: any) => item.name?.toLowerCase() === planName.toLowerCase());
+    const availablePlans = plansData?.data?.data || plansData?.data || plansData;
+    const plan = (Array.isArray(availablePlans) ? availablePlans : [])
+      .find((item: any) => item.name?.toLowerCase() === planName.toLowerCase());
     if (!plan || plan.monthlyPrice === 0) throw new Error('Companies must choose a paid plan');
 
     const checkoutRes = await fetch(`${apiUrl}/v1/billing/checkout`, {
@@ -68,6 +88,10 @@ function RegisterBusinessForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    if (selectedPlan !== 'Business') {
+      router.push(`/register?plan=${encodeURIComponent(selectedPlan)}`);
+      return;
+    }
     setLoading(true);
     if (!inviteCode && !companyName.trim()) {
       setError('Company name is required when creating a new workspace');
@@ -132,19 +156,19 @@ function RegisterBusinessForm() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700">First name</label>
-              <input type="text" required value={firstName} onChange={(e) => setFirstName(e.target.value)}
+              <input type="text" required maxLength={80} value={firstName} onChange={(e) => setFirstName(e.target.value)}
                 className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Last name</label>
-              <input type="text" required value={lastName} onChange={(e) => setLastName(e.target.value)}
+              <input type="text" required maxLength={80} value={lastName} onChange={(e) => setLastName(e.target.value)}
                 className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
             </div>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700">Company name</label>
-            <input type="text" value={companyName} onChange={(e) => setCompanyName(e.target.value)}
+            <input type="text" maxLength={160} value={companyName} onChange={(e) => setCompanyName(e.target.value)}
               placeholder="Acme IT Services"
               className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
             <p className="text-xs text-gray-400 mt-1">
@@ -154,17 +178,25 @@ function RegisterBusinessForm() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700">Selected plan</label>
-            <div className="mt-1 rounded border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900">
-              Business - $79/month
-            </div>
+            <select
+              value={selectedPlan}
+              onChange={(event) => setSelectedPlan(event.target.value)}
+              className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              {plans.map((plan) => (
+                <option key={plan.id} value={plan.name}>
+                  {plan.name}{plan.monthlyPrice > 0 ? ` - $${plan.monthlyPrice}/month` : ''}
+                </option>
+              ))}
+            </select>
             <p className="text-xs text-gray-400 mt-1">
-              Companies have one plan; Free and Starter are for individuals
+              Free and Starter selections continue through individual registration.
             </p>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700">Work email</label>
-            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
+            <input type="email" required maxLength={191} value={email} onChange={(e) => setEmail(e.target.value)}
               placeholder="you@company.com"
               className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
             <p className="text-xs text-gray-400 mt-1">
@@ -174,19 +206,19 @@ function RegisterBusinessForm() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700">Phone number</label>
-            <input type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)}
+            <input type="tel" required maxLength={24} value={phone} onChange={(e) => setPhone(e.target.value)}
               className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700">Job title</label>
-              <input type="text" value={jobTitle} onChange={(e) => setJobTitle(e.target.value)}
+              <input type="text" maxLength={100} value={jobTitle} onChange={(e) => setJobTitle(e.target.value)}
                 className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Department</label>
-              <input type="text" value={department} onChange={(e) => setDepartment(e.target.value)}
+              <input type="text" maxLength={100} value={department} onChange={(e) => setDepartment(e.target.value)}
                 className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
             </div>
           </div>
@@ -194,13 +226,13 @@ function RegisterBusinessForm() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700">Location</label>
-              <input type="text" value={location} onChange={(e) => setLocation(e.target.value)}
+              <input type="text" maxLength={160} value={location} onChange={(e) => setLocation(e.target.value)}
                 placeholder="City, state"
                 className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Timezone</label>
-              <input type="text" value={timezone} onChange={(e) => setTimezone(e.target.value)}
+              <input type="text" maxLength={80} value={timezone} onChange={(e) => setTimezone(e.target.value)}
                 placeholder="Eastern"
                 className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
             </div>
@@ -221,7 +253,7 @@ function RegisterBusinessForm() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700">Password</label>
-            <input type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)}
+            <input type="password" required minLength={8} maxLength={128} value={password} onChange={(e) => setPassword(e.target.value)}
               className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
           </div>
 
@@ -229,7 +261,7 @@ function RegisterBusinessForm() {
             <label className="block text-sm font-medium text-gray-700">
               Invite code <span className="text-gray-400">(optional)</span>
             </label>
-            <input type="text" value={inviteCode} onChange={(e) => setInviteCode(e.target.value)}
+            <input type="text" maxLength={80} value={inviteCode} onChange={(e) => setInviteCode(e.target.value)}
               placeholder="e.g. A1B2C3D4"
               className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
             <p className="text-xs text-gray-400 mt-1">

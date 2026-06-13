@@ -59,15 +59,15 @@ export function Header() {
             </div>
           ) : (
             <>
-              <Link href="/about" className="hidden text-sm font-medium text-gray-600 hover:text-gray-950 sm:inline">
+              <Link href="/about" className="hidden text-sm font-bold text-gray-700 hover:text-gray-950 sm:inline">
                 About
               </Link>
-              <Link href="/contact" className="hidden text-sm font-medium text-gray-600 hover:text-gray-950 sm:inline">
+              <Link href="/contact" className="hidden text-sm font-bold text-gray-700 hover:text-gray-950 sm:inline">
                 Contact
               </Link>
               <Link
                 href="/login"
-                className="text-sm text-primary hover:text-primary-700 font-medium"
+                className="text-sm text-primary hover:text-primary-700 font-bold"
               >
                 Sign in
               </Link>

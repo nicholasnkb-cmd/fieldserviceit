@@ -79,7 +79,9 @@ export default function TenantAdminPage() {
         <h1 className="text-2xl font-bold">Company Management</h1>
         <div className="flex gap-2">
           <Link href="/admin/company/users" className="px-4 py-2 bg-primary/10 text-primary text-sm rounded-md hover:bg-primary/20">All Users</Link>
-          <Link href="/admin/roles" className="px-4 py-2 bg-primary/10 text-primary text-sm rounded-md hover:bg-primary/20">Roles</Link>
+          {user?.role === 'SUPER_ADMIN' && (
+            <Link href="/admin/roles" className="px-4 py-2 bg-primary/10 text-primary text-sm rounded-md hover:bg-primary/20">Roles</Link>
+          )}
           <Link href="/settings" className="px-4 py-2 bg-primary/10 text-primary text-sm rounded-md hover:bg-primary/20">Settings</Link>
           <button onClick={() => setShowCreate(!showCreate)} className="px-4 py-2 bg-primary text-white text-sm rounded-md hover:bg-primary/90">
             {showCreate ? 'Cancel' : 'Add User'}

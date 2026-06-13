@@ -15,6 +15,23 @@ export function formatDate(date: string | Date) {
   }).format(new Date(date));
 }
 
+export function formatActionDate(date: string | Date) {
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(new Date(date));
+}
+
+export function formatActionTime(date: string | Date) {
+  return new Intl.DateTimeFormat('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    second: '2-digit',
+    timeZoneName: 'short',
+  }).format(new Date(date));
+}
+
 export function getStatusColor(status: string) {
   const colors: Record<string, string> = {
     OPEN: 'bg-blue-100 text-blue-800',

@@ -37,6 +37,8 @@ jobs:
       - run: npm ci
       - run: npx prisma generate
       - run: npx tsc --noEmit -p tsconfig.build.json
+      - run: npm run check:permissions
+      - run: npm run check:tenant-sql
 
   backend-unit:
     name: Backend Unit Tests
@@ -112,7 +114,7 @@ jobs:
       - run: npm ci
       - run: npx prisma generate
       - run: npm run seed
-      - run: npm run test:e2e -- --testPathPattern="app.e2e-spec|auth-ticket-lifecycle.e2e-spec|permissions.e2e-spec"
+      - run: npm run test:e2e:ci -- --runInBand --testPathPattern="app.e2e-spec|auth-ticket-lifecycle.e2e-spec|security-hardening.e2e-spec"
 
   frontend:
     name: Frontend Build & Lint
@@ -153,4 +155,3 @@ jobs:
 
       - run: npm ci
       - run: npm audit --production --audit-level=high
-        continue-on-error: true

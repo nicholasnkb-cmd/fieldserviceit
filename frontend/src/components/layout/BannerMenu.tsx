@@ -174,6 +174,8 @@ export function BannerMenu() {
   if (!isAuthenticated || !user) return null;
 
   const displayCompanyName = activeCompanyContext?.name || company?.name || 'FieldserviceIT';
+  const branding = activeCompanyContext?.branding || company?.branding || {};
+  const displayLogo = branding.logoUrl || activeCompanyContext?.logo || company?.logo;
 
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
@@ -189,8 +191,9 @@ export function BannerMenu() {
           >
             <Menu size={20} />
           </button>
+          {displayLogo && <img src={displayLogo} alt="" className="h-8 w-8 rounded object-contain" />}
           <Link href="/dashboard" className="text-lg font-bold text-primary whitespace-nowrap">
-            {displayCompanyName}
+            {branding.companyName || displayCompanyName}
           </Link>
           {activeCompanyContext && (
             <span className="hidden lg:inline-flex text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-0.5">

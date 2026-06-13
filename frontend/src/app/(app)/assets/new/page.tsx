@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Laptop, Save } from 'lucide-react';
 import { api } from '../../../../lib/api';
@@ -12,6 +12,7 @@ const managementModes = ['FULL', 'WORK_PROFILE', 'USER_ENROLLMENT', 'AGENT', 'RM
 
 export default function NewAssetPage() {
   const router = useRouter();
+  const [users, setUsers] = useState<{ id: string; firstName: string; lastName: string; email: string }[]>([]);
   const [form, setForm] = useState({
     name: '',
     assetType: 'LAPTOP',
@@ -33,6 +34,13 @@ export default function NewAssetPage() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    api.get('/users').then((data: any) => {
+      const list = Array.isArray(data) ? data : data?.data || [];
+      setUsers(list);
+    }).catch(() => {});
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,7 +93,10 @@ export default function NewAssetPage() {
           </label>
           <label>
             <span className="text-sm font-medium text-gray-700">Assigned user</span>
-            <input value={form.assignedUser} onChange={(e) => setForm({ ...form, assignedUser: e.target.value })} className="mt-1 block w-full rounded border border-gray-300 px-3 py-2" />
+            <select value={form.assignedUser} onChange={(e) => setForm({ ...form, assignedUser: e.target.value })} className="mt-1 block w-full rounded border border-gray-300 px-3 py-2">
+              <option value="">Unassigned</option>
+              {users.map((u) => <option key={u.id} value={u.email || u.id}>{u.firstName} {u.lastName}</option>)}
+            </select>
           </label>
           <label>
             <span className="text-sm font-medium text-gray-700">Serial number</span>

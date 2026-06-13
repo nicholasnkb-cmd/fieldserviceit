@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import DOMPurify from 'isomorphic-dompurify';
 import { api, getListData, unwrapResponseBody } from '../../../../lib/api';
-import { formatDate, getStatusColor } from '../../../../lib/utils';
+import { formatActionDate, formatActionTime, formatDate, getStatusColor } from '../../../../lib/utils';
 import { useAuthStore } from '../../../../stores/authStore';
 import { connectSocket, disconnectSocket, onSocketEvent } from '../../../../lib/socket';
 import { useToast } from '../../../../components/ui/Toast';
@@ -456,7 +457,16 @@ export default function TicketDetailPage() {
         {ticket.description && (
           <div className="border-t pt-4">
             <h3 className="text-sm font-medium text-gray-500 mb-2">Description</h3>
-            <p className="text-sm text-gray-700 whitespace-pre-wrap">{ticket.description}</p>
+            <div
+              className="text-sm text-gray-700 prose prose-sm max-w-none"
+              dangerouslySetInnerHTML={{
+                __html: DOMPurify.sanitize(ticket.description, {
+                  ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'a', 'ul', 'ol', 'li', 'img', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'code', 'pre'],
+                  ALLOWED_ATTR: ['href', 'src', 'alt', 'target', 'rel', 'class'],
+                  KEEP_CONTENT: true,
+                })
+              }}
+            />
           </div>
         )}
 
@@ -509,10 +519,19 @@ export default function TicketDetailPage() {
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-semibold text-gray-800">{getAuditTitle(entry)}</span>
                       <span className="text-gray-500">by {getActorName(entry)}</span>
-                      <span className="text-xs text-gray-400">{formatDate(entry.createdAt)}</span>
                       {entry.isInternal && <span className="text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded">Internal</span>}
                     </div>
                     {getAuditDetail(entry) && <p className="mt-1 whitespace-pre-wrap text-gray-600">{getAuditDetail(entry)}</p>}
+                    <dl className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                      <div className="flex gap-1">
+                        <dt className="font-semibold text-gray-700">Date:</dt>
+                        <dd>{formatActionDate(entry.createdAt)}</dd>
+                      </div>
+                      <div className="flex gap-1">
+                        <dt className="font-semibold text-gray-700">Time:</dt>
+                        <dd>{formatActionTime(entry.createdAt)}</dd>
+                      </div>
+                    </dl>
                   </div>
                 </div>
               ))}

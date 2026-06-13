@@ -1,8 +1,13 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
+const CONFIGURED_API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
+const API_BASE =
+  typeof window !== 'undefined' && ['localhost', '127.0.0.1'].includes(window.location.hostname)
+    ? ''
+    : CONFIGURED_API_BASE;
 const DEFAULT_TIMEOUT = 30000;
 const COMPANY_CONTEXT_KEY = 'superAdminCompanyContext';
 const SESSION_ACCESS_TOKEN_KEY = 'fsit.accessToken';
 const SESSION_REFRESH_TOKEN_KEY = 'fsit.refreshToken';
+const IMPERSONATION_SESSION_KEY = 'fsit.impersonationSession';
 
 export function unwrapResponseBody(body: any): any {
   if (body && typeof body === 'object' && 'success' in body && 'data' in body && 'timestamp' in body) {
@@ -69,9 +74,10 @@ async function refreshAccessToken(): Promise<string | null> {
 
 export async function apiClient<T = any>(endpoint: string, options: FetchOptions = {}): Promise<T> {
   const { skipAuth, timeout = DEFAULT_TIMEOUT, ...fetchOptions } = options;
+  const isFormData = typeof FormData !== 'undefined' && fetchOptions.body instanceof FormData;
 
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...((fetchOptions.headers as Record<string, string>) || {}),
   };
 
@@ -80,6 +86,8 @@ export async function apiClient<T = any>(endpoint: string, options: FetchOptions
     if (companyContext) headers['X-Company-Context'] = companyContext;
     const token = getSessionAccessToken();
     if (token) headers['Authorization'] = `Bearer ${token}`;
+    const impersonationId = getImpersonationSessionId();
+    if (impersonationId) headers['X-Impersonation-Session'] = impersonationId;
   }
 
   const controller = new AbortController();
@@ -131,6 +139,14 @@ export async function apiClient<T = any>(endpoint: string, options: FetchOptions
   };
 
   return doFetch();
+}
+
+function getImpersonationSessionId(): string | null {
+  try {
+    return typeof window !== 'undefined' ? localStorage.getItem(IMPERSONATION_SESSION_KEY) : null;
+  } catch {
+    return null;
+  }
 }
 
 function getCompanyContextId(): string | null {
@@ -189,4 +205,6 @@ export const api = {
     apiClient<T>(endpoint, { ...opts, method: 'PUT', body: JSON.stringify(body) }),
   delete: <T = any>(endpoint: string, opts?: FetchOptions) =>
     apiClient<T>(endpoint, { ...opts, method: 'DELETE' }),
+  upload: <T = any>(endpoint: string, body: FormData, opts?: FetchOptions) =>
+    apiClient<T>(endpoint, { ...opts, method: 'POST', body }),
 };

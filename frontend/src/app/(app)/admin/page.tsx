@@ -44,7 +44,7 @@ const adminActions = [
   { title: 'Businesses', href: '/admin/companies', body: 'Create companies, manage domains, status, and invites.' },
   { title: 'Roles', href: '/admin/roles', body: 'CRUD roles and assign permission bundles.' },
   { title: 'System Controls', href: '/admin/system', body: 'Manage plans, feature flags, usage limits, and restrictions.' },
-  { title: 'Permissions', href: '/admin/permissions', body: 'Audit the permission catalog used by roles.' },
+  { title: 'Permissions', href: '/admin/permissions', body: 'Assign capabilities across system and custom roles.' },
   { title: 'Audit Logs', href: '/admin/audit-logs', body: 'Review cross-tenant administrative events.' },
 ];
 

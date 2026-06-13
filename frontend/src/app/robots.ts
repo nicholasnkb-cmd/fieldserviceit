@@ -1,0 +1,45 @@
+import type { MetadataRoute } from 'next';
+
+export default function robots(): MetadataRoute.Robots {
+  return {
+    rules: {
+      userAgent: '*',
+      allow: '/',
+      disallow: [
+        '/admin/',
+        '/ai-agent',
+        '/alerting',
+        '/all',
+        '/api/',
+        '/assets',
+        '/billing',
+        '/catalog-requests',
+        '/customer-portal',
+        '/dashboard',
+        '/dashboards',
+        '/dispatch',
+        '/favorites',
+        '/history',
+        '/integrations/',
+        '/inventory',
+        '/knowledge-base',
+        '/maintenance',
+        '/my-tickets',
+        '/network',
+        '/profile',
+        '/quotes-invoices',
+        '/reports',
+        '/search',
+        '/security',
+        '/security-center',
+        '/settings',
+        '/sla',
+        '/technician-mobile',
+        '/tickets/',
+        '/topology',
+      ],
+    },
+    sitemap: 'https://fieldserviceit.com/sitemap.xml',
+    host: 'https://fieldserviceit.com',
+  };
+}

@@ -9,6 +9,13 @@ import { setSessionTokens, unwrapResponseBody } from '../../../lib/api';
 
 type LoginMode = 'password' | 'mfa' | 'enroll' | 'recovery';
 
+const getApiBase = () => {
+  if (typeof window !== 'undefined' && ['localhost', '127.0.0.1'].includes(window.location.hostname)) {
+    return '';
+  }
+  return process.env.NEXT_PUBLIC_API_URL || '';
+};
+
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -20,12 +27,12 @@ export default function LoginPage() {
   const [ssoProviders, setSsoProviders] = useState<Array<{ id: string; name: string }>>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const { setUser } = useAuthStore();
+  const { company, setUser } = useAuthStore();
   const router = useRouter();
 
   const loadSsoProviders = (value = '') => {
     if (typeof fetch !== 'function') return;
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+    const apiUrl = getApiBase();
     const query = value.trim() ? `?email=${encodeURIComponent(value.trim())}` : '';
     fetch(`${apiUrl}/v1/auth/sso/providers${query}`, { credentials: 'include' })
       .then((response) => response.ok ? response.json() : [])
@@ -41,7 +48,7 @@ export default function LoginPage() {
   }, []);
 
   const request = async (endpoint: string, body: any) => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+    const apiUrl = getApiBase();
     const res = await fetch(`${apiUrl}/v1${endpoint}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -136,13 +143,19 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-[80vh] items-center justify-center bg-gray-50 py-12">
+    <div
+      className="flex min-h-[80vh] items-center justify-center bg-gray-50 bg-cover bg-center py-12"
+      style={company?.branding?.loginBackgroundUrl ? {
+        backgroundImage: `linear-gradient(rgba(248,250,252,.82), rgba(248,250,252,.82)), url("${company.branding.loginBackgroundUrl}")`,
+      } : undefined}
+    >
       <div className="w-full max-w-md space-y-7 rounded-lg border border-gray-200 bg-white p-8 shadow-sm">
         <div className="text-center">
           <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-md bg-primary/10 text-primary">
             {mode === 'password' ? <KeyRound size={22} /> : <ShieldCheck size={22} />}
           </div>
-          <h1 className="mt-4 text-2xl font-bold text-gray-950">FieldserviceIT</h1>
+          {company?.branding?.logoUrl && <img src={company.branding.logoUrl} alt="" className="mx-auto mb-3 h-12 max-w-40 object-contain" />}
+          <h1 className="mt-4 text-2xl font-bold text-gray-950">{company?.branding?.companyName || company?.name || 'FieldserviceIT'}</h1>
           <p className="mt-2 text-sm text-gray-600">
             {mode === 'password' && 'Sign in to your account'}
             {mode === 'mfa' && 'Enter your authenticator or recovery code'}

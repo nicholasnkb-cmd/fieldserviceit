@@ -23,6 +23,8 @@ jobs:
         run: |
           npm ci
           npx prisma generate
+          npm run check:permissions
+          npm run check:tenant-sql
           npm run build
           npm test -- --runInBand
       - name: Frontend validation

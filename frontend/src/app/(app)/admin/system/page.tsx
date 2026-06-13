@@ -10,6 +10,10 @@ interface Plan {
   name: string;
   description: string;
   monthlyPrice: number;
+  annualPrice: number;
+  seatMonthlyPrice: number;
+  seatAnnualPrice: number;
+  trialDays: number;
   maxUsers: number;
   maxTickets: number;
   stripePriceId?: string;
@@ -36,13 +40,40 @@ interface Readiness {
 interface CompanyOption { id: string; name: string }
 interface UserOption { id: string; email: string; firstName: string; lastName: string; company?: { id: string; name: string } }
 interface FunctionControl { key: string; label: string }
+interface BillingProvider {
+  key: string;
+  name: string;
+  configured: boolean;
+  priceCount: number;
+  webhookPath: string;
+  isDefault: boolean;
+  checks: { name: string; ok: boolean; detail: string }[];
+}
+interface BillingEvent {
+  id: string;
+  provider: string;
+  eventType: string;
+  status: string;
+  companyId?: string | null;
+  errorMessage?: string | null;
+  createdAt: string;
+}
+interface BillingPrice {
+  id: string;
+  planId: string;
+  planName: string;
+  provider: string;
+  billingInterval: string;
+  component: string;
+  externalPriceId: string;
+}
 
 const featureLabels: Record<string, string> = {
   tickets: 'Tickets',
   dispatch: 'Dispatch',
   assets: 'Asset and device management',
   emailNotifications: 'Email notifications',
-  publicSubmit: 'Public request intake',
+  publicSubmit: 'Signed-in request intake',
   csvExport: 'CSV export',
   apiAccess: 'API access',
   rmmIntegration: 'RMM integrations',
@@ -70,6 +101,11 @@ export default function SystemControlsPage() {
   const [selectedUserId, setSelectedUserId] = useState('');
   const [companyFeatures, setCompanyFeatures] = useState<Record<string, boolean>>({});
   const [userFeatures, setUserFeatures] = useState<Record<string, boolean>>({});
+  const [billingProviders, setBillingProviders] = useState<BillingProvider[]>([]);
+  const [billingEvents, setBillingEvents] = useState<BillingEvent[]>([]);
+  const [billingPrices, setBillingPrices] = useState<BillingPrice[]>([]);
+  const [testingProvider, setTestingProvider] = useState('');
+  const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
   const { user } = useAuthStore();
   const router = useRouter();
 
@@ -85,12 +121,20 @@ export default function SystemControlsPage() {
       api.get('/admin/companies?limit=200').catch(() => ({ data: [] })),
       api.get('/admin/users?limit=200').catch(() => ({ data: [] })),
       api.get('/admin/function-controls').catch(() => []),
+      api.get('/admin/billing/providers').catch(() => []),
+      api.get('/admin/billing/events?limit=12').catch(() => []),
+      api.get('/admin/billing/prices').catch(() => []),
     ])
-      .then(([data, readinessData, companyData, userData, functionData]) => {
+      .then(([data, readinessData, companyData, userData, functionData, providerData, eventData, priceData]) => {
         if (readinessData) setReadiness(readinessData);
         setCompanies(getListData<CompanyOption>(companyData));
         setUsers(getListData<UserOption>(userData));
         setFunctions(getListData<FunctionControl>(functionData));
+        setBillingProviders(getListData<BillingProvider>(providerData));
+        setBillingEvents(getListData<BillingEvent>(eventData));
+        const prices = getListData<BillingPrice>(priceData);
+        setBillingPrices(prices);
+        setPriceDrafts(Object.fromEntries(prices.map((price) => [`${price.planId}:${price.provider}:${price.billingInterval}:${price.component}`, price.externalPriceId])));
         return data;
       })
       .then((data) => {
@@ -125,6 +169,10 @@ export default function SystemControlsPage() {
       const updated = await api.patch(`/admin/plans/${id}`, {
         description: draft.description,
         monthlyPrice: Number(draft.monthlyPrice),
+        annualPrice: Number(draft.annualPrice),
+        seatMonthlyPrice: Number(draft.seatMonthlyPrice),
+        seatAnnualPrice: Number(draft.seatAnnualPrice),
+        trialDays: Number(draft.trialDays),
         maxUsers: Number(draft.maxUsers),
         maxTickets: Number(draft.maxTickets),
         stripePriceId: draft.stripePriceId || '',
@@ -166,6 +214,30 @@ export default function SystemControlsPage() {
     if (!selectedUserId) return;
     await api.patch(`/admin/users/${selectedUserId}/feature-controls`, { featureOverrides: userFeatures });
     setMessage('User function controls saved');
+  };
+
+  const testProvider = async (key: string) => {
+    setTestingProvider(key);
+    setMessage('');
+    try {
+      const result = await api.post(`/admin/billing/providers/${key}/test`, {});
+      setMessage(result.detail || `${key} connection test completed`);
+    } catch (err: any) {
+      setMessage(err.message || `${key} connection test failed`);
+    } finally {
+      setTestingProvider('');
+    }
+  };
+
+  const saveBillingPrice = async (planId: string, provider: string, billingInterval: string, component: string) => {
+    const key = `${planId}:${provider}:${billingInterval}:${component}`;
+    try {
+      const rows = await api.post('/admin/billing/prices', { planId, provider, interval: billingInterval, component, externalPriceId: priceDrafts[key] || '' });
+      setBillingPrices(getListData<BillingPrice>(rows));
+      setMessage(`${provider} ${billingInterval.toLowerCase()} ${component.toLowerCase()} price saved`);
+    } catch (err: any) {
+      setMessage(err.message || 'Failed to save billing price');
+    }
   };
 
   if (loading) return <div className="p-8">Loading system controls...</div>;
@@ -217,6 +289,64 @@ export default function SystemControlsPage() {
           </div>
         </section>
       )}
+
+      <section className="border border-gray-200 bg-white p-5">
+        <div className="border-b border-gray-100 pb-4">
+          <h2 className="text-lg font-semibold text-gray-950">Billing providers</h2>
+          <p className="mt-1 text-sm text-gray-500">Connection readiness, webhook routes, {billingPrices.length} price mappings, and recent synchronization events.</p>
+        </div>
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          {billingProviders.map((item) => (
+            <div key={item.key} className="border border-gray-200 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="font-semibold text-gray-950">{item.name}{item.isDefault ? ' (default)' : ''}</h3>
+                  <p className="mt-1 text-xs text-gray-500">{item.webhookPath} · {item.priceCount} mapped prices</p>
+                </div>
+                <button type="button" disabled={!item.configured || testingProvider === item.key} onClick={() => testProvider(item.key)} className="border border-gray-300 px-3 py-2 text-sm font-medium text-gray-800 disabled:opacity-40">
+                  {testingProvider === item.key ? 'Testing...' : 'Test'}
+                </button>
+              </div>
+              <div className="mt-3 space-y-2">
+                {item.checks.map((check) => (
+                  <div key={check.name} className="flex items-start justify-between gap-3 text-sm">
+                    <span className="text-gray-600">{check.detail}</span>
+                    <span className={check.ok ? 'font-semibold text-emerald-700' : 'font-semibold text-amber-700'}>{check.ok ? 'Ready' : 'Missing'}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-6 overflow-x-auto">
+          <table className="w-full min-w-[900px] text-sm">
+            <thead><tr className="border-b border-gray-200 text-left text-xs uppercase text-gray-500"><th className="pb-2">Plan</th><th className="pb-2">Provider</th><th className="pb-2">Cycle</th><th className="pb-2">Component</th><th className="pb-2">External price ID</th><th className="pb-2 text-right">Action</th></tr></thead>
+            <tbody>
+              {plans.filter((plan) => Number(plan.monthlyPrice) > 0).flatMap((plan) => billingProviders.flatMap((item) => ['MONTH', 'YEAR'].flatMap((cycle) => ['BASE', 'SEAT'].map((component) => {
+                const key = `${plan.id}:${item.key}:${cycle}:${component}`;
+                return (
+                  <tr key={key} className="border-b border-gray-100">
+                    <td className="py-2 pr-3 font-medium">{plan.name}</td><td className="py-2 pr-3">{item.name}</td><td className="py-2 pr-3">{cycle}</td><td className="py-2 pr-3">{component}</td>
+                    <td className="py-2 pr-3"><input value={priceDrafts[key] || ''} onChange={(event) => setPriceDrafts((prev) => ({ ...prev, [key]: event.target.value }))} placeholder="price or variant ID" className="w-full border border-gray-300 px-2 py-1.5" /></td>
+                    <td className="py-2 text-right"><button type="button" onClick={() => saveBillingPrice(plan.id, item.key, cycle, component)} className="border border-gray-300 px-3 py-1.5 font-medium">Save</button></td>
+                  </tr>
+                );
+              }))))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="mt-6">
+          <h3 className="text-sm font-semibold text-gray-900">Recent billing events</h3>
+          <div className="mt-2 overflow-x-auto">
+            <table className="w-full min-w-[720px] text-sm">
+              <thead><tr className="border-b border-gray-200 text-left text-xs uppercase text-gray-500"><th className="pb-2">Received</th><th className="pb-2">Provider</th><th className="pb-2">Event</th><th className="pb-2">Company</th><th className="pb-2">Status</th></tr></thead>
+              <tbody>{billingEvents.map((event) => <tr key={event.id} className="border-b border-gray-100"><td className="py-2 pr-3">{new Date(event.createdAt).toLocaleString()}</td><td className="py-2 pr-3">{event.provider}</td><td className="py-2 pr-3">{event.eventType}</td><td className="py-2 pr-3">{event.companyId || 'Unresolved'}</td><td className="py-2 font-semibold">{event.status}</td></tr>)}</tbody>
+            </table>
+          </div>
+        </div>
+      </section>
 
       <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
         <h2 className="text-lg font-semibold text-gray-950">Business, tenant, and user functions</h2>
@@ -282,6 +412,22 @@ export default function SystemControlsPage() {
                     onChange={(e) => updateDraft(plan.id, { monthlyPrice: Number(e.target.value) })}
                     className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm"
                   />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Annual price</label>
+                  <input type="number" value={draft.annualPrice || 0} onChange={(e) => updateDraft(plan.id, { annualPrice: Number(e.target.value) })} className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Seat / month</label>
+                  <input type="number" value={draft.seatMonthlyPrice || 0} onChange={(e) => updateDraft(plan.id, { seatMonthlyPrice: Number(e.target.value) })} className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Seat / year</label>
+                  <input type="number" value={draft.seatAnnualPrice || 0} onChange={(e) => updateDraft(plan.id, { seatAnnualPrice: Number(e.target.value) })} className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Trial days</label>
+                  <input type="number" min={0} value={draft.trialDays || 0} onChange={(e) => updateDraft(plan.id, { trialDays: Number(e.target.value) })} className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Stripe price ID</label>

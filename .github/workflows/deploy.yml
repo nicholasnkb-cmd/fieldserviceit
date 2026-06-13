@@ -28,7 +28,11 @@ jobs:
 
       - name: Build backend
         working-directory: backend
-        run: npm run build
+        run: |
+          npm run check:permissions
+          npm run check:tenant-sql
+          npm run build
+          npm test -- --runInBand
 
   build-frontend:
     name: Build Frontend
@@ -66,6 +70,11 @@ jobs:
           HOSTINGER_API_TOKEN: ${{ secrets.HOSTINGER_API_TOKEN }}
           HOSTINGER_EXPECTED_DOMAINS: ${{ vars.HOSTINGER_EXPECTED_DOMAINS || 'fieldserviceit.com,api.fieldserviceit.com' }}
         run: node scripts/hostinger-preflight.mjs
+
+      - name: Verify security deployment prerequisites
+        env:
+          MONITORING_API_KEY: ${{ secrets.MONITORING_API_KEY }}
+        run: node scripts/security-deployment-check.mjs
 
   production-smoke:
     name: Production Smoke Tests

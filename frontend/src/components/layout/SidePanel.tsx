@@ -39,6 +39,7 @@ import {
   Star,
   Ticket,
   User,
+  UserCheck,
   Users,
   X,
   type LucideIcon,
@@ -153,6 +154,7 @@ const navGroups = {
       label: 'Administration',
       items: [
         { label: 'Security Center', href: '/security-center', icon: ShieldCheck, feature: 'auditLogs' },
+        { label: 'Access Requests', href: '/access-requests', icon: UserCheck },
         { label: 'Account Security', href: '/security', icon: KeyRound },
         { label: 'Settings', href: '/settings', icon: Settings, feature: 'settings' },
       ],
@@ -174,6 +176,7 @@ const navGroups = {
         { label: 'Technician Mobile', href: '/technician-mobile', icon: Smartphone, feature: 'dispatch' },
         { label: 'Knowledge Base', href: '/knowledge-base', icon: ClipboardList, feature: 'kb' },
         { label: 'Account Security', href: '/security', icon: ShieldCheck },
+        { label: 'Access Requests', href: '/access-requests', icon: UserCheck },
       ],
     },
   ],
@@ -192,6 +195,7 @@ const navGroups = {
         { label: 'Security Center', href: '/security-center', icon: ShieldCheck },
         { label: 'Audit Logs', href: '/admin/audit-logs', icon: ClipboardList, feature: 'auditLogs' },
         { label: 'Permissions', href: '/admin/permissions', icon: Lock },
+        { label: 'Access Requests', href: '/access-requests', icon: UserCheck },
         { label: 'Roles', href: '/admin/roles', icon: KeyRound },
       ],
     },
@@ -202,10 +206,10 @@ const navGroups = {
       label: 'Company Administration',
       items: [
         { label: 'Company Users', href: '/admin/company', icon: Users },
-        { label: 'Roles', href: '/admin/roles', icon: KeyRound },
         { label: 'Security Center', href: '/security-center', icon: ShieldCheck },
         { label: 'Security Operations', href: '/admin/security-operations', icon: ServerCog },
         { label: 'Account Security', href: '/security', icon: KeyRound },
+        { label: 'Access Requests', href: '/access-requests', icon: UserCheck },
         { label: 'RMM Integrations', href: '/integrations/rmm', icon: RefreshCw, feature: 'rmmIntegration' },
         { label: 'Email Operations', href: '/admin/email-operations', icon: Mail },
         { label: 'Settings', href: '/settings', icon: Settings, feature: 'settings' },
@@ -241,7 +245,7 @@ function readStoredObject<T>(key: string, fallback: T): T {
 export function SidePanel() {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, authChecked, isAuthenticated, activeCompanyContext, logout } = useAuthStore();
+  const { user, company, authChecked, isAuthenticated, activeCompanyContext, logout } = useAuthStore();
   const [features, setFeatures] = useState<Record<string, boolean>>({});
   const [collapsed, setCollapsed] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
@@ -531,7 +535,11 @@ export function SidePanel() {
         mobileOpen ? 'translate-x-0' : '-translate-x-full',
         'md:sticky md:top-14 md:z-30 md:h-[calc(100vh-3.5rem)] md:translate-x-0 md:shadow-none',
         compact ? 'md:w-20' : 'md:w-64',
-      )}>
+      )} style={company?.branding?.sidebarImageUrl ? {
+        backgroundImage: `linear-gradient(rgba(255,255,255,.94), rgba(255,255,255,.94)), url("${company.branding.sidebarImageUrl}")`,
+        backgroundPosition: 'center',
+        backgroundSize: 'cover',
+      } : undefined}>
         <div className={cn(
           'flex min-h-14 items-center border-b border-gray-100 px-3',
           compact ? 'justify-center' : 'justify-between',

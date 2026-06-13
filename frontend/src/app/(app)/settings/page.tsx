@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Eye } from 'lucide-react';
 import { api } from '../../../lib/api';
 import { useAuthStore } from '../../../stores/authStore';
+import { TenantCustomizationEditor } from '../../../components/settings/TenantCustomizationEditor';
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<any>(null);
@@ -250,6 +251,8 @@ export default function SettingsPage() {
           </div>
         )}
       </div>
+
+      {isAdmin && <TenantCustomizationEditor initial={settings} onMessage={setMessage} />}
 
       {settings?.settings && (
         <div className="bg-white rounded-lg shadow p-6">

@@ -82,11 +82,14 @@ module-name/
 - All tenant queries include `WHERE companyId = :companyId`
 - SUPER_ADMIN bypasses tenant isolation
 - File uploads stored in tenant-prefixed paths
+- Shared tenant filters use `database/query-builders.ts`; cross-tenant request values are rejected by `TenantGuard`
 
 ## Security Architecture
 
 - **Auth:** JWT (access + refresh tokens), bcrypt password hashing
+- **Credential storage:** Refresh, reset, verification, enrollment, and device credentials are hashed at rest
 - **RBAC:** Database-driven roles & permissions (5 system roles, 25 permissions)
+- **Authorization coverage:** Every authenticated route declares a permission or documented exemption
 - **Audit Logs:** All mutating admin operations logged with actor, action, timestamp
 - **Rate Limiting:** 10 requests/60s on login endpoint
 - **CSP:** Content Security Policy via helmet
@@ -127,7 +130,7 @@ Client creates ticket
 | Layer | Technology |
 |-------|-----------|
 | Frontend | Next.js 14, React 18, Tailwind CSS, shadcn/ui, Zustand, Recharts, Socket.IO Client |
-| Backend | Node.js 20, NestJS 10, REST |
+| Backend | Node.js 20, NestJS 11, REST |
 | Database | MySQL 8.0 |
 | Data access | Custom MySQL SQL service with Prisma-like repository methods |
 | Auth | JWT, bcrypt, Passport |

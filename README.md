@@ -6,8 +6,8 @@ Multi-tenant enterprise workflow + IT operations platform (ITSM/MSP).
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | Next.js 14, React 18, Tailwind CSS, shadcn/ui, Zustand |
-| Backend | Node.js 20, NestJS 10, REST |
+| Frontend | Next.js 15, React 18, Tailwind CSS, shadcn/ui, Zustand |
+| Backend | Node.js 20, NestJS 11, REST |
 | Database | MySQL 8.0 |
 | Auth | JWT, bcrypt |
 | Real-time | Socket.IO (WebSocket) |
@@ -116,8 +116,25 @@ DATABASE_URL=mysql://USERNAME:PASSWORD@HOST:3306/u209468809_fieldserviceit
 - **Health** — API and database connectivity health checks
 - **Granular Permissions** — 25 permissions across 6 groups, 5 system roles
 - **Multi-Tenant** — Row-level isolation via companyId
+- **Identity Security** — MFA, OIDC SSO, session revocation, hashed refresh/reset/verification/device credentials
+- **Access Governance** — Explicit route authorization metadata, scoped permissions, temporary grants, service accounts, and impersonation controls
 
-## Seed Accounts
+## Security Checks
+
+```bash
+cd backend
+npm run check:permissions
+npm run check:tenant-sql
+npm test -- --runInBand
+```
+
+Every authenticated backend route must declare `@RequirePermissions(...)` or a documented
+`@AuthorizationExempt(...)`. The detailed health dashboard requires either an authenticated
+administrator or the `MONITORING_API_KEY` supplied through `X-Monitoring-Key`.
+
+## Local Seed Accounts
+
+These credentials are for local development only. Never deploy them to production; rotate or remove seeded users before launch.
 
 | Email | Password | Role |
 |-------|----------|------|

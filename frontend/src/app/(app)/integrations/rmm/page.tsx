@@ -33,8 +33,16 @@ interface RmmSyncRun {
   errorMessage?: string | null;
 }
 
+interface ProviderDefinition {
+  name: string;
+  label: string;
+  helpText: string;
+  credentialFields: { key: string; label: string; type?: string; required?: boolean }[];
+}
+
 export default function RmmIntegrationPage() {
   const [providers, setProviders] = useState<string[]>([]);
+  const [providerDefinitions, setProviderDefinitions] = useState<ProviderDefinition[]>([]);
   const [configs, setConfigs] = useState<RmmConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState<string | null>(null);
@@ -62,6 +70,7 @@ export default function RmmIntegrationPage() {
       api.get('/integrations/rmm/sync-history').catch(() => []),
     ]).then(([provData, configData, historyData]) => {
       setProviders(provData.providers);
+      setProviderDefinitions(provData.definitions || []);
       setConfigs(configData);
       setHistory(historyData || []);
     }).catch((err) => setMessage(err.message || 'Unable to load RMM integrations')).finally(() => setLoading(false));
@@ -184,15 +193,23 @@ export default function RmmIntegrationPage() {
     connectwise: 'ConnectWise',
     datto: 'Datto',
     ninjaone: 'NinjaOne',
+    atera: 'Atera',
+    syncro: 'Syncro',
+    kaseya: 'Kaseya VSA',
+    nable: 'N-able N-sight',
   };
 
   const providerHelp: Record<string, string> = {
     connectwise: 'Requires a ConnectWise company ID, API public/private keys, and a client ID from developer settings.',
     datto: 'Requires a Datto API token. Site ID is optional but recommended to scope syncs to one site.',
     ninjaone: 'Requires an API key and your NinjaOne instance URL, for example https://app.ninjarmm.com.',
+    atera: 'Requires an Atera API key. The standard API v3 URL is used unless overridden.',
+    syncro: 'Requires a Syncro API token and account subdomain or API base URL.',
+    kaseya: 'Requires a Kaseya VSA instance URL and API bearer token.',
+    nable: 'Requires an N-able API service URL and token. The devices path can be customized per tenant.',
   };
 
-  const credentialFields: Record<string, { key: string; label: string; type?: string }[]> = {
+  const credentialFields: Record<string, { key: string; label: string; type?: string; required?: boolean }[]> = {
     connectwise: [
       { key: 'companyId', label: 'Company ID' },
       { key: 'publicKey', label: 'Public Key' },
@@ -207,7 +224,27 @@ export default function RmmIntegrationPage() {
       { key: 'apiKey', label: 'API Key', type: 'password' },
       { key: 'instanceUrl', label: 'Instance URL' },
     ],
+    atera: [
+      { key: 'apiKey', label: 'API Key', type: 'password' },
+      { key: 'baseUrl', label: 'API Base URL' },
+    ],
+    syncro: [
+      { key: 'apiToken', label: 'API Token', type: 'password' },
+      { key: 'subdomain', label: 'Account Subdomain' },
+      { key: 'baseUrl', label: 'API Base URL' },
+    ],
+    kaseya: [
+      { key: 'baseUrl', label: 'VSA Instance URL' },
+      { key: 'apiToken', label: 'API Token', type: 'password' },
+    ],
+    nable: [
+      { key: 'baseUrl', label: 'API Service URL' },
+      { key: 'apiToken', label: 'API Token', type: 'password' },
+      { key: 'devicesPath', label: 'Devices Path' },
+    ],
   };
+
+  const definitionFor = (provider: string) => providerDefinitions.find((item) => item.name === provider);
 
   if (loading) return <div className="p-8">Loading...</div>;
 
@@ -224,13 +261,13 @@ export default function RmmIntegrationPage() {
             <div key={provider} className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-lg font-semibold">{providerLabels[provider] || provider}</h2>
+                  <h2 className="text-lg font-semibold">{definitionFor(provider)?.label || providerLabels[provider] || provider}</h2>
                   <p className="text-sm text-gray-500 mt-1">
                     {config
                       ? `Configured ${config.isActive ? '(active)' : '(inactive)'} — Sync every ${config.syncIntervalMin}min`
                       : 'Not configured'}
                   </p>
-                  <p className="mt-1 text-xs text-gray-500">{providerHelp[provider]}</p>
+                  <p className="mt-1 text-xs text-gray-500">{definitionFor(provider)?.helpText || providerHelp[provider]}</p>
                   {config?.lastSyncAt && (
                     <p className="text-xs text-gray-400">Last sync: {new Date(config.lastSyncAt).toLocaleString()}</p>
                   )}
@@ -268,10 +305,10 @@ export default function RmmIntegrationPage() {
                   <p className="rounded border border-blue-100 bg-blue-50 px-3 py-2 text-sm text-blue-700">
                     Secrets are encrypted before storage. Existing secrets stay hidden; enter new values only when rotating credentials.
                   </p>
-                  {credentialFields[provider]?.map((field) => (
+                  {(definitionFor(provider)?.credentialFields || credentialFields[provider] || []).map((field) => (
                     <div key={field.key}>
                       <label className="block text-sm font-medium text-gray-700">{field.label}</label>
-                      <input type={field.type || 'text'} value={configForm[field.key] || ''}
+                      <input type={field.type || 'text'} required={field.required && !configs.some((item) => item.provider === provider && item.hasCredentials)} value={configForm[field.key] || ''}
                         onChange={(e) => setConfigForm({ ...configForm, [field.key]: e.target.value })}
                         className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
                     </div>

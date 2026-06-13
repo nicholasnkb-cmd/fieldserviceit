@@ -1,10 +1,12 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '../stores/authStore';
 import { api } from '../lib/api';
 import { ToastProvider } from '../components/ui/Toast';
+import { Analytics } from '../components/marketing/Analytics';
+import { TenantTheme } from '../components/layout/TenantTheme';
 
 const PUBLIC_PATHS = [
   '/',
@@ -16,9 +18,11 @@ const PUBLIC_PATHS = [
   '/register',
   '/register-business',
   '/reset-password',
-  '/submit-ticket',
+  '/msp-ticketing-software',
+  '/field-service-management-software',
+  '/it-asset-management-software',
+  '/technician-dispatch-software',
   '/topology/shared',
-  '/track',
   '/verify-email',
 ];
 
@@ -27,8 +31,9 @@ function isPublicPath(pathname: string) {
 }
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
-  const { setUser, setAuthChecked, logout } = useAuthStore();
+  const { user, authChecked, setUser, setCompany, setAuthChecked, logout } = useAuthStore();
   const pathname = usePathname();
+  const router = useRouter();
   const lastHydratedPath = useRef<string | null>(null);
 
   useEffect(() => {
@@ -43,10 +48,17 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     let active = true;
     setAuthChecked(false);
 
-    api.get('/users/me').then((u) => {
+    api.get('/users/me').then(async (u) => {
       if (active && u) setUser(u);
-    }).catch((err: any) => {
-      if (active && err?.status === 401) logout();
+      try {
+        const company = await api.get('/settings');
+        if (active && company) setCompany(company);
+      } catch {}
+    }).catch(() => {
+      if (active) {
+        logout();
+        router.replace(`/login?returnTo=${encodeURIComponent(pathname)}`);
+      }
     }).finally(() => {
       if (active) setAuthChecked(true);
     });
@@ -59,7 +71,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     return () => {
       active = false;
     };
-  }, [logout, pathname, setAuthChecked, setUser]);
+  }, [logout, pathname, router, setAuthChecked, setCompany, setUser]);
 
   useEffect(() => {
     const report = (message: string, stack?: string, metadata?: Record<string, any>) => {
@@ -89,5 +101,20 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  return <ToastProvider>{children}</ToastProvider>;
+  const publicPath = isPublicPath(pathname);
+  if (!publicPath && (!authChecked || !user)) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 text-sm text-gray-600">
+        Verifying your session...
+      </div>
+    );
+  }
+
+  return (
+    <ToastProvider>
+      <TenantTheme />
+      <Analytics />
+      {children}
+    </ToastProvider>
+  );
 }

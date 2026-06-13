@@ -3,6 +3,9 @@ import { SidePanel } from './SidePanel';
 import { Footer } from './Footer';
 import { TenantContextBanner } from './TenantContextBanner';
 import { FeatureAccessGate } from './FeatureAccessGate';
+import { BillingStatusBanner } from './BillingStatusBanner';
+import { ImpersonationBanner } from './ImpersonationBanner';
+import { TenantAnnouncementBanner } from './TenantAnnouncementBanner';
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -10,8 +13,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <BannerMenu />
       <div className="flex flex-1">
         <SidePanel />
-        <main className="min-w-0 flex-1 bg-gray-50">
+        <main className="min-w-0 flex-1 bg-background">
+          <ImpersonationBanner />
           <TenantContextBanner />
+          <BillingStatusBanner />
+          <TenantAnnouncementBanner />
           <FeatureAccessGate>{children}</FeatureAccessGate>
         </main>
       </div>

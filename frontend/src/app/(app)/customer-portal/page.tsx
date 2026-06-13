@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, ClipboardCheck, Loader2, MessageSquare, RefreshCw, Search, Star, Upload } from 'lucide-react';
 import { api, getListData } from '../../../lib/api';
-import { formatDate, getStatusColor } from '../../../lib/utils';
+import { formatActionDate, formatActionTime, formatDate, getStatusColor } from '../../../lib/utils';
 
 type Ticket = {
   id: string;
@@ -20,8 +20,30 @@ type Ticket = {
   attachments?: any[];
 };
 
+const actionLabels: Record<string, string> = {
+  CREATED: 'Ticket created',
+  COMMENT: 'Comment added',
+  STATUS_CHANGED: 'Status changed',
+  ASSIGNED: 'Assignment changed',
+  RESOLVED: 'Ticket resolved',
+  HOLD: 'Ticket placed on hold',
+  ATTACHMENT: 'Attachment added',
+  ATTACHMENT_REMOVED: 'Attachment removed',
+  TIME: 'Work time logged',
+};
+
+function actionTitle(action?: string) {
+  return actionLabels[action || ''] || String(action || 'Ticket event').replaceAll('_', ' ');
+}
+
+function actorName(entry: any) {
+  const name = `${entry.actor?.firstName || ''} ${entry.actor?.lastName || ''}`.trim();
+  return name || 'System';
+}
+
 export default function CustomerPortalPage() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [selectedDetail, setSelectedDetail] = useState<Ticket | null>(null);
   const [selectedId, setSelectedId] = useState('');
   const [summary, setSummary] = useState<any>({});
   const [feedback, setFeedback] = useState<any[]>([]);
@@ -64,7 +86,40 @@ export default function CustomerPortalPage() {
     return () => window.clearTimeout(handle);
   }, [loadData]);
 
-  const selected = useMemo(() => tickets.find((ticket) => ticket.id === selectedId), [selectedId, tickets]);
+  useEffect(() => {
+    if (!selectedId) {
+      setSelectedDetail(null);
+      return;
+    }
+    let active = true;
+    Promise.all([
+      api.get(`/tickets/${selectedId}`),
+      api.get(`/tickets/${selectedId}/timeline`),
+    ])
+      .then(([ticket, timeline]) => {
+        if (active) {
+          setSelectedDetail({
+            ...ticket,
+            timeline: getListData(timeline),
+          });
+        }
+      })
+      .catch((err: any) => {
+        if (active) setError(err.message || 'Failed to load ticket activity');
+      });
+    return () => {
+      active = false;
+    };
+  }, [selectedId]);
+
+  const selected = useMemo(
+    () => selectedDetail?.id === selectedId ? selectedDetail : tickets.find((ticket) => ticket.id === selectedId),
+    [selectedDetail, selectedId, tickets],
+  );
+  const visibleTimeline = useMemo(
+    () => (selected?.timeline || []).filter((entry) => !entry.isInternal),
+    [selected],
+  );
   const selectedFeedback = useMemo(() => feedback.find((item) => item.ticketId === selectedId), [feedback, selectedId]);
 
   const sendMessage = async () => {
@@ -166,7 +221,7 @@ export default function CustomerPortalPage() {
           </div>
           <div className="divide-y divide-gray-100">
             {tickets.length === 0 ? <div className="p-4 text-sm text-gray-500">No customer-visible tickets found.</div> : tickets.map((ticket) => (
-              <button key={ticket.id} onClick={() => setSelectedId(ticket.id)} className={`block w-full p-4 text-left hover:bg-gray-50 ${selectedId === ticket.id ? 'bg-primary/5' : ''}`}>
+              <button key={ticket.id} onClick={() => { setSelectedDetail(null); setSelectedId(ticket.id); }} className={`block w-full p-4 text-left hover:bg-gray-50 ${selectedId === ticket.id ? 'bg-primary/5' : ''}`}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
@@ -237,16 +292,34 @@ export default function CustomerPortalPage() {
               <div className="rounded-lg border border-gray-200 bg-white">
                 <div className="border-b border-gray-200 p-4">
                   <h2 className="text-lg font-semibold text-gray-950">Visible Activity</h2>
+                  <p className="mt-1 text-sm text-gray-500">Customer-visible ticket actions with their recorded date and time.</p>
                 </div>
                 <div className="divide-y divide-gray-100">
-                  {(selected.timeline || []).filter((entry) => entry.action !== 'COMMENT' || !entry.isInternal).slice(0, 10).map((entry) => (
+                  {visibleTimeline.map((entry) => (
                     <div key={entry.id} className="p-4">
-                      <p className="text-sm font-semibold text-gray-950">{entry.action}</p>
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <p className="text-sm font-semibold text-gray-950">{actionTitle(entry.action)}</p>
+                          <p className="mt-0.5 text-xs text-gray-500">By {actorName(entry)}</p>
+                        </div>
+                        <dl className="grid grid-cols-2 gap-x-4 text-xs text-gray-500 sm:text-right">
+                          <div>
+                            <dt className="font-semibold text-gray-700">Date</dt>
+                            <dd>{formatActionDate(entry.createdAt)}</dd>
+                          </div>
+                          <div>
+                            <dt className="font-semibold text-gray-700">Time</dt>
+                            <dd>{formatActionTime(entry.createdAt)}</dd>
+                          </div>
+                        </dl>
+                      </div>
                       {entry.comment && <p className="mt-1 whitespace-pre-wrap text-sm text-gray-600">{entry.comment}</p>}
-                      <p className="mt-1 text-xs text-gray-500">{formatDate(entry.createdAt)}</p>
+                      {entry.oldValue !== undefined && entry.newValue !== undefined && (
+                        <p className="mt-1 text-xs text-gray-500">Changed from {entry.oldValue || 'none'} to {entry.newValue || 'none'}</p>
+                      )}
                     </div>
                   ))}
-                  {(!selected.timeline || selected.timeline.length === 0) && <div className="p-4 text-sm text-gray-500">No visible activity yet.</div>}
+                  {visibleTimeline.length === 0 && <div className="p-4 text-sm text-gray-500">No visible activity yet.</div>}
                 </div>
               </div>
             </>

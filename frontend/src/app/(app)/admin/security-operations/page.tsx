@@ -22,6 +22,7 @@ export default function SecurityOperationsPage() {
   const [tab, setTab] = useState<Tab>('overview');
   const [dashboard, setDashboard] = useState<any>({});
   const [policy, setPolicy] = useState<any>({});
+  const [policyHistory, setPolicyHistory] = useState<any[]>([]);
   const [backupPolicy, setBackupPolicy] = useState<any>({});
   const [retention, setRetention] = useState<any>({});
   const [backups, setBackups] = useState<any[]>([]);
@@ -34,6 +35,7 @@ export default function SecurityOperationsPage() {
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [stepUpCode, setStepUpCode] = useState('');
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -47,9 +49,10 @@ export default function SecurityOperationsPage() {
       setProviders(getListData(common[0]));
       setApprovals(getListData(common[1]));
       if (isSuper) {
-        const [dashboardResult, policyResult, backupPolicyResult, backupResult, retentionResult, scanResult] = await Promise.all([
+        const [dashboardResult, policyResult, policyHistoryResult, backupPolicyResult, backupResult, retentionResult, scanResult] = await Promise.all([
           api.get('/platform-security/dashboard'),
           api.get('/platform-security/policy'),
+          api.get('/platform-security/policy/history'),
           api.get('/platform-security/backups/policy'),
           api.get('/platform-security/backups'),
           api.get('/platform-security/retention'),
@@ -57,6 +60,7 @@ export default function SecurityOperationsPage() {
         ]);
         setDashboard(dashboardResult || {});
         setPolicy(policyResult || {});
+        setPolicyHistory(getListData(policyHistoryResult));
         setBackupPolicy(backupPolicyResult || {});
         setBackups(getListData(backupResult));
         setRetention(retentionResult || {});
@@ -89,6 +93,7 @@ export default function SecurityOperationsPage() {
   const savePolicy = () => run('policy', () => api.patch('/platform-security/policy', policy), 'Security policy saved');
   const saveBackupPolicy = () => run('backup-policy', () => api.patch('/platform-security/backups/policy', backupPolicy), 'Backup schedule saved');
   const saveRetention = () => run('retention-policy', () => api.patch('/platform-security/retention', retention), 'Retention policy saved');
+  const verifyStepUp = () => run('step-up', () => api.post('/auth/step-up', { code: stepUpCode }), 'Sensitive actions unlocked for 10 minutes');
 
   const saveOidc = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -140,6 +145,14 @@ export default function SecurityOperationsPage() {
 
       {error && <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
       {message && <div className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{message}</div>}
+      {isSuper && (
+        <div className="flex flex-col gap-2 border border-amber-200 bg-amber-50 p-3 sm:flex-row sm:items-end">
+          <label className="flex-1 text-sm font-semibold text-amber-950">Fresh MFA verification
+            <input value={stepUpCode} onChange={(event) => setStepUpCode(event.target.value)} placeholder="Authenticator or recovery code" className="mt-1 h-10 w-full border border-amber-300 bg-white px-3 text-sm" />
+          </label>
+          <button onClick={verifyStepUp} disabled={!stepUpCode || busy === 'step-up'} className="h-10 bg-amber-900 px-4 text-sm font-semibold text-white disabled:bg-amber-300">Verify MFA</button>
+        </div>
+      )}
 
       <nav className="flex flex-wrap gap-2 border-b border-gray-200 pb-3">
         {tabs.map(([key, label]) => (
@@ -169,6 +182,7 @@ export default function SecurityOperationsPage() {
           editOidc={editOidc}
           busy={busy}
           run={run}
+          policyHistory={policyHistory}
         />
       ) : tab === 'backups' ? (
         <BackupPanel policy={backupPolicy} setPolicy={setBackupPolicy} backups={backups} busy={busy}
@@ -243,7 +257,7 @@ function StatusRow({ label, ready, optional, value }: any) {
   );
 }
 
-function IdentityPanel({ isSuper, policy, setPolicy, savePolicy, providers, oidc, setOidc, editingOidcId, setEditingOidcId, saveOidc, editOidc, busy, run }: any) {
+function IdentityPanel({ isSuper, policy, setPolicy, savePolicy, providers, oidc, setOidc, editingOidcId, setEditingOidcId, saveOidc, editOidc, busy, run, policyHistory }: any) {
   return (
     <div className="space-y-8">
       {isSuper && (
@@ -254,6 +268,7 @@ function IdentityPanel({ isSuper, policy, setPolicy, savePolicy, providers, oidc
               ['requireMfaSuperAdmin', 'Require MFA for super admins'],
               ['requireMfaTenantAdmin', 'Require MFA for tenant admins'],
               ['requireMfaTechnicians', 'Require MFA for technicians'],
+              ['requirePhishingResistantSuperAdmin', 'Require FIDO/WebAuthn through SSO for super admins'],
               ['requireNetworkApproval', 'Require independent network approval'],
             ].map(([key, label]) => (
               <label key={key} className="flex items-center justify-between border-b border-gray-200 pb-3 text-sm font-medium text-gray-700">
@@ -270,6 +285,18 @@ function IdentityPanel({ isSuper, policy, setPolicy, savePolicy, providers, oidc
           <button onClick={savePolicy} disabled={busy === 'policy'} className="mt-4 inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
             <Save size={16} /> Save policy
           </button>
+          <div className="mt-5 border-t border-gray-200 pt-4">
+            <h3 className="text-sm font-semibold text-gray-900">Policy versions</h3>
+            <div className="mt-2 divide-y divide-gray-100 border-y border-gray-200">
+              {policyHistory.slice(0, 8).map((item: any) => (
+                <div key={item.id} className="flex items-center justify-between gap-3 py-3 text-sm">
+                  <span>{new Date(item.createdAt).toLocaleString()} · {item.firstName ? `${item.firstName} ${item.lastName}` : 'System'}</span>
+                  <button onClick={() => run(`rollback-${item.id}`, () => api.post(`/platform-security/policy/history/${item.id}/rollback`, {}), 'Security policy rolled back')} className="border border-gray-300 px-3 py-1.5 text-xs font-semibold">Rollback</button>
+                </div>
+              ))}
+              {!policyHistory.length && <p className="py-3 text-sm text-gray-500">No prior policy versions.</p>}
+            </div>
+          </div>
         </section>
       )}
 

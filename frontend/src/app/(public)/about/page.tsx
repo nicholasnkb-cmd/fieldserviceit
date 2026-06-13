@@ -1,5 +1,15 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRight, Building2, ClipboardCheck, Network, ShieldCheck, UsersRound, Wrench, type LucideIcon } from 'lucide-react';
+
+export const metadata: Metadata = {
+  title: 'About Our IT Service Management Platform',
+  description:
+    'Learn how FieldserviceIT helps MSPs and internal IT teams manage tickets, field technicians, assets, networks, customers, and audit-ready operations.',
+  alternates: {
+    canonical: '/about',
+  },
+};
 
 const principles = [
   {
@@ -95,7 +105,7 @@ export default function AboutPage() {
             {principles.map((item) => {
               const Icon = item.icon;
               return (
-                <div key={item.title} className="rounded border border-white/15 bg-white/6 p-5">
+                <div key={item.title} className="rounded border border-white/15 bg-white/[0.06] p-5">
                   <Icon className="h-5 w-5 text-emerald-300" aria-hidden="true" />
                   <h3 className="mt-5 text-base font-semibold">{item.title}</h3>
                   <p className="mt-2 text-sm leading-6 text-gray-300">{item.body}</p>

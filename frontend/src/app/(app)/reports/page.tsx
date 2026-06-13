@@ -18,6 +18,7 @@ export default function ReportsPage() {
   const [sla, setSla] = useState<SlaCompliance | null>(null);
   const [techPerf, setTechPerf] = useState<TechPerf[]>([]);
   const [assetInv, setAssetInv] = useState<AssetInv[]>([]);
+  const [preferences, setPreferences] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const { user, activeCompanyContext } = useAuthStore();
   const router = useRouter();
@@ -35,7 +36,8 @@ export default function ReportsPage() {
       technician: api.get('/reports/technician'),
       assets: api.get('/reports/assets'),
     };
-    Promise.all([fetches[tab]]).then(([data]) => {
+    Promise.all([fetches[tab], api.get('/reports/preferences')]).then(([data, reportPreferences]) => {
+      setPreferences(reportPreferences);
       if (tab === 'tickets') setTicketSummary(data);
       if (tab === 'sla') setSla(data);
       if (tab === 'technician') setTechPerf(data || []);
@@ -53,7 +55,13 @@ export default function ReportsPage() {
   return (
     <RequireCompanyContext area="Reports">
     <div className="p-8">
-      <h1 className="text-2xl font-bold mb-6">Reports</h1>
+      <div className="mb-6 flex items-center gap-4 rounded-lg border bg-white p-5 shadow-sm" style={{ borderTopColor: preferences?.accentColor, borderTopWidth: preferences ? 4 : 1 }}>
+        {preferences?.showCompanyLogo && preferences?.logoUrl && <img src={preferences.logoUrl} alt="" className="h-14 w-20 object-contain" />}
+        <div>
+          <h1 className="text-2xl font-bold">{preferences?.headerText || `${preferences?.companyName || ''} Reports`.trim() || 'Reports'}</h1>
+          <p className="mt-1 text-sm text-gray-500">Default reporting period: {preferences?.defaultDateRange || '30d'} · {preferences?.pageOrientation || 'portrait'} layout</p>
+        </div>
+      </div>
 
       <div className="flex gap-2 mb-6">
         {tabs.map((t) => (
@@ -175,6 +183,7 @@ export default function ReportsPage() {
           )}
         </>
       )}
+      {preferences?.footerText && <p className="mt-8 border-t pt-4 text-center text-xs text-gray-500">{preferences.footerText}</p>}
     </div>
     </RequireCompanyContext>
   );

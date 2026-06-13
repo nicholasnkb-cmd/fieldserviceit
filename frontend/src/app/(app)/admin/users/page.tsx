@@ -30,6 +30,8 @@ export default function AdminUsersPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [editing, setEditing] = useState<string | null>(null);
   const [newRole, setNewRole] = useState('');
+  const [editingCompany, setEditingCompany] = useState<string | null>(null);
+  const [newCompanyId, setNewCompanyId] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState({ email: '', password: '', firstName: '', lastName: '', role: 'CLIENT', companyId: '' });
   const [message, setMessage] = useState('');
@@ -106,6 +108,30 @@ export default function AdminUsersPage() {
     catch (err: any) { setMessage(err.message); }
   };
 
+  const handleUserUpdate = async (userId: string, update: { userType?: string; isActive?: boolean }, successMessage: string) => {
+    try {
+      await api.patch(`/admin/users/${userId}`, update);
+      setMessage(successMessage);
+      fetchUsers();
+    } catch (err: any) {
+      setMessage(err.message || 'User update failed');
+    }
+  };
+
+  const handleCompanyChange = async (managedUser: AdminUser) => {
+    try {
+      await api.patch(`/admin/users/${managedUser.id}/company`, {
+        companyId: newCompanyId || null,
+        reason: 'Updated in User Management',
+      });
+      setMessage('Company assignment updated. The user must sign in again.');
+      setEditingCompany(null);
+      fetchUsers();
+    } catch (err: any) {
+      setMessage(err.message || 'Company assignment failed');
+    }
+  };
+
   const handleDelete = async (userId: string) => {
     if (!confirm('Delete this user? They will be deactivated.')) return;
     try { await api.delete(`/admin/users/${userId}`); setMessage('User deleted'); fetchUsers(); }
@@ -138,16 +164,16 @@ export default function AdminUsersPage() {
           <h2 className="text-lg font-semibold mb-4">Create User</h2>
           <form onSubmit={handleCreate} className="grid grid-cols-2 gap-4 max-w-lg">
             <div><label className="block text-sm font-medium text-gray-700">First Name *</label>
-              <input type="text" required value={createForm.firstName} onChange={(e) => setCreateForm({ ...createForm, firstName: e.target.value })}
+              <input type="text" required maxLength={80} value={createForm.firstName} onChange={(e) => setCreateForm({ ...createForm, firstName: e.target.value })}
                 className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm" /></div>
             <div><label className="block text-sm font-medium text-gray-700">Last Name *</label>
-              <input type="text" required value={createForm.lastName} onChange={(e) => setCreateForm({ ...createForm, lastName: e.target.value })}
+              <input type="text" required maxLength={80} value={createForm.lastName} onChange={(e) => setCreateForm({ ...createForm, lastName: e.target.value })}
                 className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm" /></div>
             <div className="col-span-2"><label className="block text-sm font-medium text-gray-700">Email *</label>
-              <input type="email" required value={createForm.email} onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
+              <input type="email" required maxLength={191} value={createForm.email} onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
                 className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm" /></div>
             <div><label className="block text-sm font-medium text-gray-700">Password *</label>
-              <input type="password" required minLength={6} value={createForm.password} onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
+              <input type="password" required minLength={8} maxLength={128} value={createForm.password} onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
                 className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm" /></div>
             <div><label className="block text-sm font-medium text-gray-700">Role</label>
               <select value={createForm.role} onChange={(e) => setCreateForm({ ...createForm, role: e.target.value })}
@@ -172,7 +198,7 @@ export default function AdminUsersPage() {
       )}
 
       <div className="mb-4">
-        <input type="text" placeholder="Search users by name or email..." value={search} onChange={(e) => setSearch(e.target.value)}
+        <input type="text" maxLength={191} placeholder="Search users by name or email..." value={search} onChange={(e) => setSearch(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && fetchUsers()}
           className="w-full max-w-md rounded border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
       </div>
@@ -196,7 +222,15 @@ export default function AdminUsersPage() {
                 <td className="px-4 py-3 text-sm font-medium text-gray-900">{u.firstName} {u.lastName}</td>
                 <td className="px-4 py-3 text-sm text-gray-600">{u.email}</td>
                 <td className="px-4 py-3">
-                  <span className={`px-2 py-1 rounded text-xs font-medium ${u.userType === 'BUSINESS' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}`}>{u.userType}</span>
+                  <select
+                    value={u.userType}
+                    onChange={(event) => handleUserUpdate(u.id, { userType: event.target.value }, 'User type updated. The user must sign in again.')}
+                    className="rounded border border-gray-300 px-2 py-1 text-xs"
+                    aria-label={`Type for ${u.firstName} ${u.lastName}`}
+                  >
+                    <option value="PUBLIC">PUBLIC</option>
+                    <option value="BUSINESS">BUSINESS</option>
+                  </select>
                 </td>
                 <td className="px-4 py-3">
                   {editing === u.id ? (
@@ -216,13 +250,44 @@ export default function AdminUsersPage() {
                     <span className="text-sm">{u.role}</span>
                   )}
                 </td>
-                <td className="px-4 py-3 text-sm text-gray-600">{u.company?.name || '-'}</td>
+                <td className="px-4 py-3 text-sm text-gray-600">
+                  {editingCompany === u.id ? (
+                    <div className="flex min-w-56 items-center gap-1">
+                      <select
+                        value={newCompanyId}
+                        disabled={GLOBAL_USER_ROLES.includes(u.role)}
+                        onChange={(event) => setNewCompanyId(event.target.value)}
+                        className="min-w-40 rounded border border-gray-300 px-2 py-1 text-xs"
+                      >
+                        <option value="">{GLOBAL_USER_ROLES.includes(u.role) ? 'Global company context' : 'No company'}</option>
+                        {companies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
+                      </select>
+                      <button onClick={() => handleCompanyChange(u)} disabled={GLOBAL_USER_ROLES.includes(u.role)} className="text-xs text-primary disabled:text-gray-400">Save</button>
+                      <button onClick={() => setEditingCompany(null)} className="text-xs text-gray-500">X</button>
+                    </div>
+                  ) : (
+                    u.company?.name || (GLOBAL_USER_ROLES.includes(u.role) ? 'Global' : '-')
+                  )}
+                </td>
                 <td className="px-4 py-3">
-                  <span className={`px-2 py-1 rounded text-xs font-medium ${u.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{u.isActive ? 'Yes' : 'No'}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleUserUpdate(u.id, { isActive: !u.isActive }, u.isActive ? 'User deactivated.' : 'User activated.')}
+                    className={`rounded px-2 py-1 text-xs font-medium ${u.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}
+                    aria-pressed={u.isActive}
+                  >
+                    {u.isActive ? 'Yes' : 'No'}
+                  </button>
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex gap-2">
                     <button onClick={() => { setEditing(u.id); setNewRole(u.role); }} className="text-xs text-primary hover:underline">Role</button>
+                    <button
+                      onClick={() => { setEditingCompany(u.id); setNewCompanyId(u.company?.id || ''); }}
+                      className="text-xs text-primary hover:underline"
+                    >
+                      Company
+                    </button>
                     <button onClick={() => handleDelete(u.id)} className="text-xs text-red-500 hover:underline">Delete</button>
                   </div>
                 </td>
