@@ -15,10 +15,10 @@ const colorFields = [
 ] as const;
 
 const imageFields = [
-  ['logoUrl', 'Main logo'],
-  ['faviconUrl', 'Browser icon'],
-  ['loginBackgroundUrl', 'Login background'],
-  ['sidebarImageUrl', 'Sidebar image'],
+  ['logoUrl', 'Main logo', 'Recommended: wide image, PNG or WebP'],
+  ['faviconUrl', 'Browser icon', 'Recommended: square image'],
+  ['loginBackgroundUrl', 'Login background', 'Recommended: landscape image'],
+  ['sidebarImageUrl', 'Sidebar image', 'Recommended: portrait or square image'],
 ] as const;
 
 export function TenantCustomizationEditor({ initial, onMessage }: { initial: any; onMessage: (message: string) => void }) {
@@ -62,13 +62,23 @@ export function TenantCustomizationEditor({ initial, onMessage }: { initial: any
     try {
       const body = new FormData();
       body.append('image', file);
-      const result = await api.upload<{ url: string }>('/uploads/branding', body);
+      body.append('field', field);
+      const result = await api.upload<{ url: string; field: string; company: any }>('/uploads/branding', body);
       setBranding((current: any) => ({ ...current, [field]: result.url }));
-      if (field === 'logoUrl') setCustomization((current: any) => ({
-        ...current,
-        reporting: { ...current.reporting, logoUrl: current.reporting.logoUrl || result.url },
-      }));
-      onMessage('Image uploaded. Save customization to publish it.');
+      if (field === 'logoUrl') {
+        setCustomization((current: any) => ({
+          ...current,
+          reporting: { ...current.reporting, logoUrl: result.url, showCompanyLogo: true },
+        }));
+      }
+      if (field === 'bannerImageUrl') {
+        setCustomization((current: any) => ({
+          ...current,
+          banner: { ...current.banner, imageUrl: result.url },
+        }));
+      }
+      if (result.company) setCompany(result.company);
+      onMessage('Image uploaded and configured automatically.');
     } catch (error: any) {
       onMessage(error.message || 'Image upload failed');
     } finally {
@@ -114,9 +124,10 @@ export function TenantCustomizationEditor({ initial, onMessage }: { initial: any
           ))}
         </div>
         <div className="mt-5 grid gap-4 md:grid-cols-2">
-          {imageFields.map(([field, label]) => (
+          {imageFields.map(([field, label, hint]) => (
             <div key={field} className="rounded border p-3">
               <label className="text-sm font-medium text-gray-700">{label}</label>
+              <p className="mt-1 text-xs text-gray-500">{hint}</p>
               <div className="mt-2 flex items-center gap-3">
                 {branding[field] ? <img src={branding[field]} alt="" className="h-14 w-20 rounded border object-contain" /> : <div className="h-14 w-20 rounded bg-gray-100" />}
                 <label className="inline-flex cursor-pointer items-center gap-2 rounded border px-3 py-2 text-sm">
@@ -139,6 +150,17 @@ export function TenantCustomizationEditor({ initial, onMessage }: { initial: any
           <label className="text-sm font-medium">Link URL<input value={customization.banner.linkUrl || ''} onChange={(event) => setCustomization({ ...customization, banner: { ...customization.banner, linkUrl: event.target.value } })} className="mt-1 w-full rounded border px-3 py-2" /></label>
           <label className="text-sm font-medium">Link label<input value={customization.banner.linkLabel || ''} onChange={(event) => setCustomization({ ...customization, banner: { ...customization.banner, linkLabel: event.target.value } })} className="mt-1 w-full rounded border px-3 py-2" /></label>
           <label className="text-sm font-medium">Tone<select value={customization.banner.tone} onChange={(event) => setCustomization({ ...customization, banner: { ...customization.banner, tone: event.target.value } })} className="mt-1 w-full rounded border px-3 py-2"><option value="info">Information</option><option value="success">Success</option><option value="warning">Warning</option><option value="critical">Critical</option></select></label>
+          <div className="rounded border p-3">
+            <label className="text-sm font-medium text-gray-700">Banner image</label>
+            <p className="mt-1 text-xs text-gray-500">Recommended: wide landscape image</p>
+            <div className="mt-2 flex items-center gap-3">
+              {customization.banner.imageUrl ? <img src={customization.banner.imageUrl} alt="" className="h-14 w-28 rounded border object-cover" /> : <div className="h-14 w-28 rounded bg-gray-100" />}
+              <label className="inline-flex cursor-pointer items-center gap-2 rounded border px-3 py-2 text-sm">
+                <ImageUp size={16} /> {uploading === 'bannerImageUrl' ? 'Uploading...' : 'Upload'}
+                <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" disabled={!!uploading} onChange={(event) => uploadImage('bannerImageUrl', event.target.files?.[0])} />
+              </label>
+            </div>
+          </div>
         </div>
       </section>
 

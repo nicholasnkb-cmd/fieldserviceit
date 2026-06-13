@@ -20,10 +20,11 @@ export function TenantAnnouncementBanner() {
     setDismissed(sessionStorage.getItem(storageKey) === 'true');
   }, [storageKey]);
 
-  if (!banner?.enabled || !banner.text || dismissed) return null;
+  if (!banner?.enabled || (!banner.text && !banner.imageUrl) || dismissed) return null;
   return (
     <div className={`flex items-center justify-center gap-3 border-b px-4 py-2 text-sm ${tones[banner.tone] || tones.info}`}>
-      <span>{banner.text}</span>
+      {banner.imageUrl && <img src={banner.imageUrl} alt="" className="h-10 max-w-40 rounded object-cover" />}
+      {banner.text && <span>{banner.text}</span>}
       {banner.linkUrl && (
         <a href={banner.linkUrl} className="font-semibold underline" target={banner.linkUrl.startsWith('http') ? '_blank' : undefined} rel="noreferrer">
           {banner.linkLabel || 'Learn more'}
