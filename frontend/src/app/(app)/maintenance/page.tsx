@@ -75,7 +75,7 @@ export default function MaintenancePage() {
         api.get('/maintenance/summary'),
         api.get(`/maintenance/plans?${params.toString()}`),
         api.get('/assets?limit=100').catch(() => []),
-        api.get('/users?limit=100').catch(() => []),
+        api.get('/users/options').catch(() => []),
       ]);
       setSummary(summaryRes || {});
       setPlans(getListData<MaintenancePlan>(planRes));

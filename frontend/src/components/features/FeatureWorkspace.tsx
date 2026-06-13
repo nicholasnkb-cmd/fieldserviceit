@@ -99,7 +99,7 @@ export function FeatureWorkspace({
       api.get(`/operations/${moduleKey}/items?status=${encodeURIComponent(status)}&limit=25`).catch(() => []),
       ...apiSources.map((source) => {
         if (source === 'assets') return api.get('/assets?limit=6').catch(() => []);
-        if (source === 'users') return api.get('/users?limit=6').catch(() => []);
+        if (source === 'users') return api.get('/users/options').catch(() => []);
         return api.get('/tickets?limit=6').catch(() => []);
       }),
     ])

@@ -36,7 +36,7 @@ export default function NewAssetPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    api.get('/users').then((data: any) => {
+    api.get('/users/options').then((data: any) => {
       const list = Array.isArray(data) ? data : data?.data || [];
       setUsers(list);
     }).catch(() => {});

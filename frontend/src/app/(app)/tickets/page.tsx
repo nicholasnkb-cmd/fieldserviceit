@@ -63,7 +63,7 @@ export default function TicketsPage() {
     if ((user?.role === 'SUPER_ADMIN' && !activeCompanyContext) || user?.role === 'GLOBAL_TECH') {
       setUsers([]);
     } else {
-      api.get('/users?limit=200').then((d) => setUsers(getListData(d))).catch(() => {});
+      api.get('/users/options?roles=TECHNICIAN,TENANT_ADMIN').then((d) => setUsers(getListData(d))).catch(() => {});
     }
   }, [activeCompanyContext, authChecked, user, fetchTickets, router]);
 

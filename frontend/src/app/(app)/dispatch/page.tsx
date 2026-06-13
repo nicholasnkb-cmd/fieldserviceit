@@ -40,7 +40,7 @@ export default function DispatchPage() {
   const fetchData = useCallback(() => {
     Promise.all([
       api.get('/dispatch'),
-      api.get('/users?limit=100'),
+      api.get('/users/options?roles=TECHNICIAN,TENANT_ADMIN'),
     ]).then(([d, u]) => {
       setDispatches(getListData<DispatchItem>(d));
       setUsers(getListData(u));

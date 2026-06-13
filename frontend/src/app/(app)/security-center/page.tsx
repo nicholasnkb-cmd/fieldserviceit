@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, CheckCircle2, ClipboardList, KeyRound, Loader2, Plus, RefreshCw, Search, ShieldCheck, UserCheck } from 'lucide-react';
 import { api, getListData } from '../../../lib/api';
 import { formatDate } from '../../../lib/utils';
+import { RequireCompanyContext } from '../../../components/layout/RequireCompanyContext';
 
 type Finding = {
   id: string;
@@ -46,7 +47,7 @@ export default function SecurityCenterPage() {
   const [events, setEvents] = useState<any[]>([]);
   const [accessReview, setAccessReview] = useState<any[]>([]);
   const [devicePosture, setDevicePosture] = useState<any[]>([]);
-  const [companies, setCompanies] = useState<any[]>([]);
+  const [tenantUsers, setTenantUsers] = useState<any[]>([]);
   const [status, setStatus] = useState('ALL');
   const [severity, setSeverity] = useState('ALL');
   const [query, setQuery] = useState('');
@@ -64,20 +65,20 @@ export default function SecurityCenterPage() {
     try {
       const params = new URLSearchParams({ status, severity, limit: '100' });
       if (query.trim()) params.set('search', query.trim());
-      const [summaryRes, findingsRes, eventsRes, accessRes, deviceRes, companiesRes] = await Promise.all([
+      const [summaryRes, findingsRes, eventsRes, accessRes, deviceRes, usersRes] = await Promise.all([
         api.get('/security-center/summary'),
         api.get(`/security-center/findings?${params.toString()}`),
         api.get(`/security-center/events?limit=50${query.trim() ? `&search=${encodeURIComponent(query.trim())}` : ''}`),
         api.get('/security-center/access-review'),
         api.get('/security-center/device-posture'),
-        api.get('/admin/companies?limit=100').catch(() => []),
+        api.get('/users/options').catch(() => []),
       ]);
       setSummary(summaryRes || {});
       setFindings(getListData(findingsRes));
       setEvents(getListData(eventsRes));
       setAccessReview(getListData(accessRes));
       setDevicePosture(getListData(deviceRes));
-      setCompanies(getListData(companiesRes));
+      setTenantUsers(getListData(usersRes));
     } catch (err: any) {
       setError(err.message || 'Failed to load security center');
     } finally {
@@ -90,8 +91,8 @@ export default function SecurityCenterPage() {
     return () => window.clearTimeout(handle);
   }, [loadData]);
 
-  const users = useMemo(() => accessReview.filter((item) => item.companyId === form.companyId || !form.companyId), [accessReview, form.companyId]);
-  const assets = useMemo(() => devicePosture.filter((item) => item.companyId === form.companyId || !form.companyId), [devicePosture, form.companyId]);
+  const users = tenantUsers;
+  const assets = useMemo(() => devicePosture.filter((item) => !form.companyId || item.companyId === form.companyId), [devicePosture, form.companyId]);
 
   const metrics = [
     { label: 'Risk score', value: `${summary.riskScore ?? 100}/100`, icon: ShieldCheck },
@@ -141,6 +142,7 @@ export default function SecurityCenterPage() {
   };
 
   return (
+    <RequireCompanyContext area="Security Center">
     <div className="space-y-6 p-6">
       <section className="border-b border-gray-200 pb-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -200,12 +202,6 @@ export default function SecurityCenterPage() {
       {showForm && (
         <form onSubmit={createFinding} className="space-y-4 rounded-lg border border-gray-200 bg-white p-4">
           <div className="grid gap-3 lg:grid-cols-4">
-            {companies.length > 0 && (
-              <select value={form.companyId} onChange={(e) => setForm((c) => ({ ...c, companyId: e.target.value, assetId: '', userId: '', assignedToId: '' }))} className="rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary">
-                <option value="">Current company context</option>
-                {companies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
-              </select>
-            )}
             <input required value={form.title} onChange={(e) => setForm((c) => ({ ...c, title: e.target.value }))} className="rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary" placeholder="Finding title" />
             <select value={form.severity} onChange={(e) => setForm((c) => ({ ...c, severity: e.target.value }))} className="rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary">
               {severities.map((item) => <option key={item} value={item}>{item}</option>)}
@@ -291,6 +287,7 @@ export default function SecurityCenterPage() {
         )}
       </section>
     </div>
+    </RequireCompanyContext>
   );
 }
 

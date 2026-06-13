@@ -102,7 +102,7 @@ export default function TicketDetailPage() {
   useEffect(() => {
     Promise.all([
       api.get(`/tickets/${id}`),
-      api.get('/users?limit=100'),
+      api.get('/users/options?roles=TECHNICIAN,TENANT_ADMIN'),
     ]).then(([t, u]) => {
       setTicket(t);
       setUsers(getListData(u));
