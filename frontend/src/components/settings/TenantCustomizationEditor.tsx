@@ -15,7 +15,7 @@ const colorFields = [
 ] as const;
 
 const imageFields = [
-  ['logoUrl', 'Main logo', 'Recommended: wide image, PNG or WebP'],
+  ['logoUrl', 'Main logo', 'Automatically fitted and optimized for headers and reports'],
   ['faviconUrl', 'Browser icon', 'Recommended: square image'],
   ['loginBackgroundUrl', 'Login background', 'Recommended: landscape image'],
   ['sidebarImageUrl', 'Sidebar image', 'Recommended: portrait or square image'],
@@ -78,7 +78,9 @@ export function TenantCustomizationEditor({ initial, onMessage }: { initial: any
         }));
       }
       if (result.company) setCompany(result.company);
-      onMessage('Image uploaded and configured automatically.');
+      onMessage(field === 'logoUrl'
+        ? 'Logo formatted, optimized, and configured automatically.'
+        : 'Image uploaded and configured automatically.');
     } catch (error: any) {
       onMessage(error.message || 'Image upload failed');
     } finally {
