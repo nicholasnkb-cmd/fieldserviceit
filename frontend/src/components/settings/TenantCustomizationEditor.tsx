@@ -147,6 +147,30 @@ export function TenantCustomizationEditor({ initial, onMessage }: { initial: any
     onMessage('Unpublished changes discarded');
   };
 
+  const resetTenantCustomization = async () => {
+    if (!window.confirm('Reset all tenant branding, images, banners, workflow defaults, and report presentation? General company settings will be preserved.')) return;
+    setSaving(true);
+    try {
+      const updated = await api.delete<any>('/settings/customization');
+      const nextBranding = { ...defaults.branding, companyName: updated.name || initial?.name || '' };
+      const nextCustomization = {
+        banner: { ...defaults.customization.banner },
+        workflow: { ...defaults.customization.workflow },
+        reporting: { ...defaults.customization.reporting },
+      };
+      setBranding(nextBranding);
+      setCustomization(nextCustomization);
+      setSavedSnapshot(JSON.stringify({ branding: nextBranding, customization: nextCustomization }));
+      setCompany(updated);
+      setActiveTab('brand');
+      onMessage('Tenant customization reset to defaults');
+    } catch (error: any) {
+      onMessage(error.message || 'Tenant customization could not be reset');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
       <div className="border-b border-slate-200 px-5 py-4 sm:px-6">
@@ -283,7 +307,11 @@ export function TenantCustomizationEditor({ initial, onMessage }: { initial: any
         </aside>
       </div>
 
-      <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-200 bg-white px-5 py-4 sm:px-6">
+      <div className="flex flex-wrap items-center gap-2 border-t border-slate-200 bg-white px-5 py-4 sm:px-6">
+        <button type="button" onClick={resetTenantCustomization} disabled={saving || !!uploading}
+          className="mr-auto rounded-md border border-red-200 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-40">
+          Reset tenant customization
+        </button>
         <button type="button" onClick={resetChanges} disabled={!dirty || saving} className="inline-flex items-center gap-2 rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 disabled:opacity-40"><RotateCcw size={16} /> Discard</button>
         <button type="button" onClick={save} disabled={!dirty || saving || !!uploading} className="rounded-md bg-primary px-5 py-2 text-sm font-semibold text-white disabled:opacity-50">{saving ? 'Publishing...' : 'Publish changes'}</button>
       </div>
