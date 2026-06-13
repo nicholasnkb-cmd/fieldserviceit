@@ -173,7 +173,7 @@ export default function TenantAdminPage() {
                     ) : (
                       <span className="text-xs text-gray-400">Protected</span>
                     )}
-                    <button onClick={() => handleDelete(u.id)} className="text-xs text-red-500 hover:underline">Delete</button>
+                    {canGovern(u) && <button onClick={() => handleDelete(u.id)} className="text-xs text-red-500 hover:underline">Delete</button>}
                   </div>
                 </td>
               </tr>
