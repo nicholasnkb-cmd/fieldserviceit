@@ -12,7 +12,7 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
-  const [form, setForm] = useState({ name: '', domain: '', logo: '' });
+  const [form, setForm] = useState({ name: '', domain: '' });
   const [branding, setBranding] = useState({ primaryColor: '#2563eb', logoUrl: '', companyName: '' });
   const [emailTemplate, setEmailTemplate] = useState<any>({
     subjectTemplate: 'Ticket {{ticketNumber}}: {{action}}',
@@ -35,7 +35,7 @@ export default function SettingsPage() {
     if (user.userType !== 'BUSINESS') { router.push('/my-tickets'); return; }
     api.get('/settings').then((data) => {
       setSettings(data);
-      setForm({ name: data.name || '', domain: data.domain || '', logo: data.logo || '' });
+      setForm({ name: data.name || '', domain: data.domain || '' });
       setBranding({
         primaryColor: data.branding?.primaryColor || '#2563eb',
         logoUrl: data.branding?.logoUrl || '',
@@ -55,16 +55,6 @@ export default function SettingsPage() {
     try {
       await api.patch('/settings', form);
       setMessage('Settings saved');
-    } catch (err: any) { setMessage(err.message); }
-    finally { setSaving(false); }
-  };
-
-  const saveBranding = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      await api.put('/settings/branding', branding);
-      setMessage('Branding saved');
     } catch (err: any) { setMessage(err.message); }
     finally { setSaving(false); }
   };
@@ -98,7 +88,7 @@ export default function SettingsPage() {
   if (loading) return <div className="p-8">Loading...</div>;
 
   return (
-    <div className="p-8 max-w-3xl">
+    <div className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
       <h1 className="text-2xl font-bold mb-6">Company Settings</h1>
       {message && <div className="bg-green-50 text-green-600 p-3 rounded text-sm mb-4">{message}</div>}
 
@@ -116,11 +106,6 @@ export default function SettingsPage() {
               <input type="text" value={form.domain} onChange={(e) => setForm({ ...form, domain: e.target.value })}
                 className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Logo URL</label>
-              <input type="url" value={form.logo} onChange={(e) => setForm({ ...form, logo: e.target.value })}
-                className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
-            </div>
             <button type="submit" disabled={saving}
               className="px-4 py-2 bg-primary text-white text-sm rounded-md hover:bg-primary/90 disabled:opacity-50">
               {saving ? 'Saving...' : 'Save'}
@@ -130,7 +115,6 @@ export default function SettingsPage() {
           <div className="space-y-3 text-sm text-gray-600">
             <p>Company Name: <span className="font-medium text-gray-900">{form.name || '-'}</span></p>
             <p>Domain: <span className="font-medium text-gray-900">{form.domain || '-'}</span></p>
-            {form.logo && <p>Logo URL: <span className="font-medium text-gray-900">{form.logo}</span></p>}
             <p className="text-xs text-gray-400 italic mt-2">Only administrators can edit these settings.</p>
           </div>
         )}
@@ -214,45 +198,7 @@ export default function SettingsPage() {
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <h2 className="text-lg font-semibold mb-4">Branding</h2>
-        {isAdmin ? (
-          <form onSubmit={saveBranding} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Display Name</label>
-              <input type="text" value={branding.companyName} onChange={(e) => setBranding({ ...branding, companyName: e.target.value })}
-                className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Primary Color</label>
-              <div className="flex gap-2 mt-1">
-                <input type="color" value={branding.primaryColor} onChange={(e) => setBranding({ ...branding, primaryColor: e.target.value })}
-                  className="h-9 w-9 rounded border border-gray-300 cursor-pointer" />
-                <input type="text" value={branding.primaryColor} onChange={(e) => setBranding({ ...branding, primaryColor: e.target.value })}
-                  className="flex-1 rounded border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Logo URL</label>
-              <input type="url" value={branding.logoUrl} onChange={(e) => setBranding({ ...branding, logoUrl: e.target.value })}
-                className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
-            </div>
-            <button type="submit" disabled={saving}
-              className="px-4 py-2 bg-primary text-white text-sm rounded-md hover:bg-primary/90 disabled:opacity-50">
-              {saving ? 'Saving...' : 'Save Branding'}
-            </button>
-          </form>
-        ) : (
-          <div className="space-y-3 text-sm text-gray-600">
-            <p>Display Name: <span className="font-medium text-gray-900">{branding.companyName || '-'}</span></p>
-            <p>Primary Color: <span className="font-medium text-gray-900">{branding.primaryColor}</span></p>
-            {branding.logoUrl && <p>Logo: <span className="font-medium text-gray-900">{branding.logoUrl}</span></p>}
-            <p className="text-xs text-gray-400 italic mt-2">Only administrators can edit branding.</p>
-          </div>
-        )}
-      </div>
-
-      {isAdmin && <TenantCustomizationEditor initial={settings} onMessage={setMessage} />}
+      {isAdmin && <div className="mb-6"><TenantCustomizationEditor initial={settings} onMessage={setMessage} /></div>}
 
       {settings?.settings && (
         <div className="bg-white rounded-lg shadow p-6">

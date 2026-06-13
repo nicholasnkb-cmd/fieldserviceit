@@ -46,14 +46,17 @@ export function TenantTheme() {
       if (value) root.style.setProperty(name, value);
       else root.style.removeProperty(name);
     });
+    let favicon = document.querySelector<HTMLLinkElement>('link[rel="icon"][data-tenant-favicon]');
     if (branding.faviconUrl) {
-      let favicon = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
       if (!favicon) {
         favicon = document.createElement('link');
         favicon.rel = 'icon';
+        favicon.dataset.tenantFavicon = 'true';
         document.head.appendChild(favicon);
       }
       favicon.href = branding.faviconUrl;
+    } else if (favicon) {
+      favicon.remove();
     }
   }, [company]);
 

@@ -40,6 +40,19 @@
 }
 
 @layer components {
+  .input {
+    @apply w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-primary focus:ring-1 focus:ring-primary;
+  }
+
+  html[data-tenant-theme='true'] .app-content {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
+
+  html[data-tenant-theme='true'] .app-content .bg-white {
+    background-color: hsl(var(--card));
+  }
+
   .app-content {
     @apply min-h-full text-gray-800;
   }
