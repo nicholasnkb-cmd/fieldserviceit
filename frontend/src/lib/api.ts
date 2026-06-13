@@ -45,7 +45,9 @@ interface FetchOptions extends RequestInit {
   timeout?: number;
 }
 
-async function refreshAccessToken(): Promise<string | null> {
+let refreshPromise: Promise<string | null> | null = null;
+
+async function performTokenRefresh(): Promise<string | null> {
   try {
     const refreshToken = getSessionRefreshToken();
     const res = await fetch(`${API_BASE}/v1/auth/refresh`, {
@@ -70,6 +72,15 @@ async function refreshAccessToken(): Promise<string | null> {
     clearSessionTokens();
     return null;
   }
+}
+
+function refreshAccessToken(): Promise<string | null> {
+  if (!refreshPromise) {
+    refreshPromise = performTokenRefresh().finally(() => {
+      refreshPromise = null;
+    });
+  }
+  return refreshPromise;
 }
 
 export async function apiClient<T = any>(endpoint: string, options: FetchOptions = {}): Promise<T> {
