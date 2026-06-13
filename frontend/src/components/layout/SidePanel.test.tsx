@@ -79,16 +79,16 @@ describe('SidePanel', () => {
   it('groups navigation and persists collapsed sections', async () => {
     render(<SidePanel />);
 
-    const serviceDeskButton = screen.getByRole('button', { name: 'Service Desk' });
-    expect(serviceDeskButton).toHaveAttribute('aria-expanded', 'true');
+    const serviceButton = screen.getByRole('button', { name: 'Service' });
+    expect(serviceButton).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.click(serviceButton);
+
+    expect(serviceButton).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByRole('link', { name: 'Tickets' })).toBeInTheDocument();
-
-    fireEvent.click(serviceDeskButton);
-
-    expect(serviceDeskButton).toHaveAttribute('aria-expanded', 'false');
-    expect(document.getElementById('side-panel-service-desk')).toHaveClass('hidden');
+    expect(document.getElementById('side-panel-service')).not.toHaveClass('hidden');
     expect(JSON.parse(localStorage.getItem(navigationStorageKey('user-1', 'collapsedGroups')) || '{}')).toEqual({
-      'service-desk': true,
+      service: false,
     });
 
     await waitFor(() => expect(api.get).toHaveBeenCalledWith('/users/me/features'));
@@ -101,7 +101,7 @@ describe('SidePanel', () => {
 
     expect(screen.getByRole('button', { name: 'Expand side menu' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Overview: Dashboard' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Service Desk: Tickets' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Service: Tickets' })).toBeInTheDocument();
     expect(localStorage.getItem(navigationStorageKey('user-1', 'collapsed'))).toBe('true');
   });
 
@@ -109,14 +109,14 @@ describe('SidePanel', () => {
     (usePathname as jest.Mock).mockReturnValue('/network');
     localStorage.setItem(
       navigationStorageKey('user-1', 'collapsedGroups'),
-      JSON.stringify({ infrastructure: true }),
+      JSON.stringify({ technology: true }),
     );
 
     render(<SidePanel />);
 
-    const infrastructureButton = screen.getByRole('button', { name: 'Infrastructure' });
-    expect(infrastructureButton).toHaveClass('text-primary');
-    expect(infrastructureButton).toHaveAttribute('aria-expanded', 'false');
+    const technologyButton = screen.getByRole('button', { name: 'Technology' });
+    expect(technologyButton).toHaveClass('text-primary');
+    expect(technologyButton).toHaveAttribute('aria-expanded', 'false');
   });
 
   it('opens as a mobile drawer from the shared header event', async () => {
@@ -142,7 +142,7 @@ describe('SidePanel', () => {
     expect(screen.queryByRole('link', { name: 'Tickets' })).not.toBeInTheDocument();
   });
 
-  it('loads favorites, records recent pages, badges counts, and account controls', async () => {
+  it('loads favorites, badge counts, and account controls without adding recent-page clutter', async () => {
     (api.get as jest.Mock).mockImplementation((endpoint: string) => {
       if (endpoint === '/users/me/features') return Promise.resolve({ features: {} });
       if (endpoint === '/users/me/favorites') {
@@ -159,23 +159,17 @@ describe('SidePanel', () => {
     expect(screen.getByRole('link', { name: 'Network tools' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Profile' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
-    expect(JSON.parse(localStorage.getItem(navigationStorageKey('user-1', 'recentPages')) || '[]')[0])
-      .toMatchObject({ label: 'Dashboard', path: '/dashboard' });
+    expect(screen.queryByRole('button', { name: 'Recent' })).not.toBeInTheDocument();
     await waitFor(() => expect(screen.getByText('4')).toBeInTheDocument());
     expect(screen.getByText('2')).toBeInTheDocument();
   });
 
-  it('applies a saved per-user group order', () => {
-    localStorage.setItem(
-      navigationStorageKey('user-1', 'groupOrder'),
-      JSON.stringify(['infrastructure', 'overview', 'service-desk']),
-    );
-
+  it('keeps a stable task-based group order', () => {
     render(<SidePanel />);
 
-    const groupButtons = screen.getAllByRole('button', { expanded: true })
-      .filter((button) => !button.getAttribute('aria-label')?.startsWith('Move '));
-    expect(groupButtons[0]).toHaveAccessibleName('Infrastructure');
+    const groupButtons = screen.getAllByRole('button', { expanded: true });
+    expect(groupButtons[0]).toHaveAccessibleName('Overview');
+    expect(screen.queryByLabelText(/Move .* group/)).not.toBeInTheDocument();
   });
 
   it('auto-collapses on smaller laptop widths until the user chooses a preference', () => {

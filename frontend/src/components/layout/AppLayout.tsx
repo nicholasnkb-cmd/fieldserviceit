@@ -9,16 +9,18 @@ import { TenantAnnouncementBanner } from './TenantAnnouncementBanner';
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="flex min-h-screen flex-col bg-slate-50">
       <BannerMenu />
       <div className="flex flex-1">
         <SidePanel />
-        <main className="min-w-0 flex-1 bg-background">
+        <main className="min-w-0 flex-1 bg-slate-50">
           <ImpersonationBanner />
           <TenantContextBanner />
           <BillingStatusBanner />
           <TenantAnnouncementBanner />
-          <FeatureAccessGate>{children}</FeatureAccessGate>
+          <div className="app-content">
+            <FeatureAccessGate>{children}</FeatureAccessGate>
+          </div>
         </main>
       </div>
       <Footer />

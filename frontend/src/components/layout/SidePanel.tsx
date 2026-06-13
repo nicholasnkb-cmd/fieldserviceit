@@ -14,12 +14,10 @@ import {
   ChevronLeft,
   ChevronRight,
   ClipboardList,
-  Clock,
   CreditCard,
   FileText,
   Gauge,
   GitFork,
-  GripVertical,
   Home,
   KeyRound,
   LayoutDashboard,
@@ -49,8 +47,6 @@ import {
   NAV_DRAWER_EVENT,
   NAV_FAVORITES_EVENT,
   navigationStorageKey,
-  readRecentPages,
-  type RecentPage,
 } from '../../lib/navigation';
 import { cn } from '../../lib/utils';
 import { useAuthStore } from '../../stores/authStore';
@@ -77,8 +73,6 @@ type FavoritePage = {
   label: string;
   path: string;
 };
-
-const MAX_RECENT_PAGES = 6;
 
 const navGroups = {
   public: [
@@ -109,20 +103,19 @@ const navGroups = {
       ],
     },
     {
-      id: 'service-desk',
-      label: 'Service Desk',
+      id: 'service',
+      label: 'Service',
       items: [
         { label: 'Tickets', href: '/tickets', icon: Ticket, feature: 'tickets', badge: 'tickets' },
         { label: 'Service Catalog', href: '/catalog-requests', icon: ShoppingCart, feature: 'catalogRequests' },
         { label: 'Customer Portal', href: '/customer-portal', icon: Home, feature: 'tickets' },
-        { label: 'SLA Tracking', href: '/sla', icon: Gauge, feature: 'tickets' },
         { label: 'Knowledge Base', href: '/knowledge-base', icon: ClipboardList, feature: 'kb' },
         { label: 'AI Agent', href: '/ai-agent', icon: Bot, feature: 'aiAgent' },
       ],
     },
     {
-      id: 'field-operations',
-      label: 'Field Operations',
+      id: 'operations',
+      label: 'Operations',
       items: [
         { label: 'Field Service', href: '/dispatch', icon: Route, feature: 'dispatch' },
         { label: 'Technician Mobile', href: '/technician-mobile', icon: Smartphone, feature: 'dispatch' },
@@ -131,8 +124,8 @@ const navGroups = {
       ],
     },
     {
-      id: 'infrastructure',
-      label: 'Infrastructure',
+      id: 'technology',
+      label: 'Technology',
       items: [
         { label: 'Assets', href: '/assets', icon: PackageSearch, feature: 'assets' },
         { label: 'Network', href: '/network', icon: GitFork, feature: 'network' },
@@ -142,16 +135,17 @@ const navGroups = {
       ],
     },
     {
-      id: 'business',
-      label: 'Business',
+      id: 'insights',
+      label: 'Insights',
       items: [
-        { label: 'Quotes & Invoices', href: '/quotes-invoices', icon: CreditCard, feature: 'billing' },
         { label: 'Reports', href: '/reports', icon: BarChart3, feature: 'reporting' },
+        { label: 'SLA Tracking', href: '/sla', icon: Gauge, feature: 'tickets' },
+        { label: 'Quotes & Invoices', href: '/quotes-invoices', icon: CreditCard, feature: 'billing' },
       ],
     },
     {
-      id: 'administration',
-      label: 'Administration',
+      id: 'manage',
+      label: 'Manage',
       items: [
         { label: 'Security Center', href: '/security-center', icon: ShieldCheck, feature: 'auditLogs' },
         { label: 'Access Requests', href: '/access-requests', icon: UserCheck },
@@ -182,8 +176,8 @@ const navGroups = {
   ],
   admin: [
     {
-      id: 'platform-administration',
-      label: 'Platform Administration',
+      id: 'platform',
+      label: 'Platform',
       items: [
         { label: 'Super Admin', href: '/admin', icon: LayoutDashboard },
         { label: 'All Tickets', href: '/tickets', icon: Ticket, badge: 'tickets' },
@@ -192,7 +186,6 @@ const navGroups = {
         { label: 'System Controls', href: '/admin/system', icon: Settings },
         { label: 'Email Operations', href: '/admin/email-operations', icon: Mail },
         { label: 'Security Operations', href: '/admin/security-operations', icon: ShieldCheck },
-        { label: 'Security Center', href: '/security-center', icon: ShieldCheck },
         { label: 'Audit Logs', href: '/admin/audit-logs', icon: ClipboardList, feature: 'auditLogs' },
         { label: 'Permissions', href: '/admin/permissions', icon: Lock },
         { label: 'Access Requests', href: '/access-requests', icon: UserCheck },
@@ -202,17 +195,12 @@ const navGroups = {
   ],
   tenantAdmin: [
     {
-      id: 'company-administration',
-      label: 'Company Administration',
+      id: 'tenant',
+      label: 'Tenant Admin',
       items: [
         { label: 'Company Users', href: '/admin/company', icon: Users },
-        { label: 'Security Center', href: '/security-center', icon: ShieldCheck },
         { label: 'Security Operations', href: '/admin/security-operations', icon: ServerCog },
-        { label: 'Account Security', href: '/security', icon: KeyRound },
-        { label: 'Access Requests', href: '/access-requests', icon: UserCheck },
-        { label: 'RMM Integrations', href: '/integrations/rmm', icon: RefreshCw, feature: 'rmmIntegration' },
         { label: 'Email Operations', href: '/admin/email-operations', icon: Mail },
-        { label: 'Settings', href: '/settings', icon: Settings, feature: 'settings' },
       ],
     },
   ],
@@ -224,13 +212,6 @@ function findStaticItem(path: string) {
   return [...allStaticItems]
     .sort((a, b) => b.href.length - a.href.length)
     .find((item) => path === item.href || path.startsWith(`${item.href}/`));
-}
-
-function fallbackLabel(path: string) {
-  const segment = path.split('/').filter(Boolean).pop() || 'Dashboard';
-  return segment
-    .replaceAll('-', ' ')
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function readStoredObject<T>(key: string, fallback: T): T {
@@ -249,12 +230,9 @@ export function SidePanel() {
   const [features, setFeatures] = useState<Record<string, boolean>>({});
   const [collapsed, setCollapsed] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
-  const [groupOrder, setGroupOrder] = useState<string[]>([]);
   const [favorites, setFavorites] = useState<FavoritePage[]>([]);
-  const [recentPages, setRecentPages] = useState<RecentPage[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [draggedGroupId, setDraggedGroupId] = useState<string | null>(null);
   const [badgeCounts, setBadgeCounts] = useState<Record<BadgeKey, number>>({ tickets: 0, alerts: 0 });
   const navRef = useRef<HTMLElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -281,8 +259,6 @@ export function SidePanel() {
     autoCollapseRef.current = storedCollapsed === null;
     setCollapsed(storedCollapsed === null ? media.matches : storedCollapsed === 'true');
     setCollapsedGroups(readStoredObject(userStorageKey('collapsedGroups'), {}));
-    setGroupOrder(readStoredObject(userStorageKey('groupOrder'), []));
-    setRecentPages(readRecentPages(user.id));
 
     const handleLaptopWidth = (event: MediaQueryListEvent) => {
       if (autoCollapseRef.current) setCollapsed(event.matches);
@@ -326,20 +302,6 @@ export function SidePanel() {
     setMobileOpen(false);
     setSearchQuery('');
   }, [pathname]);
-
-  useEffect(() => {
-    if (!user?.id || !pathname.startsWith('/') || pathname === '/history' || pathname === '/favorites') return;
-    const item = findStaticItem(pathname);
-    const nextPage: RecentPage = {
-      label: item?.label || fallbackLabel(pathname),
-      path: pathname,
-      visitedAt: new Date().toISOString(),
-    };
-    const next = [nextPage, ...readRecentPages(user.id).filter((page) => page.path !== pathname)]
-      .slice(0, MAX_RECENT_PAGES);
-    localStorage.setItem(userStorageKey('recentPages'), JSON.stringify(next));
-    setRecentPages(next);
-  }, [pathname, user?.id, userStorageKey]);
 
   useEffect(() => {
     if (!user?.id || !navRef.current) return;
@@ -423,34 +385,11 @@ export function SidePanel() {
           })),
         }
       : null;
-    const recentGroup: NavGroup | null = recentPages.length > 0
-      ? {
-          id: 'recent',
-          label: 'Recent',
-          dynamic: true,
-          items: recentPages.map((page) => ({
-            label: page.label,
-            href: page.path,
-            icon: iconForPath(page.path, Clock),
-          })),
-        }
-      : null;
-
-    const groups = [
+    return [
       ...(favoriteGroup ? [favoriteGroup] : []),
-      ...(recentGroup ? [recentGroup] : []),
       ...baseGroups,
     ];
-    const orderIndex = new Map(groupOrder.map((id, index) => [id, index]));
-    return groups.sort((a, b) => {
-      const aIndex = orderIndex.get(a.id);
-      const bIndex = orderIndex.get(b.id);
-      if (aIndex === undefined && bIndex === undefined) return 0;
-      if (aIndex === undefined) return 1;
-      if (bIndex === undefined) return -1;
-      return aIndex - bIndex;
-    });
-  }, [availableItems, baseGroups, favorites, groupOrder, recentPages]);
+  }, [availableItems, baseGroups, favorites]);
 
   const visibleGroups = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -482,22 +421,17 @@ export function SidePanel() {
 
   const toggleGroup = (groupId: string) => {
     setCollapsedGroups((current) => {
-      const next = { ...current, [groupId]: !current[groupId] };
+      const group = personalizedGroups.find((item) => item.id === groupId);
+      const defaultOpen = groupId === 'overview' || Boolean(group?.items.some(
+        (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
+      ));
+      const next = {
+        ...current,
+        [groupId]: current[groupId] === undefined ? defaultOpen : !current[groupId],
+      };
       localStorage.setItem(userStorageKey('collapsedGroups'), JSON.stringify(next));
       return next;
     });
-  };
-
-  const handleGroupDrop = (targetGroupId: string) => {
-    if (!draggedGroupId || draggedGroupId === targetGroupId) return;
-    const ids = personalizedGroups.map((group) => group.id);
-    const sourceIndex = ids.indexOf(draggedGroupId);
-    const targetIndex = ids.indexOf(targetGroupId);
-    if (sourceIndex < 0 || targetIndex < 0) return;
-    ids.splice(targetIndex, 0, ids.splice(sourceIndex, 1)[0]);
-    setGroupOrder(ids);
-    localStorage.setItem(userStorageKey('groupOrder'), JSON.stringify(ids));
-    setDraggedGroupId(null);
   };
 
   const handleLogout = () => {
@@ -642,42 +576,26 @@ export function SidePanel() {
             const containsActiveRoute = group.items.some(
               (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
             );
-            const isGroupOpen = searchQuery ? true : !collapsedGroups[group.id];
+            const defaultOpen = group.id === 'overview' || containsActiveRoute;
+            const isGroupOpen = searchQuery ? true : collapsedGroups[group.id] === undefined
+              ? defaultOpen
+              : !collapsedGroups[group.id];
             const groupItemsId = `side-panel-${group.id}`;
 
             return (
               <div
                 key={group.id}
-                onDragOver={(event) => {
-                  if (!compact && !searchQuery) event.preventDefault();
-                }}
-                onDrop={() => handleGroupDrop(group.id)}
                 className={cn(
                   compact && groupIndex > 0 && 'mt-2 border-t border-gray-200 pt-2',
-                  draggedGroupId === group.id && 'opacity-50',
                 )}
               >
                 {!compact && (
                   <div className="flex h-8 items-center">
                     <button
                       type="button"
-                      draggable={!searchQuery}
-                      onDragStart={(event) => {
-                        setDraggedGroupId(group.id);
-                        event.dataTransfer.effectAllowed = 'move';
-                      }}
-                      onDragEnd={() => setDraggedGroupId(null)}
-                      className="inline-flex h-8 w-7 shrink-0 cursor-grab items-center justify-center rounded text-gray-300 hover:bg-gray-50 hover:text-gray-600 active:cursor-grabbing"
-                      aria-label={`Move ${group.label} group`}
-                      title={`Drag to reorder ${group.label}`}
-                    >
-                      <GripVertical size={14} />
-                    </button>
-                    <button
-                      type="button"
                       onClick={() => toggleGroup(group.id)}
                       className={cn(
-                        'flex h-8 min-w-0 flex-1 items-center justify-between rounded-md px-2 text-xs font-semibold uppercase hover:bg-gray-50',
+                        'flex h-9 min-w-0 flex-1 items-center justify-between rounded-md px-2.5 text-xs font-semibold uppercase tracking-wide hover:bg-gray-50',
                         containsActiveRoute ? 'text-primary' : 'text-gray-500 hover:text-gray-800',
                       )}
                       aria-expanded={isGroupOpen}

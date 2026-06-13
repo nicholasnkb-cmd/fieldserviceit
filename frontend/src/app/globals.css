@@ -39,6 +39,45 @@
   }
 }
 
+@layer components {
+  .app-content {
+    @apply min-h-full text-gray-800;
+  }
+
+  .app-content > * {
+    @apply mx-auto w-full max-w-[1600px];
+  }
+
+  .app-content h1 {
+    @apply tracking-tight text-gray-950;
+  }
+
+  .app-content h2,
+  .app-content h3 {
+    @apply text-gray-900;
+  }
+
+  .app-content .shadow {
+    border: 1px solid rgb(226 232 240);
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+  }
+
+  .app-content table thead {
+    @apply bg-slate-50;
+  }
+
+  .app-content table tbody tr {
+    @apply transition-colors hover:bg-slate-50/70;
+  }
+
+  @media (max-width: 767px) {
+    .app-content .p-8,
+    .app-content .p-6 {
+      padding: 1rem;
+    }
+  }
+}
+
 @keyframes slide-in { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 .animate-slide-in { animation: slide-in 0.3s ease-out; }
 
