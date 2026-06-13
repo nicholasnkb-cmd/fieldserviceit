@@ -22,6 +22,9 @@ export default function TenantAdminPage() {
   const [message, setMessage] = useState('');
   const { user } = useAuthStore();
   const router = useRouter();
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+  const canGovern = (companyUser: CompanyUser) =>
+    isSuperAdmin || (companyUser.id !== user?.id && companyUser.role !== 'TENANT_ADMIN');
 
   useEffect(() => {
     const handle = window.setTimeout(() => setDebouncedSearch(search.trim()), 350);
@@ -112,7 +115,7 @@ export default function TenantAdminPage() {
                 className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm">
                 <option value="CLIENT">CLIENT</option>
                 <option value="TECHNICIAN">TECHNICIAN</option>
-                <option value="TENANT_ADMIN">TENANT_ADMIN</option>
+                {isSuperAdmin && <option value="TENANT_ADMIN">TENANT_ADMIN</option>}
                 <option value="READ_ONLY">READ_ONLY</option>
               </select></div>
             <div className="col-span-2">
@@ -150,7 +153,7 @@ export default function TenantAdminPage() {
                       <select value={newRole} onChange={(e) => setNewRole(e.target.value)} className="text-xs rounded border px-1 py-0.5">
                         <option value="CLIENT">CLIENT</option>
                         <option value="TECHNICIAN">TECHNICIAN</option>
-                        <option value="TENANT_ADMIN">TENANT_ADMIN</option>
+                        {isSuperAdmin && <option value="TENANT_ADMIN">TENANT_ADMIN</option>}
                         <option value="READ_ONLY">READ_ONLY</option>
                       </select>
                       <button onClick={() => handleRoleChange(u.id)} className="text-xs text-primary">Save</button>
@@ -165,7 +168,11 @@ export default function TenantAdminPage() {
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex gap-2">
-                    <button onClick={() => { setEditing(u.id); setNewRole(u.role); }} className="text-xs text-primary hover:underline">Role</button>
+                    {canGovern(u) ? (
+                      <button onClick={() => { setEditing(u.id); setNewRole(u.role); }} className="text-xs text-primary hover:underline">Role</button>
+                    ) : (
+                      <span className="text-xs text-gray-400">Protected</span>
+                    )}
                     <button onClick={() => handleDelete(u.id)} className="text-xs text-red-500 hover:underline">Delete</button>
                   </div>
                 </td>
