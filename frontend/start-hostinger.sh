@@ -2,7 +2,7 @@
 set -e
 
 cd "$(dirname "$0")"
-export HOSTNAME="${HOSTNAME:-0.0.0.0}"
+export HOSTNAME="0.0.0.0"
 
 if [ ! -f ".next/standalone/server.js" ]; then
   echo "Standalone server missing; rebuilding..."
