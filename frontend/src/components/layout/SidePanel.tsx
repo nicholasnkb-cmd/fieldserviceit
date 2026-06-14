@@ -128,6 +128,8 @@ const navGroups = {
       label: 'Technology',
       items: [
         { label: 'Assets', href: '/assets', icon: PackageSearch, feature: 'assets' },
+        { label: 'Remote Access', href: '/remote-access', icon: PackageSearch, feature: 'assets' },
+        { label: 'Patch Management', href: '/patch-management', icon: ShieldCheck, feature: 'assets' },
         { label: 'Network', href: '/network', icon: GitFork, feature: 'network' },
         { label: 'Advanced Alerting', href: '/alerting', icon: AlertTriangle, feature: 'network', badge: 'alerts' },
         { label: 'Topology Map', href: '/topology', icon: MapIcon, feature: 'network' },

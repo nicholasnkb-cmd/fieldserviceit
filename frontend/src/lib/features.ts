@@ -4,6 +4,8 @@ export const routeFeatureMap: Array<{ prefix: string; feature: string }> = [
   { prefix: '/my-tickets', feature: 'tickets' },
   { prefix: '/customer-portal', feature: 'tickets' },
   { prefix: '/assets', feature: 'assets' },
+  { prefix: '/remote-access', feature: 'assets' },
+  { prefix: '/patch-management', feature: 'assets' },
   { prefix: '/inventory', feature: 'assets' },
   { prefix: '/network', feature: 'network' },
   { prefix: '/alerting', feature: 'network' },
