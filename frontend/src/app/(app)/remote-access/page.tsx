@@ -24,7 +24,7 @@ export default function RemoteAccessPage() {
         api.get('/endpoint-operations/remote-access/summary'),
         api.get('/endpoint-operations/remote-access/endpoints'),
         api.get('/endpoint-operations/remote-access/sessions'),
-        api.get('/assets?limit=200'),
+        api.get('/assets?limit=100'),
       ]);
       setSummary(summaryData || {});
       setEndpoints(getListData(endpointData));

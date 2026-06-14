@@ -118,8 +118,8 @@ export default function SystemControlsPage() {
     Promise.all([
       api.get('/admin/plans'),
       api.get('/admin/system-readiness').catch(() => null),
-      api.get('/admin/companies?limit=200').catch(() => ({ data: [] })),
-      api.get('/admin/users?limit=200').catch(() => ({ data: [] })),
+      api.get('/admin/companies?limit=100').catch(() => ({ data: [] })),
+      api.get('/admin/users?limit=100').catch(() => ({ data: [] })),
       api.get('/admin/function-controls').catch(() => []),
       api.get('/admin/billing/providers').catch(() => []),
       api.get('/admin/billing/events?limit=12').catch(() => []),

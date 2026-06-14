@@ -26,7 +26,7 @@ export default function PatchManagementPage() {
         api.get('/endpoint-operations/patches/inventory?status=MISSING'),
         api.get('/endpoint-operations/patches/policies'),
         api.get('/endpoint-operations/patches/jobs'),
-        api.get('/assets?limit=200'),
+        api.get('/assets?limit=100'),
       ]);
       setSummary(summaryData || {});
       setInventory(getListData(inventoryData));
