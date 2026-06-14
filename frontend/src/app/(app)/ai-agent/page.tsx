@@ -259,6 +259,11 @@ export default function AiAgentPage() {
                 )}
               </div>
               <p className="mt-2 text-sm text-blue-900">{answer.answer}</p>
+              {answer.model?.status === 'not-configured' && (
+                <p className="mt-2 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  Model reasoning is not configured. This answer used the built-in operational fallback.
+                </p>
+              )}
               {!!answer.facts?.length && (
                 <div className="mt-3 grid gap-2 md:grid-cols-2">
                   {answer.facts.map((fact) => (
