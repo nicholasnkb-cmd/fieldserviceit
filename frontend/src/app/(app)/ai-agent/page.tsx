@@ -14,6 +14,7 @@ interface AgentStep {
 
 interface AgentIntent {
   primary: string;
+  secondary?: string[];
   confidence: number;
   entities: Record<string, string | undefined>;
 }
@@ -21,6 +22,7 @@ interface AgentIntent {
 interface AgentPlan {
   goal: string;
   mode: string;
+  model?: AgentModel;
   intent?: AgentIntent;
   summary: string;
   contextNotes?: string[];
@@ -35,6 +37,8 @@ interface AgentPlan {
 
 interface AgentAnswer {
   question: string;
+  mode?: string;
+  model?: AgentModel;
   intent?: AgentIntent;
   answer: string;
   facts?: string[];
@@ -42,6 +46,17 @@ interface AgentAnswer {
   contextNotes?: string[];
   snapshot?: Record<string, number>;
   results?: any[];
+}
+
+interface AgentModel {
+  provider: string;
+  model: string | null;
+  status: string;
+}
+
+interface ConversationItem {
+  role: 'user' | 'assistant';
+  content: string;
 }
 
 const starterGoals = [
@@ -62,6 +77,7 @@ export default function AiAgentPage() {
   const [loading, setLoading] = useState('');
   const [message, setMessage] = useState('');
   const [answer, setAnswer] = useState<AgentAnswer | null>(null);
+  const [history, setHistory] = useState<ConversationItem[]>([]);
 
   const approvalSet = useMemo(() => new Set(approvedActions), [approvedActions]);
   const activeSnapshot = plan?.snapshot || answer?.snapshot || defaultSnapshot;
@@ -73,10 +89,15 @@ export default function AiAgentPage() {
     setLoading('plan');
     setMessage('');
     try {
-      const data = await api.post<AgentPlan>('/ai-agent/plan', { goal });
+      const data = await api.post<AgentPlan>('/ai-agent/plan', { goal, history });
       setPlan(data);
       setAnswer(null);
       setApprovedActions([]);
+      setHistory((current) => [
+        ...current,
+        { role: 'user' as const, content: goal },
+        { role: 'assistant' as const, content: data.summary },
+      ].slice(-8));
     } catch (err: any) {
       setMessage(err.message || 'Failed to create plan');
     } finally {
@@ -88,9 +109,14 @@ export default function AiAgentPage() {
     setLoading('ask');
     setMessage('');
     try {
-      const data = await api.post<AgentAnswer>('/ai-agent/ask', { question: goal });
+      const data = await api.post<AgentAnswer>('/ai-agent/ask', { question: goal, history });
       setAnswer(data);
       setMessage(data.answer);
+      setHistory((current) => [
+        ...current,
+        { role: 'user' as const, content: goal },
+        { role: 'assistant' as const, content: data.answer },
+      ].slice(-8));
     } catch (err: any) {
       setMessage(err.message || 'Agent could not answer');
     } finally {
@@ -102,10 +128,15 @@ export default function AiAgentPage() {
     setLoading('execute');
     setMessage('');
     try {
-      const data = await api.post<AgentPlan>('/ai-agent/execute', { goal, approvedActions });
+      const data = await api.post<AgentPlan>('/ai-agent/execute', { goal, approvedActions, history });
       setPlan(data);
       setAnswer(null);
       setMessage(data.finalAnswer || 'Agent run complete');
+      setHistory((current) => [
+        ...current,
+        { role: 'user' as const, content: goal },
+        { role: 'assistant' as const, content: data.finalAnswer || data.summary },
+      ].slice(-8));
     } catch (err: any) {
       setMessage(err.message || 'Failed to execute plan');
     } finally {
@@ -178,6 +209,20 @@ export default function AiAgentPage() {
               <Play className="h-4 w-4" aria-hidden="true" />
               {loading === 'execute' ? 'Running...' : 'Run approved actions'}
             </button>
+            {!!history.length && (
+              <button
+                onClick={() => {
+                  setHistory([]);
+                  setPlan(null);
+                  setAnswer(null);
+                  setMessage('Conversation context cleared');
+                }}
+                disabled={!!loading}
+                className="rounded px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 disabled:opacity-60"
+              >
+                Clear context
+              </button>
+            )}
           </div>
 
           {activeIntent && (
@@ -185,6 +230,9 @@ export default function AiAgentPage() {
               <div className="rounded border border-gray-200 p-3">
                 <div className="text-xs uppercase text-gray-500">Intent</div>
                 <div className="mt-1 text-sm font-semibold text-gray-950">{activeIntent.primary}</div>
+                {!!activeIntent.secondary?.length && (
+                  <div className="mt-1 text-xs text-gray-500">Also: {activeIntent.secondary.join(', ')}</div>
+                )}
               </div>
               <div className="rounded border border-gray-200 p-3">
                 <div className="text-xs uppercase text-gray-500">Confidence</div>
@@ -201,9 +249,14 @@ export default function AiAgentPage() {
 
           {answer && (
             <div className="mt-6 rounded border border-blue-200 bg-blue-50 p-4">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Sparkles className="h-4 w-4 text-blue-700" aria-hidden="true" />
                 <h2 className="text-sm font-semibold text-blue-950">Answer</h2>
+                {answer.model && (
+                  <span className="rounded border border-blue-200 bg-white/70 px-2 py-0.5 text-xs text-blue-700">
+                    {answer.model.model || answer.model.provider} · {answer.model.status}
+                  </span>
+                )}
               </div>
               <p className="mt-2 text-sm text-blue-900">{answer.answer}</p>
               {!!answer.facts?.length && (
@@ -220,7 +273,9 @@ export default function AiAgentPage() {
             <div className="mt-6">
               <div className="flex items-center justify-between gap-3">
                 <h2 className="text-lg font-semibold text-gray-950">Plan</h2>
-                <span className="rounded border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-600">{plan.mode}</span>
+                <span className="rounded border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-600">
+                  {plan.model?.model || plan.mode} · {plan.model?.status || plan.mode}
+                </span>
               </div>
               <p className="mt-1 text-sm text-gray-500">{plan.summary}</p>
               {plan.riskSummary && <p className="mt-1 text-xs text-amber-700">{plan.riskSummary}</p>}
@@ -258,6 +313,22 @@ export default function AiAgentPage() {
         </section>
 
         <aside className="space-y-5">
+          {!!history.length && (
+            <section className="rounded border border-gray-200 bg-white p-5">
+              <div className="flex items-center gap-2">
+                <Bot className="h-4 w-4 text-primary" aria-hidden="true" />
+                <h2 className="text-sm font-semibold text-gray-950">Conversation context</h2>
+              </div>
+              <div className="mt-3 max-h-64 space-y-2 overflow-auto">
+                {history.map((item, index) => (
+                  <div key={`${item.role}-${index}`} className={`rounded p-2 text-xs ${item.role === 'user' ? 'bg-gray-100 text-gray-700' : 'bg-blue-50 text-blue-900'}`}>
+                    <span className="font-semibold">{item.role === 'user' ? 'You' : 'Agent'}:</span> {item.content}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
           <section className="rounded border border-gray-200 bg-white p-5">
             <div className="flex items-center gap-2">
               <ShieldCheck className="h-4 w-4 text-emerald-600" aria-hidden="true" />
