@@ -19,7 +19,6 @@ export const routeFeatureMap: Array<{ prefix: string; feature: string }> = [
   { prefix: '/integrations/rmm', feature: 'rmmIntegration' },
   { prefix: '/billing', feature: 'billing' },
   { prefix: '/quotes-invoices', feature: 'billing' },
-  { prefix: '/settings', feature: 'settings' },
   { prefix: '/admin/audit-logs', feature: 'auditLogs' },
   { prefix: '/security-center', feature: 'auditLogs' },
 ];

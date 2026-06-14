@@ -152,7 +152,7 @@ const navGroups = {
         { label: 'Security Center', href: '/security-center', icon: ShieldCheck, feature: 'auditLogs' },
         { label: 'Access Requests', href: '/access-requests', icon: UserCheck },
         { label: 'Account Security', href: '/security', icon: KeyRound },
-        { label: 'Settings', href: '/settings', icon: Settings, feature: 'settings' },
+        { label: 'Settings', href: '/settings', icon: Settings },
       ],
     },
   ],
