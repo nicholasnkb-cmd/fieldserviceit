@@ -37,6 +37,45 @@
   html[data-tenant-theme='true']:not(.dark) .bg-white {
     background-color: hsl(var(--card));
   }
+
+  html[data-tenant-theme='true']:not(.dark) .bg-slate-50,
+  html[data-tenant-theme='true']:not(.dark) .bg-gray-50 {
+    background-color: hsl(var(--background));
+  }
+
+  html[data-tenant-theme='true']:not(.dark) .bg-slate-100,
+  html[data-tenant-theme='true']:not(.dark) .bg-gray-100 {
+    background-color: hsl(var(--secondary));
+  }
+
+  html[data-tenant-theme='true']:not(.dark) :is(
+    .text-slate-950,
+    .text-slate-900,
+    .text-slate-800,
+    .text-gray-950,
+    .text-gray-900,
+    .text-gray-800
+  ) {
+    color: hsl(var(--foreground));
+  }
+
+  html[data-tenant-theme='true']:not(.dark) :is(
+    .text-slate-700,
+    .text-slate-600,
+    .text-gray-700,
+    .text-gray-600
+  ) {
+    color: hsl(var(--foreground) / 0.82);
+  }
+
+  html[data-tenant-theme='true']:not(.dark) :is(
+    .text-slate-500,
+    .text-slate-400,
+    .text-gray-500,
+    .text-gray-400
+  ) {
+    color: hsl(var(--foreground) / 0.62);
+  }
 }
 
 @layer components {
@@ -54,7 +93,7 @@
   }
 
   .app-content {
-    @apply min-h-full text-gray-800;
+    @apply min-h-full text-foreground;
   }
 
   .app-content > * {
@@ -62,12 +101,12 @@
   }
 
   .app-content h1 {
-    @apply tracking-tight text-gray-950;
+    @apply tracking-tight text-foreground;
   }
 
   .app-content h2,
   .app-content h3 {
-    @apply text-gray-900;
+    @apply text-foreground;
   }
 
   .app-content .shadow {

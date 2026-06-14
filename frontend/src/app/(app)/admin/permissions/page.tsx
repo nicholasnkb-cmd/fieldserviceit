@@ -30,6 +30,7 @@ import {
 import { api, getListData } from '../../../../lib/api';
 import { useAuthStore } from '../../../../stores/authStore';
 import { useToast } from '../../../../components/ui/Toast';
+import { PermissionHistoryPanel, type PermissionHistoryEntry } from '../../../../components/admin/PermissionHistoryPanel';
 
 interface Permission {
   id: string;
@@ -71,15 +72,6 @@ interface PermissionPreset {
   name: string;
   description: string;
   permissionSlugs: string[];
-}
-
-interface PermissionHistory {
-  id: string;
-  roleId: string;
-  action: string;
-  createdAt: string;
-  actor?: { firstName: string; lastName: string; email: string } | null;
-  diff?: { roleName?: string; added?: string[]; removed?: string[]; sourceRoleId?: string };
 }
 
 interface ChangeAnalysis {
@@ -132,7 +124,8 @@ export default function AdminPermissionsPage() {
   const [error, setError] = useState('');
   const [scope, setScope] = useState<'PLATFORM' | 'TENANT'>('PLATFORM');
   const [presets, setPresets] = useState<PermissionPreset[]>([]);
-  const [history, setHistory] = useState<PermissionHistory[]>([]);
+  const [history, setHistory] = useState<PermissionHistoryEntry[]>([]);
+  const [restoringHistoryId, setRestoringHistoryId] = useState('');
   const [activeTool, setActiveTool] = useState<'PRESETS' | 'COMPARE' | 'USERS' | 'HISTORY' | 'CLONE' | 'GOVERNANCE' | null>(null);
   const [selectedRoleId, setSelectedRoleId] = useState('');
   const [compareRoleId, setCompareRoleId] = useState('');
@@ -365,6 +358,26 @@ export default function AdminPermissionsPage() {
       toast('success', 'Role cloned');
     } catch (err: any) {
       toast('error', err.message || 'Failed to clone role');
+    }
+  };
+
+  const restorePermissionVersion = async (entry: PermissionHistoryEntry) => {
+    if (!window.confirm(`Restore the permissions that existed before this change to ${entry.diff?.roleName || 'the role'}?`)) return;
+    setRestoringHistoryId(entry.id);
+    try {
+      await api.post(`/admin/roles/${entry.roleId}/history/${entry.id}/rollback`, {});
+      const workspace = await api.get('/admin/permissions/workspace');
+      const nextRoles = getListData<Role>(workspace.roles);
+      const nextState = stateFromRoles(nextRoles);
+      setRoles(nextRoles);
+      setAssigned(cloneState(nextState));
+      setBaseline(cloneState(nextState));
+      setHistory(workspace.history || []);
+      toast('success', 'Permission version restored');
+    } catch (err: any) {
+      toast('error', err.message || 'Permission version could not be restored');
+    } finally {
+      setRestoringHistoryId('');
     }
   };
 
@@ -787,13 +800,12 @@ export default function AdminPermissionsPage() {
           )}
 
           {activeTool === 'HISTORY' && (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[720px] text-sm">
-                <thead><tr className="border-b border-gray-200 text-left text-xs uppercase text-gray-500"><th className="pb-2">Time</th><th className="pb-2">Actor</th><th className="pb-2">Role</th><th className="pb-2">Added</th><th className="pb-2">Removed</th></tr></thead>
-                <tbody>{history.map((entry) => <tr key={entry.id} className="border-b border-gray-100"><td className="py-2 pr-3">{new Date(entry.createdAt).toLocaleString()}</td><td className="py-2 pr-3">{entry.actor ? `${entry.actor.firstName} ${entry.actor.lastName}` : 'System'}</td><td className="py-2 pr-3">{entry.diff?.roleName || roles.find((role) => role.id === entry.roleId)?.name || entry.roleId}</td><td className="py-2 pr-3 text-emerald-700">{entry.diff?.added?.join(', ') || '-'}</td><td className="py-2 text-red-700">{entry.diff?.removed?.join(', ') || '-'}</td></tr>)}</tbody>
-              </table>
-              {history.length === 0 && <p className="py-6 text-center text-sm text-gray-500">No permission changes recorded yet.</p>}
-            </div>
+            <PermissionHistoryPanel
+              history={history}
+              roleNames={Object.fromEntries(roles.map((role) => [role.id, role.name]))}
+              restoringId={restoringHistoryId}
+              onRestore={restorePermissionVersion}
+            />
           )}
 
           {activeTool === 'CLONE' && (

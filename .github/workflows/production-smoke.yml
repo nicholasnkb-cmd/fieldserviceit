@@ -33,6 +33,7 @@ jobs:
           SMOKE_EMAIL: ${{ secrets.SMOKE_EMAIL }}
           SMOKE_PASSWORD: ${{ secrets.SMOKE_PASSWORD }}
           SMOKE_MUTATIONS: ${{ github.event.inputs.mutations || 'false' }}
+          MONITORING_API_KEY: ${{ secrets.MONITORING_API_KEY }}
         run: node scripts/production-smoke.mjs
 
   browser-smoke:

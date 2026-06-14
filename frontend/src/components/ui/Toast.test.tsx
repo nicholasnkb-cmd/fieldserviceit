@@ -28,4 +28,17 @@ describe('Toast', () => {
     const toastEl = screen.getByText('Error').closest('div[class*="bg-"]');
     expect(toastEl).toHaveClass('bg-red-600');
   });
+
+  it('deduplicates the same message from local and global error handlers', () => {
+    render(
+      <ToastProvider>
+        <TestHarness type="error" message="Save failed" />
+      </ToastProvider>
+    );
+    act(() => {
+      screen.getByText('Show Toast').click();
+      window.dispatchEvent(new CustomEvent('fieldserviceit:api-error', { detail: { message: 'Save failed' } }));
+    });
+    expect(screen.getAllByText('Save failed')).toHaveLength(1);
+  });
 });

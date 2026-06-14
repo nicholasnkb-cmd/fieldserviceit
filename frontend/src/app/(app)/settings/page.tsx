@@ -41,7 +41,9 @@ export default function SettingsPage() {
         logoUrl: data.branding?.logoUrl || '',
         companyName: data.branding?.companyName || data.name || '',
       });
-    }).catch(() => {}).finally(() => setLoading(false));
+    }).catch((error: any) => {
+      setMessage(error.message || 'Company settings could not be loaded');
+    }).finally(() => setLoading(false));
     if (isAdmin) {
       api.get('/notifications/email/templates/TICKET_PARTICIPANT')
         .then((data) => setEmailTemplate((current: any) => ({ ...current, ...data, enabled: data.enabled !== false && data.enabled !== 0 })))
@@ -90,9 +92,15 @@ export default function SettingsPage() {
   return (
     <div className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
       <h1 className="text-2xl font-bold mb-6">Company Settings</h1>
-      {message && <div className="bg-green-50 text-green-600 p-3 rounded text-sm mb-4">{message}</div>}
+      {message && <div role="status" className="mb-4 rounded bg-secondary/60 p-3 text-sm text-foreground">{message}</div>}
 
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
+      {!settings && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          Customization is unavailable because the company settings could not be loaded. Check the message above, then refresh the page.
+        </div>
+      )}
+
+      {settings && <div className="bg-white rounded-lg shadow p-6 mb-6">
         <h2 className="text-lg font-semibold mb-4">General</h2>
         {isAdmin ? (
           <form onSubmit={saveGeneral} className="space-y-4">
@@ -118,7 +126,7 @@ export default function SettingsPage() {
             <p className="text-xs text-gray-400 italic mt-2">Only administrators can edit these settings.</p>
           </div>
         )}
-      </div>
+      </div>}
 
       {isAdmin && (
         <div className="mb-6 rounded-lg bg-white p-6 shadow">
@@ -198,7 +206,7 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {isAdmin && <div className="mb-6"><TenantCustomizationEditor initial={settings} onMessage={setMessage} /></div>}
+      {isAdmin && settings && <div className="mb-6"><TenantCustomizationEditor initial={settings} onMessage={setMessage} /></div>}
 
       {settings?.settings && (
         <div className="bg-white rounded-lg shadow p-6">

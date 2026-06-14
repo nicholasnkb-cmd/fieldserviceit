@@ -89,3 +89,8 @@ coverage/
 # Playwright
 frontend/test-results/
 frontend/playwright-report/
+
+# Generated marketing artifacts
+marketing/output/
+marketing-video/frames/
+marketing-video/*.mp4

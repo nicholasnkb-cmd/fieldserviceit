@@ -72,6 +72,8 @@ export function TenantCustomizationEditor({ initial, onMessage }: { initial: any
   const [branding, setBranding] = useState<any>(defaults.branding);
   const [customization, setCustomization] = useState<any>(defaults.customization);
   const [savedSnapshot, setSavedSnapshot] = useState('');
+  const [history, setHistory] = useState<any[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   useEffect(() => {
     if (!initial) return;
@@ -96,6 +98,48 @@ export function TenantCustomizationEditor({ initial, onMessage }: { initial: any
     () => savedSnapshot !== '' && savedSnapshot !== JSON.stringify({ branding, customization }),
     [branding, customization, savedSnapshot],
   );
+  const validationErrors = useMemo(() => {
+    const errors: Record<string, string> = {};
+    for (const [field, label] of colorFields) {
+      if (!/^#[0-9a-f]{6}$/i.test(branding[field] || '')) errors[`branding.${field}`] = `${label} must be a six-digit hex color.`;
+    }
+    if (!/^#[0-9a-f]{6}$/i.test(customization.reporting.accentColor || '')) {
+      errors['reporting.accentColor'] = 'Report accent must be a six-digit hex color.';
+    }
+    const checkUrl = (key: string, value: string, label: string) => {
+      if (!value) return;
+      if (value.startsWith('/uploads/branding/')) return;
+      try {
+        const parsed = new URL(value);
+        if (!['http:', 'https:', 'mailto:'].includes(parsed.protocol)) throw new Error();
+      } catch {
+        errors[key] = `${label} must be a valid HTTP, HTTPS, or uploaded image URL.`;
+      }
+    };
+    imageFields.forEach(([field, label]) => checkUrl(`branding.${field}`, branding[field], label));
+    checkUrl('banner.imageUrl', customization.banner.imageUrl, 'Banner image');
+    checkUrl('banner.linkUrl', customization.banner.linkUrl, 'Banner link');
+    return errors;
+  }, [branding, customization]);
+  const hasValidationErrors = Object.keys(validationErrors).length > 0;
+
+  useEffect(() => {
+    const warn = (event: BeforeUnloadEvent) => {
+      if (!dirty) return;
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [dirty]);
+
+  const loadHistory = async () => {
+    try {
+      setHistory(await api.get<any[]>('/settings/history'));
+    } catch (error: any) {
+      onMessage(error.message || 'Customization history could not be loaded');
+    }
+  };
 
   const updateSection = (section: string, values: Record<string, any>) => {
     setCustomization((current: any) => ({ ...current, [section]: { ...current[section], ...values } }));
@@ -131,6 +175,7 @@ export function TenantCustomizationEditor({ initial, onMessage }: { initial: any
       const updated = await api.put('/settings/customization', customization);
       setCompany(updated);
       setSavedSnapshot(JSON.stringify({ branding, customization }));
+      loadHistory();
       onMessage('Tenant customization published');
     } catch (error: any) {
       onMessage(error.message || 'Customization could not be saved');
@@ -163,9 +208,40 @@ export function TenantCustomizationEditor({ initial, onMessage }: { initial: any
       setSavedSnapshot(JSON.stringify({ branding: nextBranding, customization: nextCustomization }));
       setCompany(updated);
       setActiveTab('brand');
+      loadHistory();
       onMessage('Tenant customization reset to defaults');
     } catch (error: any) {
       onMessage(error.message || 'Tenant customization could not be reset');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const rollback = async (id: string) => {
+    if (!window.confirm('Restore this saved tenant customization version? The current version will remain available in history.')) return;
+    setSaving(true);
+    try {
+      const updated = await api.post<any>(`/settings/history/${id}/rollback`, {});
+      const nextBranding = {
+        ...defaults.branding,
+        ...(updated.branding || {}),
+        companyName: updated.branding?.companyName || updated.name || '',
+        logoUrl: updated.branding?.logoUrl || updated.logo || '',
+      };
+      const saved = updated.settings?.customization || {};
+      const nextCustomization = {
+        banner: { ...defaults.customization.banner, ...(saved.banner || {}) },
+        workflow: { ...defaults.customization.workflow, ...(saved.workflow || {}) },
+        reporting: { ...defaults.customization.reporting, ...(saved.reporting || {}) },
+      };
+      setBranding(nextBranding);
+      setCustomization(nextCustomization);
+      setSavedSnapshot(JSON.stringify({ branding: nextBranding, customization: nextCustomization }));
+      setCompany(updated);
+      await loadHistory();
+      onMessage('Tenant customization version restored');
+    } catch (error: any) {
+      onMessage(error.message || 'Customization version could not be restored');
     } finally {
       setSaving(false);
     }
@@ -225,10 +301,10 @@ export function TenantCustomizationEditor({ initial, onMessage }: { initial: any
 
               <div className="grid gap-4 sm:grid-cols-2">
                 {colorFields.map(([field, label]) => (
-                  <Field key={field} label={label}>
+                  <Field key={field} label={label} error={validationErrors[`branding.${field}`]}>
                     <div className="flex gap-2">
                       <input type="color" value={branding[field]} onChange={(event) => setBranding({ ...branding, [field]: event.target.value })} className="h-10 w-12 rounded border" />
-                      <input value={branding[field]} maxLength={7} onChange={(event) => setBranding({ ...branding, [field]: event.target.value })} className="input min-w-0 flex-1" />
+                      <input aria-invalid={!!validationErrors[`branding.${field}`]} value={branding[field]} maxLength={7} onChange={(event) => setBranding({ ...branding, [field]: event.target.value })} className="input min-w-0 flex-1" />
                     </div>
                   </Field>
                 ))}
@@ -238,7 +314,7 @@ export function TenantCustomizationEditor({ initial, onMessage }: { initial: any
                 {imageFields.map(([field, label, hint]) => (
                   <ImageField key={field} label={label} hint={hint} value={branding[field]} uploading={uploading === field}
                     onUpload={(file) => uploadImage(field, file)} onRemove={() => setBranding({ ...branding, [field]: '' })}
-                    onChange={(value) => setBranding({ ...branding, [field]: value })} />
+                    onChange={(value) => setBranding({ ...branding, [field]: value })} error={validationErrors[`branding.${field}`]} />
                 ))}
               </div>
             </div>
@@ -253,7 +329,7 @@ export function TenantCustomizationEditor({ initial, onMessage }: { initial: any
               </Field>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="Link label"><input maxLength={60} value={customization.banner.linkLabel} onChange={(event) => updateSection('banner', { linkLabel: event.target.value })} className="input" /></Field>
-                <Field label="Link URL"><input value={customization.banner.linkUrl} onChange={(event) => updateSection('banner', { linkUrl: event.target.value })} className="input" placeholder="https://..." /></Field>
+                <Field label="Link URL" error={validationErrors['banner.linkUrl']}><input aria-invalid={!!validationErrors['banner.linkUrl']} value={customization.banner.linkUrl} onChange={(event) => updateSection('banner', { linkUrl: event.target.value })} className="input" placeholder="https://..." /></Field>
                 <Field label="Tone">
                   <select value={customization.banner.tone} onChange={(event) => updateSection('banner', { tone: event.target.value })} className="input">
                     <option value="info">Information</option><option value="success">Success</option><option value="warning">Warning</option><option value="critical">Critical</option>
@@ -262,7 +338,7 @@ export function TenantCustomizationEditor({ initial, onMessage }: { initial: any
               </div>
               <ImageField label="Banner image" hint="Optional wide supporting image" value={customization.banner.imageUrl} uploading={uploading === 'bannerImageUrl'}
                 onUpload={(file) => uploadImage('bannerImageUrl', file)} onRemove={() => updateSection('banner', { imageUrl: '' })}
-                onChange={(value) => updateSection('banner', { imageUrl: value })} wide />
+                onChange={(value) => updateSection('banner', { imageUrl: value })} error={validationErrors['banner.imageUrl']} wide />
             </div>
           )}
 
@@ -290,7 +366,7 @@ export function TenantCustomizationEditor({ initial, onMessage }: { initial: any
               <Field label="Report header"><input maxLength={160} value={customization.reporting.headerText} onChange={(event) => updateSection('reporting', { headerText: event.target.value })} className="input" /></Field>
               <Field label="Report footer"><textarea rows={3} maxLength={300} value={customization.reporting.footerText} onChange={(event) => updateSection('reporting', { footerText: event.target.value })} className="input" /></Field>
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Accent color"><div className="flex gap-2"><input type="color" value={customization.reporting.accentColor} onChange={(event) => updateSection('reporting', { accentColor: event.target.value })} className="h-10 w-12 rounded border" /><input value={customization.reporting.accentColor} onChange={(event) => updateSection('reporting', { accentColor: event.target.value })} className="input min-w-0 flex-1" /></div></Field>
+                <Field label="Accent color" error={validationErrors['reporting.accentColor']}><div className="flex gap-2"><input type="color" value={customization.reporting.accentColor} onChange={(event) => updateSection('reporting', { accentColor: event.target.value })} className="h-10 w-12 rounded border" /><input aria-invalid={!!validationErrors['reporting.accentColor']} value={customization.reporting.accentColor} onChange={(event) => updateSection('reporting', { accentColor: event.target.value })} className="input min-w-0 flex-1" /></div></Field>
                 <Field label="Default date range"><select value={customization.reporting.defaultDateRange} onChange={(event) => updateSection('reporting', { defaultDateRange: event.target.value })} className="input"><option value="7d">7 days</option><option value="30d">30 days</option><option value="90d">90 days</option><option value="quarter">Quarter</option><option value="year">Year</option></select></Field>
                 <Field label="Page orientation"><select value={customization.reporting.pageOrientation} onChange={(event) => updateSection('reporting', { pageOrientation: event.target.value })} className="input"><option value="portrait">Portrait</option><option value="landscape">Landscape</option></select></Field>
               </div>
@@ -313,22 +389,53 @@ export function TenantCustomizationEditor({ initial, onMessage }: { initial: any
           Reset tenant customization
         </button>
         <button type="button" onClick={resetChanges} disabled={!dirty || saving} className="inline-flex items-center gap-2 rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 disabled:opacity-40"><RotateCcw size={16} /> Discard</button>
-        <button type="button" onClick={save} disabled={!dirty || saving || !!uploading} className="rounded-md bg-primary px-5 py-2 text-sm font-semibold text-white disabled:opacity-50">{saving ? 'Publishing...' : 'Publish changes'}</button>
+        <button type="button" onClick={() => {
+          const next = !historyOpen;
+          setHistoryOpen(next);
+          if (next) loadHistory();
+        }} className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700">
+          {historyOpen ? 'Hide history' : 'Version history'}
+        </button>
+        <button type="button" onClick={save} disabled={!dirty || saving || !!uploading || hasValidationErrors} className="rounded-md bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">{saving ? 'Publishing...' : 'Publish changes'}</button>
       </div>
+      {historyOpen && (
+        <div className="border-t border-slate-200 bg-slate-50 px-5 py-4 sm:px-6">
+          <h3 className="text-sm font-semibold text-slate-900">Saved versions</h3>
+          {history.length === 0 ? (
+            <p className="mt-2 text-sm text-slate-500">No previous versions are available yet.</p>
+          ) : (
+            <div className="mt-3 grid gap-2">
+              {history.map((entry) => (
+                <div key={entry.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-3 text-sm">
+                  <div>
+                    <div className="font-medium text-slate-900">{String(entry.action || '').replaceAll('_', ' ').toLowerCase()}</div>
+                    <div className="text-xs text-slate-500">
+                      {new Date(entry.createdAt).toLocaleString()} · {entry.actor?.email || 'Administrator'}
+                    </div>
+                  </div>
+                  <button type="button" disabled={saving} onClick={() => rollback(entry.id)} className="rounded border border-slate-300 px-3 py-1.5 text-xs font-medium disabled:opacity-50">
+                    Restore
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </section>
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <label className="block text-sm font-medium text-slate-700">{label}<div className="mt-1.5">{children}</div></label>;
+function Field({ label, children, error }: { label: string; children: React.ReactNode; error?: string }) {
+  return <label className="block text-sm font-medium text-slate-700">{label}<div className="mt-1.5">{children}</div>{error && <span className="mt-1 block text-xs text-red-700">{error}</span>}</label>;
 }
 
 function Toggle({ label, description, checked, onChange }: { label: string; description: string; checked: boolean; onChange: (checked: boolean) => void }) {
   return <label className="flex cursor-pointer items-center justify-between gap-4 rounded-lg border border-slate-200 p-4"><span><span className="block text-sm font-medium text-slate-900">{label}</span><span className="mt-0.5 block text-xs text-slate-500">{description}</span></span><input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} className="h-4 w-4 accent-primary" /></label>;
 }
 
-function ImageField({ label, hint, value, uploading, onUpload, onRemove, onChange, wide = false }: { label: string; hint: string; value: string; uploading: boolean; onUpload: (file?: File) => void; onRemove: () => void; onChange: (value: string) => void; wide?: boolean }) {
-  return <div className="rounded-lg border border-slate-200 p-4"><div className="text-sm font-medium text-slate-800">{label}</div><p className="mt-1 text-xs text-slate-500">{hint}</p><div className="mt-3 flex items-center gap-3">{value ? <img src={value} alt="" className={`${wide ? 'w-28 object-cover' : 'w-20 object-contain'} h-14 rounded border bg-white`} /> : <div className={`${wide ? 'w-28' : 'w-20'} h-14 rounded bg-slate-100`} />}<label className="inline-flex cursor-pointer items-center gap-2 rounded border px-3 py-2 text-xs font-medium"><ImageUp size={15} /> {uploading ? 'Uploading...' : 'Upload'}<input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" disabled={uploading} onChange={(event) => onUpload(event.target.files?.[0])} /></label>{value && <button type="button" onClick={onRemove} className="rounded p-2 text-slate-400 hover:bg-red-50 hover:text-red-600" aria-label={`Remove ${label}`}><X size={16} /></button>}</div><input value={value} onChange={(event) => onChange(event.target.value)} placeholder="Or enter an image URL" className="input mt-3 text-xs" /></div>;
+function ImageField({ label, hint, value, uploading, onUpload, onRemove, onChange, error, wide = false }: { label: string; hint: string; value: string; uploading: boolean; onUpload: (file?: File) => void; onRemove: () => void; onChange: (value: string) => void; error?: string; wide?: boolean }) {
+  return <div className="rounded-lg border border-slate-200 p-4"><div className="text-sm font-medium text-slate-800">{label}</div><p className="mt-1 text-xs text-slate-500">{hint}</p><div className="mt-3 flex items-center gap-3">{value ? <img src={value} alt="" className={`${wide ? 'w-28 object-cover' : 'w-20 object-contain'} h-14 rounded border bg-white`} /> : <div className={`${wide ? 'w-28' : 'w-20'} h-14 rounded bg-slate-100`} />}<label className="inline-flex cursor-pointer items-center gap-2 rounded border px-3 py-2 text-xs font-medium"><ImageUp size={15} /> {uploading ? 'Uploading...' : 'Upload'}<input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" disabled={uploading} onChange={(event) => onUpload(event.target.files?.[0])} /></label>{value && <button type="button" onClick={onRemove} className="rounded p-2 text-slate-400 hover:bg-red-50 hover:text-red-600" aria-label={`Remove ${label}`}><X size={16} /></button>}</div><input aria-invalid={!!error} value={value} onChange={(event) => onChange(event.target.value)} placeholder="Or enter an image URL" className="input mt-3 text-xs" />{error && <p className="mt-1 text-xs text-red-700">{error}</p>}</div>;
 }
 
 function Preview({ activeTab, branding, customization }: { activeTab: string; branding: any; customization: any }) {

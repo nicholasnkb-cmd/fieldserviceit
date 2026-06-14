@@ -42,6 +42,7 @@ export class ApiError extends Error {
 
 interface FetchOptions extends RequestInit {
   skipAuth?: boolean;
+  suppressGlobalError?: boolean;
   timeout?: number;
 }
 
@@ -84,7 +85,7 @@ function refreshAccessToken(): Promise<string | null> {
 }
 
 export async function apiClient<T = any>(endpoint: string, options: FetchOptions = {}): Promise<T> {
-  const { skipAuth, timeout = DEFAULT_TIMEOUT, ...fetchOptions } = options;
+  const { skipAuth, suppressGlobalError, timeout = DEFAULT_TIMEOUT, ...fetchOptions } = options;
   const isFormData = typeof FormData !== 'undefined' && fetchOptions.body instanceof FormData;
 
   const headers: Record<string, string> = {
@@ -126,7 +127,9 @@ export async function apiClient<T = any>(endpoint: string, options: FetchOptions
           });
           if (!retryRes.ok) {
             const retryError = await retryRes.json().catch(() => ({ message: 'Request failed' }));
-            throw new ApiError(retryError.message || `HTTP ${retryRes.status}`, retryRes.status, retryError);
+            const apiError = new ApiError(errorMessage(retryError, retryRes.status), retryRes.status, retryError);
+            publishApiError(apiError, fetchOptions.method, suppressGlobalError);
+            throw apiError;
           }
           return unwrapResponseBody(await retryRes.json());
         }
@@ -135,7 +138,9 @@ export async function apiClient<T = any>(endpoint: string, options: FetchOptions
       if (!res.ok) {
         const error = await res.json().catch(() => ({ message: 'Request failed' }));
         if (res.status === 401 && !skipAuth) clearSessionTokens();
-        throw new ApiError(error.message || `HTTP ${res.status}`, res.status, error);
+        const apiError = new ApiError(errorMessage(error, res.status), res.status, error);
+        publishApiError(apiError, fetchOptions.method, suppressGlobalError);
+        throw apiError;
       }
 
       return unwrapResponseBody(await res.json());
@@ -143,13 +148,32 @@ export async function apiClient<T = any>(endpoint: string, options: FetchOptions
       clearTimeout(timeoutId);
       if (err instanceof ApiError) throw err;
       if (err.name === 'AbortError') {
-        throw new ApiError('Request timed out', 408);
+        const apiError = new ApiError('Request timed out', 408);
+        publishApiError(apiError, fetchOptions.method, suppressGlobalError);
+        throw apiError;
       }
-      throw new ApiError(err.message || 'Network error', 0);
+      const apiError = new ApiError(err.message || 'Network error', 0);
+      publishApiError(apiError, fetchOptions.method, suppressGlobalError);
+      throw apiError;
     }
   };
 
   return doFetch();
+}
+
+function errorMessage(body: any, status: number) {
+  const message = body?.message;
+  if (Array.isArray(message)) return message.join('. ');
+  return typeof message === 'string' && message.trim() ? message : `HTTP ${status}`;
+}
+
+function publishApiError(error: ApiError, method?: string, suppressed?: boolean) {
+  if (suppressed || typeof window === 'undefined') return;
+  const normalizedMethod = String(method || 'GET').toUpperCase();
+  if (normalizedMethod === 'GET' || error.status === 401) return;
+  window.dispatchEvent(new CustomEvent('fieldserviceit:api-error', {
+    detail: { message: error.message, status: error.status },
+  }));
 }
 
 function getImpersonationSessionId(): string | null {

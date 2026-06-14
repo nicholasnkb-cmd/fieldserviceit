@@ -48,6 +48,27 @@ test('super admin can open core admin data pages', async ({ page }) => {
   }
 });
 
+test('administrator can open tenant settings, reports, and billing workspaces', async ({ page }) => {
+  await page.goto('/login');
+  await page.getByLabel('Email').fill(email!);
+  await page.getByLabel('Password').fill(password!);
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await expect(page).toHaveURL(/\/dashboard|\/admin/);
+
+  const pages = [
+    { path: '/settings', heading: 'Company Settings', marker: 'Tenant Customization Studio' },
+    { path: '/reports', heading: 'Reports', marker: 'Default reporting period' },
+    { path: '/billing', heading: 'Billing and subscription', marker: 'Current plan' },
+  ];
+
+  for (const item of pages) {
+    await page.goto(item.path);
+    await expect(page.getByRole('heading', { name: item.heading })).toBeVisible();
+    await expect(page.getByText(item.marker)).toBeVisible();
+    await expect(page.getByText('could not be loaded')).toHaveCount(0);
+  }
+});
+
 test('super admin can manage a ticket from the ticket detail page', async ({ page }) => {
   await page.goto('/login');
   await page.getByLabel('Email').fill(email!);

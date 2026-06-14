@@ -1,5 +1,7 @@
 # FieldserviceIT
 
+Project guidance: [Product roadmap](docs/PRODUCT_ROADMAP.md) | [Quality gates](docs/QUALITY_GATES.md) | [Tenant customization](docs/TENANT_CUSTOMIZATION.md)
+
 Multi-tenant enterprise workflow + IT operations platform (ITSM/MSP).
 
 ## Architecture

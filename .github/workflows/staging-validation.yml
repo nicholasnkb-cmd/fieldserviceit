@@ -25,6 +25,7 @@ jobs:
           npx prisma generate
           npm run check:permissions
           npm run check:tenant-sql
+          node ../scripts/check-module-size.mjs
           npm run build
           npm test -- --runInBand
       - name: Frontend validation
@@ -32,6 +33,8 @@ jobs:
         run: |
           npm ci
           npm test -- --runInBand
+          npm run test:a11y
+          npm run lint
           npm run build
 
   staging-smoke:

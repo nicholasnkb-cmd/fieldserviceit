@@ -82,7 +82,8 @@ export const useAuthStore = create<AuthState>((set) => ({
       }).catch(() => {});
       clearSessionTokens();
       localStorage.removeItem(COMPANY_CONTEXT_KEY);
+      localStorage.removeItem(COMPANY_BRANDING_KEY);
     }
-    set({ user: null, activeCompanyContext: null, isAuthenticated: false, authChecked: true });
+    set({ user: null, company: null, activeCompanyContext: null, isAuthenticated: false, authChecked: true });
   },
 }));

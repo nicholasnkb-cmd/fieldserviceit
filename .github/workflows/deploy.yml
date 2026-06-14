@@ -31,6 +31,7 @@ jobs:
         run: |
           npm run check:permissions
           npm run check:tenant-sql
+          node ../scripts/check-module-size.mjs
           npm run build
           npm test -- --runInBand
 
@@ -52,7 +53,11 @@ jobs:
 
       - name: Build frontend
         working-directory: frontend
-        run: npm run build
+        run: |
+          npm run lint
+          npm test -- --runInBand
+          npm run test:a11y
+          npm run build
 
   hostinger-preflight:
     name: Hostinger API Preflight
@@ -95,4 +100,5 @@ jobs:
           SMOKE_EMAIL: ${{ secrets.SMOKE_EMAIL }}
           SMOKE_PASSWORD: ${{ secrets.SMOKE_PASSWORD }}
           SMOKE_MUTATIONS: ${{ vars.SMOKE_MUTATIONS || 'false' }}
+          MONITORING_API_KEY: ${{ secrets.MONITORING_API_KEY }}
         run: node scripts/production-smoke.mjs

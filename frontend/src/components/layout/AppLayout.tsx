@@ -9,11 +9,11 @@ import { TenantAnnouncementBanner } from './TenantAnnouncementBanner';
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50">
+    <div className="flex min-h-screen flex-col bg-background text-foreground">
       <BannerMenu />
       <div className="flex flex-1">
         <SidePanel />
-        <main className="min-w-0 flex-1 bg-slate-50">
+        <main className="min-w-0 flex-1 bg-background">
           <ImpersonationBanner />
           <TenantContextBanner />
           <BillingStatusBanner />

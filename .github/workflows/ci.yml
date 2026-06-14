@@ -39,6 +39,7 @@ jobs:
       - run: npx tsc --noEmit -p tsconfig.build.json
       - run: npm run check:permissions
       - run: npm run check:tenant-sql
+      - run: node ../scripts/check-module-size.mjs
 
   backend-unit:
     name: Backend Unit Tests
@@ -114,7 +115,7 @@ jobs:
       - run: npm ci
       - run: npx prisma generate
       - run: npm run seed
-      - run: npm run test:e2e:ci -- --runInBand --testPathPattern="app.e2e-spec|auth-ticket-lifecycle.e2e-spec|security-hardening.e2e-spec"
+      - run: npm run test:e2e:ci -- --runInBand
 
   frontend:
     name: Frontend Build & Lint
@@ -136,6 +137,7 @@ jobs:
       - run: npm run build
       - run: npm run lint
       - run: npm test -- --runInBand
+      - run: npm run test:a11y
 
   security-check:
     name: Security Audit

@@ -4,6 +4,7 @@ const email = process.env.SMOKE_EMAIL;
 const password = process.env.SMOKE_PASSWORD;
 const expectedFrontend = process.env.SMOKE_EXPECT_FRONTEND_VERSION;
 const expectedBackend = process.env.SMOKE_EXPECT_BACKEND_VERSION;
+const monitoringKey = process.env.MONITORING_API_KEY;
 const runMutations = process.env.SMOKE_MUTATIONS === 'true';
 const cookieJar = new Map();
 
@@ -393,6 +394,20 @@ await check('frontend security center page shell', () => expectOk(`${baseUrl}/se
 await check('frontend technician mobile page shell', () => expectOk(`${baseUrl}/technician-mobile`));
 await check('frontend customer portal page shell', () => expectOk(`${baseUrl}/customer-portal`));
 await check('backend health', () => expectOk(`${apiUrl}/v1/health`));
+await check('backend readiness', () => expectOk(`${apiUrl}/v1/health/ready`));
+await check('backend liveness', () => expectOk(`${apiUrl}/v1/health/live`));
+if (monitoringKey) {
+  await check('backend monitoring dashboard', async () => {
+    const dashboard = await expectJson(`${apiUrl}/v1/health/dashboard`, {
+      headers: { 'X-Monitoring-Key': monitoringKey },
+    });
+    if (!dashboard?.status) throw new Error('Monitoring dashboard status missing');
+    const errorRate = Number.parseFloat(String(dashboard?.metrics?.requests?.errorRate || '0'));
+    if (Number.isFinite(errorRate) && errorRate >= 10) {
+      throw new Error(`Monitoring dashboard reports elevated error rate: ${errorRate}%`);
+    }
+  });
+}
 await expectList('public SSO provider discovery API', `${apiUrl}/v1/auth/sso/providers`);
 
 await check('protected admin plans route is registered', async () => {
