@@ -37,7 +37,7 @@ interface ProviderDefinition {
   name: string;
   label: string;
   helpText: string;
-  credentialFields: { key: string; label: string; type?: string; required?: boolean }[];
+  credentialFields: { key: string; label: string; type?: string; required?: boolean; placeholder?: string }[];
 }
 
 export default function RmmIntegrationPage() {
@@ -202,27 +202,36 @@ export default function RmmIntegrationPage() {
   const providerHelp: Record<string, string> = {
     connectwise: 'Requires a ConnectWise company ID, API public/private keys, and a client ID from developer settings.',
     datto: 'Requires a Datto API token. Site ID is optional but recommended to scope syncs to one site.',
-    ninjaone: 'Requires an API key and your NinjaOne instance URL, for example https://app.ninjarmm.com.',
+    ninjaone: 'Requires a NinjaOne OAuth client ID, client secret, and instance URL.',
     atera: 'Requires an Atera API key. The standard API v3 URL is used unless overridden.',
     syncro: 'Requires a Syncro API token and account subdomain or API base URL.',
     kaseya: 'Requires a Kaseya VSA instance URL and API bearer token.',
     nable: 'Requires an N-able API service URL and token. The devices path can be customized per tenant.',
   };
 
-  const credentialFields: Record<string, { key: string; label: string; type?: string; required?: boolean }[]> = {
+  const credentialFields: Record<string, {
+    key: string;
+    label: string;
+    type?: string;
+    required?: boolean;
+    placeholder?: string;
+  }[]> = {
     connectwise: [
-      { key: 'companyId', label: 'Company ID' },
-      { key: 'publicKey', label: 'Public Key' },
-      { key: 'privateKey', label: 'Private Key', type: 'password' },
-      { key: 'clientId', label: 'Client ID' },
+      { key: 'baseUrl', label: 'Manage API URL', required: true },
+      { key: 'companyId', label: 'Company ID', required: true },
+      { key: 'publicKey', label: 'Public Key', required: true },
+      { key: 'privateKey', label: 'Private Key', type: 'password', required: true },
+      { key: 'clientId', label: 'Client ID', type: 'password', required: true },
     ],
     datto: [
       { key: 'apiToken', label: 'API Token', type: 'password' },
       { key: 'siteId', label: 'Site ID' },
     ],
     ninjaone: [
-      { key: 'apiKey', label: 'API Key', type: 'password' },
-      { key: 'instanceUrl', label: 'Instance URL' },
+      { key: 'instanceUrl', label: 'Instance URL', required: true },
+      { key: 'clientId', label: 'OAuth Client ID', required: true },
+      { key: 'clientSecret', label: 'OAuth Client Secret', type: 'password', required: true },
+      { key: 'scope', label: 'OAuth Scope' },
     ],
     atera: [
       { key: 'apiKey', label: 'API Key', type: 'password' },
@@ -308,14 +317,14 @@ export default function RmmIntegrationPage() {
                   {(definitionFor(provider)?.credentialFields || credentialFields[provider] || []).map((field) => (
                     <div key={field.key}>
                       <label className="block text-sm font-medium text-gray-700">{field.label}</label>
-                      <input type={field.type || 'text'} required={field.required && !configs.some((item) => item.provider === provider && item.hasCredentials)} value={configForm[field.key] || ''}
+                      <input type={field.type || 'text'} placeholder={field.placeholder} required={field.required && !configs.some((item) => item.provider === provider && item.hasCredentials)} value={configForm[field.key] || ''}
                         onChange={(e) => setConfigForm({ ...configForm, [field.key]: e.target.value })}
                         className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
                     </div>
                   ))}
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Sync Interval (minutes)</label>
-                    <input type="number" min={5} value={syncInterval}
+                    <input type="number" min={5} max={10080} value={syncInterval}
                       onChange={(e) => setSyncInterval(Number(e.target.value))}
                       className="mt-1 block w-48 rounded border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
                   </div>
