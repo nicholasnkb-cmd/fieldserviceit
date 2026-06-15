@@ -7,6 +7,8 @@ import { useAuthStore } from '../../../stores/authStore';
 import { connectSocket, disconnectSocket, onSocketEvent } from '../../../lib/socket';
 import { formatDate } from '../../../lib/utils';
 import { api } from '../../../lib/api';
+import { EmptyState } from '../../../components/ui/EmptyState';
+import { TicketPlus } from 'lucide-react';
 
 interface TicketSummary {
   total: number;
@@ -144,7 +146,7 @@ export default function DashboardPage() {
               })}
             </div>
           ) : (
-            <p className="text-sm text-gray-400">No tickets yet</p>
+            <EmptyState icon={TicketPlus} title="No tickets yet" description="Create the first ticket to start tracking assignments, priorities, SLAs, and activity." actionHref="/tickets/new" actionLabel="Create ticket" />
           )}
         </div>
 
@@ -173,7 +175,7 @@ export default function DashboardPage() {
               })}
             </div>
           ) : (
-            <p className="text-sm text-gray-400">No tickets yet</p>
+            <EmptyState icon={TicketPlus} title="No priority data yet" description="Ticket priority reporting appears after the first service request is created." actionHref="/tickets/new" actionLabel="Create ticket" />
           )}
         </div>
 

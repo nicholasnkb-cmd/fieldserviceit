@@ -33,8 +33,15 @@ jobs:
           SMOKE_EMAIL: ${{ secrets.SMOKE_EMAIL }}
           SMOKE_PASSWORD: ${{ secrets.SMOKE_PASSWORD }}
           SMOKE_MUTATIONS: ${{ github.event.inputs.mutations || 'false' }}
+          SMOKE_RMM_TESTS: ${{ vars.SMOKE_RMM_TESTS || 'false' }}
+          SMOKE_RMM_PROVIDERS: ${{ vars.SMOKE_RMM_PROVIDERS || 'connectwise,datto,ninjaone,atera,syncro,kaseya,nable' }}
           MONITORING_API_KEY: ${{ secrets.MONITORING_API_KEY }}
-        run: node scripts/production-smoke.mjs
+        run: |
+          if [ -z "$SMOKE_EMAIL" ] || [ -z "$SMOKE_PASSWORD" ]; then
+            echo "SMOKE_EMAIL and SMOKE_PASSWORD are required for scheduled authenticated production checks."
+            exit 1
+          fi
+          node scripts/production-smoke.mjs
 
   browser-smoke:
     name: Browser Smoke
@@ -63,4 +70,9 @@ jobs:
           E2E_BASE_URL: ${{ vars.SMOKE_BASE_URL || 'https://fieldserviceit.com' }}
           E2E_EMAIL: ${{ secrets.SMOKE_EMAIL }}
           E2E_PASSWORD: ${{ secrets.SMOKE_PASSWORD }}
-        run: npm run test:e2e:prod
+        run: |
+          if [ -z "$E2E_EMAIL" ] || [ -z "$E2E_PASSWORD" ]; then
+            echo "Authenticated browser smoke credentials are required."
+            exit 1
+          fi
+          npm run test:e2e:prod

@@ -6,6 +6,7 @@ import { FeatureAccessGate } from './FeatureAccessGate';
 import { BillingStatusBanner } from './BillingStatusBanner';
 import { ImpersonationBanner } from './ImpersonationBanner';
 import { TenantAnnouncementBanner } from './TenantAnnouncementBanner';
+import { OnboardingChecklist } from './OnboardingChecklist';
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -18,6 +19,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <TenantContextBanner />
           <BillingStatusBanner />
           <TenantAnnouncementBanner />
+          <OnboardingChecklist />
           <div className="app-content">
             <FeatureAccessGate>{children}</FeatureAccessGate>
           </div>

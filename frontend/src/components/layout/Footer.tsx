@@ -34,6 +34,9 @@ export function Footer() {
             <li><Link href="/login" className="font-bold hover:text-white transition-colors">Sign In</Link></li>
             <li><Link href="/track" className="hover:text-white transition-colors">Track a Ticket</Link></li>
             <li><Link href="/legal-disclaimer" className="hover:text-white transition-colors">Legal Disclaimer</Link></li>
+            <li><Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link></li>
+            <li><Link href="/security-overview" className="hover:text-white transition-colors">Security</Link></li>
+            <li><Link href="/status" className="hover:text-white transition-colors">Service Status</Link></li>
             <li><a href="mailto:support@fieldserviceit.com" className="hover:text-white transition-colors">Contact Support</a></li>
           </ul>
         </div>

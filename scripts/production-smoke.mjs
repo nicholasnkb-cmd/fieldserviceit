@@ -6,6 +6,11 @@ const expectedFrontend = process.env.SMOKE_EXPECT_FRONTEND_VERSION;
 const expectedBackend = process.env.SMOKE_EXPECT_BACKEND_VERSION;
 const monitoringKey = process.env.MONITORING_API_KEY;
 const runMutations = process.env.SMOKE_MUTATIONS === 'true';
+const runRmmTests = process.env.SMOKE_RMM_TESTS === 'true';
+const expectedRmmProviders = (process.env.SMOKE_RMM_PROVIDERS || 'connectwise,datto,ninjaone,atera,syncro,kaseya,nable')
+  .split(',')
+  .map((provider) => provider.trim().toLowerCase())
+  .filter(Boolean);
 const cookieJar = new Map();
 
 function storeCookies(res) {
@@ -384,6 +389,9 @@ await check('frontend network page shell', () => expectOk(`${baseUrl}/network`))
 await check('frontend about page', () => expectOk(`${baseUrl}/about`));
 await check('frontend contact page', () => expectOk(`${baseUrl}/contact`));
 await check('frontend legal disclaimer page', () => expectOk(`${baseUrl}/legal-disclaimer`));
+await check('frontend privacy page', () => expectOk(`${baseUrl}/privacy`));
+await check('frontend security overview page', () => expectOk(`${baseUrl}/security-overview`));
+await check('frontend status page', () => expectOk(`${baseUrl}/status`));
 await check('frontend knowledge base page shell', () => expectOk(`${baseUrl}/knowledge-base`));
 await check('frontend alerting page shell', () => expectOk(`${baseUrl}/alerting`));
 await check('frontend topology page shell', () => expectOk(`${baseUrl}/topology`));
@@ -409,6 +417,13 @@ if (monitoringKey) {
   });
 }
 await expectList('public SSO provider discovery API', `${apiUrl}/v1/auth/sso/providers`);
+
+await check('frontend security headers', async () => {
+  const response = await expectOk(baseUrl);
+  const csp = response.headers.get('content-security-policy') || '';
+  if (!csp.includes("default-src 'self'")) throw new Error('Restrictive Content-Security-Policy is missing');
+  if (response.headers.get('x-frame-options') !== 'DENY') throw new Error('X-Frame-Options is not DENY');
+});
 
 await check('protected admin plans route is registered', async () => {
   const res = await fetch(`${apiUrl}/v1/admin/plans`);
@@ -468,6 +483,27 @@ if (email && password) {
   await check('effective feature API', () => expectOk(`${apiUrl}/v1/users/me/features`));
   await check('AI tools API', () => expectOk(`${apiUrl}/v1/ai-agent/tools`));
   await check('RMM providers API', () => expectOk(`${apiUrl}/v1/integrations/rmm/providers`));
+  await check('RMM configuration list API', () => expectOk(`${apiUrl}/v1/integrations/rmm/configs`));
+  if (runRmmTests) {
+    await check('configured RMM provider connection tests', async () => {
+      const configs = listData(await expectJson(`${apiUrl}/v1/integrations/rmm/configs`));
+      const active = configs.filter((config) => config?.provider && config?.isActive);
+      if (!active.length) throw new Error('No active RMM configurations are available for live tests');
+      const activeNames = new Set(active.map((config) => String(config.provider).toLowerCase()));
+      const missing = expectedRmmProviders.filter((provider) => !activeNames.has(provider));
+      if (missing.length) throw new Error(`Missing active sandbox configurations: ${missing.join(', ')}`);
+      for (const config of active) {
+        const result = await expectJson(`${apiUrl}/v1/integrations/rmm/configs/${config.provider}/test`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({}),
+        });
+        if (result?.status !== 'PASS') throw new Error(`${config.provider}: ${result?.message || 'connection failed'}`);
+      }
+    });
+  } else {
+    console.log('SKIP live RMM connection tests: set SMOKE_RMM_TESTS=true after sandbox credentials are configured.');
+  }
   await check('ticket search API', () => expectOk(`${apiUrl}/v1/tickets?limit=1`));
   if (!(currentUser?.role === 'SUPER_ADMIN' && !currentUser?.companyId)) {
     await check('asset list API', () => expectOk(`${apiUrl}/v1/assets?limit=1`));

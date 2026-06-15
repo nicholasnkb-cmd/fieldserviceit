@@ -14,6 +14,11 @@ const PUBLIC_PATHS = [
   '/contact',
   '/forgot-password',
   '/legal-disclaimer',
+  '/privacy',
+  '/security-overview',
+  '/status',
+  '/track',
+  '/unsubscribe',
   '/login',
   '/register',
   '/register-business',
@@ -93,11 +98,25 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
 
     const onError = (event: ErrorEvent) => report(event.message, event.error?.stack, { filename: event.filename, lineno: event.lineno, colno: event.colno });
     const onRejection = (event: PromiseRejectionEvent) => report(String(event.reason?.message || event.reason || 'Unhandled promise rejection'), event.reason?.stack);
+    const onApiError = (event: Event) => {
+      const detail = (event as CustomEvent).detail || {};
+      report(detail.message || 'API request failed', undefined, {
+        kind: 'api',
+        status: detail.status,
+        method: detail.method,
+        endpoint: detail.endpoint,
+        online: navigator.onLine,
+        viewport: `${window.innerWidth}x${window.innerHeight}`,
+        release: process.env.NEXT_PUBLIC_APP_VERSION || 'unknown',
+      });
+    };
     window.addEventListener('error', onError);
     window.addEventListener('unhandledrejection', onRejection);
+    window.addEventListener('fieldserviceit:api-error', onApiError);
     return () => {
       window.removeEventListener('error', onError);
       window.removeEventListener('unhandledrejection', onRejection);
+      window.removeEventListener('fieldserviceit:api-error', onApiError);
     };
   }, []);
 

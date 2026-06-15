@@ -100,5 +100,7 @@ jobs:
           SMOKE_EMAIL: ${{ secrets.SMOKE_EMAIL }}
           SMOKE_PASSWORD: ${{ secrets.SMOKE_PASSWORD }}
           SMOKE_MUTATIONS: ${{ vars.SMOKE_MUTATIONS || 'false' }}
+          SMOKE_RMM_TESTS: ${{ vars.SMOKE_RMM_TESTS || 'false' }}
+          SMOKE_RMM_PROVIDERS: ${{ vars.SMOKE_RMM_PROVIDERS || 'connectwise,datto,ninjaone,atera,syncro,kaseya,nable' }}
           MONITORING_API_KEY: ${{ secrets.MONITORING_API_KEY }}
         run: node scripts/production-smoke.mjs

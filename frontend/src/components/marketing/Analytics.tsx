@@ -3,14 +3,18 @@
 import Script from 'next/script';
 import { usePathname } from 'next/navigation';
 import { useEffect } from 'react';
+import { trackProductEvent } from '../../lib/analytics';
 
 export function Analytics() {
   const pathname = usePathname();
   const measurementId = process.env.NEXT_PUBLIC_GA_ID;
 
   useEffect(() => {
-    if (!measurementId || !window.gtag) return;
-    window.gtag('config', measurementId, { page_path: pathname });
+    if (navigator.doNotTrack === '1') return;
+    if (measurementId && window.gtag) window.gtag('config', measurementId, { page_path: pathname });
+    if (pathname.startsWith('/admin') || pathname.startsWith('/dashboard') || pathname.startsWith('/tickets') || pathname.startsWith('/assets') || pathname.startsWith('/integrations')) {
+      trackProductEvent('app_page_view', { route: pathname });
+    }
   }, [measurementId, pathname]);
 
   if (!measurementId) return null;

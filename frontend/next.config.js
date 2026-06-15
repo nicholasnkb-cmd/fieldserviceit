@@ -60,7 +60,13 @@ const nextConfig = {
     return [
       {
         source: '/:path*',
-        headers: securityHeaders,
+        headers: [
+          ...securityHeaders,
+          {
+            key: 'Cache-Control',
+            value: 'private, no-store, max-age=0',
+          },
+        ],
       },
     ];
   },

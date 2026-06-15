@@ -6,6 +6,9 @@ import { api } from '../../../../lib/api';
 import { useAuthStore } from '../../../../stores/authStore';
 import { useToast } from '../../../../components/ui/Toast';
 import { RequireCompanyContext } from '../../../../components/layout/RequireCompanyContext';
+import { EmptyState } from '../../../../components/ui/EmptyState';
+import { RefreshCw } from 'lucide-react';
+import { trackProductEvent } from '../../../../lib/analytics';
 
 interface RmmConfig {
   id: string;
@@ -102,7 +105,8 @@ export default function RmmIntegrationPage() {
         provider: showConfig,
         credentials: configForm,
       });
-      const text = result.status === 'PASS' ? 'Connection test passed' : 'Connection test failed';
+      const text = result.message || (result.status === 'PASS' ? 'Connection test passed' : 'Connection test failed');
+      trackProductEvent('rmm_test', { provider: showConfig, status: result.status });
       setMessage(text);
       toast(result.status === 'PASS' ? 'success' : 'error', text);
     } catch (err: any) {
@@ -119,7 +123,8 @@ export default function RmmIntegrationPage() {
     try {
       const result = await api.post(`/integrations/rmm/configs/${provider}/test`, {});
       await refreshRmm();
-      const text = result.status === 'PASS' ? `${provider} connection passed` : `${provider} connection failed`;
+      const text = result.message || (result.status === 'PASS' ? `${provider} connection passed` : `${provider} connection failed`);
+      trackProductEvent('rmm_test', { provider, status: result.status });
       setMessage(text);
       toast(result.status === 'PASS' ? 'success' : 'error', text);
     } catch (err: any) {
@@ -150,6 +155,7 @@ export default function RmmIntegrationPage() {
         return [...prev, saved];
       });
       setShowConfig(null);
+      trackProductEvent('rmm_configuration_saved', { provider: showConfig });
       toast('success', 'RMM configuration saved');
     } catch (err: any) {
       toast('error', err.message);
@@ -176,9 +182,11 @@ export default function RmmIntegrationPage() {
     try {
       const result = await api.post(`/integrations/rmm/sync-now/${provider}`, {});
       if (result.synced) {
+        trackProductEvent('rmm_sync', { provider, status: 'success' });
         toast('success', `Sync triggered for ${provider}`);
         await refreshRmm();
       } else {
+        trackProductEvent('rmm_sync', { provider, status: 'failed' });
         toast('error', result.error || 'Sync failed');
       }
     } catch (err: any) {
@@ -370,7 +378,7 @@ export default function RmmIntegrationPage() {
                 </tr>
               ))}
               {history.length === 0 && (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-500">No RMM sync runs yet</td></tr>
+                <tr><td colSpan={7} className="p-4"><EmptyState icon={RefreshCw} title="No RMM sync runs yet" description="Configure a provider, pass its connection test, then run the first synchronization." /></td></tr>
               )}
             </tbody>
           </table>

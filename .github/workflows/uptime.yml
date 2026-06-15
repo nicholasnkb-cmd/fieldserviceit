@@ -1,0 +1,26 @@
+name: Production Uptime
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/15 * * * *'
+
+concurrency:
+  group: production-uptime
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Website and API
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Run uptime checks
+        env:
+          UPTIME_WEB_URL: ${{ vars.SMOKE_BASE_URL || 'https://fieldserviceit.com' }}
+          UPTIME_API_URL: ${{ vars.SMOKE_API_URL || 'https://api.fieldserviceit.com' }}
+        run: node scripts/uptime-check.mjs
