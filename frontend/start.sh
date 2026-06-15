@@ -2,4 +2,4 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 echo "Starting frontend..."
-exec node .next/standalone/server.js
+exec node node_modules/next/dist/bin/next start

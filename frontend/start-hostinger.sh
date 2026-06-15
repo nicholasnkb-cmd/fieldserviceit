@@ -4,9 +4,9 @@ set -e
 cd "$(dirname "$0")"
 export HOSTNAME="0.0.0.0"
 
-if [ ! -f ".next/standalone/server.js" ]; then
-  echo "Standalone server missing; rebuilding..."
+if [ ! -f ".next/BUILD_ID" ]; then
+  echo "Production build missing; rebuilding..."
   npm run build
 fi
 
-exec node .next/standalone/server.js
+exec node node_modules/next/dist/bin/next start
