@@ -58,40 +58,11 @@ const nextConfig = {
       },
     ];
 
-    const publicCachePaths = [
-      '/',
-      '/about',
-      '/contact',
-      '/field-service-management-software',
-      '/it-asset-management-software',
-      '/legal-disclaimer',
-      '/msp-ticketing-software',
-      '/privacy',
-      '/security-overview',
-      '/status',
-      '/technician-dispatch-software',
-    ];
-
     return [
       {
         source: '/:path*',
-        headers: [
-          ...securityHeaders,
-          {
-            key: 'Cache-Control',
-            value: 'private, no-store, max-age=0',
-          },
-        ],
+        headers: securityHeaders,
       },
-      ...publicCachePaths.map((source) => ({
-        source,
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=0, s-maxage=300, stale-while-revalidate=3600',
-          },
-        ],
-      })),
     ];
   },
 };
