@@ -47,14 +47,29 @@ const nextConfig = {
           "base-uri 'self'",
           "object-src 'none'",
           "frame-ancestors 'none'",
-          "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+          "form-action 'self'",
+          "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com",
           "style-src 'self' 'unsafe-inline'",
-          "img-src 'self' data: blob: https://*.fieldserviceit.com https://*.amazonaws.com",
+          "img-src 'self' data: blob: https://*.fieldserviceit.com https://*.amazonaws.com https://www.google-analytics.com",
           "font-src 'self' data:",
-          "connect-src 'self' https://api.fieldserviceit.com wss://api.fieldserviceit.com",
+          "connect-src 'self' https://api.fieldserviceit.com wss://api.fieldserviceit.com https://www.google-analytics.com https://region1.google-analytics.com",
           'upgrade-insecure-requests',
         ].join('; '),
       },
+    ];
+
+    const publicCachePaths = [
+      '/',
+      '/about',
+      '/contact',
+      '/field-service-management-software',
+      '/it-asset-management-software',
+      '/legal-disclaimer',
+      '/msp-ticketing-software',
+      '/privacy',
+      '/security-overview',
+      '/status',
+      '/technician-dispatch-software',
     ];
 
     return [
@@ -68,6 +83,15 @@ const nextConfig = {
           },
         ],
       },
+      ...publicCachePaths.map((source) => ({
+        source,
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=0, s-maxage=300, stale-while-revalidate=3600',
+          },
+        ],
+      })),
     ];
   },
 };
