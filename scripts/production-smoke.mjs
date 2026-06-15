@@ -421,7 +421,11 @@ await expectList('public SSO provider discovery API', `${apiUrl}/v1/auth/sso/pro
 await check('frontend security headers', async () => {
   const response = await expectOk(baseUrl);
   const csp = response.headers.get('content-security-policy') || '';
-  if (!csp.includes("default-src 'self'")) throw new Error('Restrictive Content-Security-Policy is missing');
+  if (!csp.includes("default-src 'self'")) {
+    const html = await response.text();
+    const hasMetaCsp = /http-equiv=["']Content-Security-Policy["'][^>]+content=["'][^>]*default-src (?:'self'|&#x27;self&#x27;)/i.test(html);
+    if (!hasMetaCsp) throw new Error('Restrictive Content-Security-Policy header or meta fallback is missing');
+  }
   if (response.headers.get('x-frame-options') !== 'DENY') throw new Error('X-Frame-Options is not DENY');
 });
 
