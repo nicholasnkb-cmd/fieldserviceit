@@ -9,6 +9,7 @@ const allItems = [
   { label: 'Assets', href: '/assets', desc: 'View and manage assets' },
   { label: 'Add Asset', href: '/assets/new', desc: 'Register a new asset' },
   { label: 'Field Service', href: '/dispatch', desc: 'Dispatch board and scheduling' },
+  { label: 'Mobile App', href: '/technician-mobile', desc: 'Technician mobile workflow for field updates' },
   { label: 'Reports', href: '/reports', desc: 'Analytics and reporting' },
   { label: 'Favorites', href: '/favorites', desc: 'Your saved items' },
   { label: 'History', href: '/history', desc: 'Recent activity' },

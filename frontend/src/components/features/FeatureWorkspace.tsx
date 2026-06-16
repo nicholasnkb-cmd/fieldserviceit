@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { api, getListData } from '../../lib/api';
 import { formatDate } from '../../lib/utils';
+import { useAuthStore } from '../../stores/authStore';
 
 type Metric = {
   label: string;
@@ -29,6 +30,7 @@ type Workflow = {
   title: string;
   detail: string;
   action: string;
+  href?: string;
 };
 
 type FeatureWorkspaceProps = {
@@ -38,6 +40,7 @@ type FeatureWorkspaceProps = {
   description: string;
   primaryAction: string;
   secondaryAction?: string;
+  secondaryActionHref?: string;
   metrics: Metric[];
   workflows: Workflow[];
   recordsTitle: string;
@@ -68,6 +71,13 @@ function recordSubtext(record: any) {
   return parts.join(' · ') || 'Ready for workflow action';
 }
 
+function recordHref(record: any) {
+  if (record?.ticketNumber && record?.id) return `/tickets/${record.id}`;
+  if (record?.assetType && record?.id) return '/assets';
+  if (record?.email && record?.id) return '/admin/users';
+  return '';
+}
+
 export function FeatureWorkspace({
   moduleKey,
   eyebrow,
@@ -75,6 +85,7 @@ export function FeatureWorkspace({
   description,
   primaryAction,
   secondaryAction = 'Review queue',
+  secondaryActionHref,
   metrics,
   workflows,
   recordsTitle,
@@ -90,6 +101,7 @@ export function FeatureWorkspace({
   const [query, setQuery] = useState('');
   const [mode, setMode] = useState('Active');
   const [form, setForm] = useState({ title: '', description: '', priority: 'MEDIUM' });
+  const { user, activeCompanyContext } = useAuthStore();
 
   const loadData = useCallback(() => {
     setLoading(true);
@@ -100,7 +112,8 @@ export function FeatureWorkspace({
       ...apiSources.map((source) => {
         if (source === 'assets') return api.get('/assets?limit=6').catch(() => []);
         if (source === 'users') return api.get('/users/options').catch(() => []);
-        return api.get('/tickets?limit=6').catch(() => []);
+        const endpoint = user?.role === 'SUPER_ADMIN' && !activeCompanyContext ? '/admin/tickets?limit=6' : '/tickets?limit=6';
+        return api.get(endpoint).catch(() => []);
       }),
     ])
       .then((responses) => {
@@ -108,7 +121,7 @@ export function FeatureWorkspace({
         setRecords(responses.slice(1).flatMap((response) => getListData(response)).slice(0, 8));
       })
       .finally(() => setLoading(false));
-  }, [apiSources, mode, moduleKey]);
+  }, [activeCompanyContext, apiSources, mode, moduleKey, user?.role]);
 
   useEffect(() => {
     let mounted = true;
@@ -176,10 +189,17 @@ export function FeatureWorkspace({
               <Plus size={16} />
               {primaryAction}
             </button>
-            <button className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
-              <SlidersHorizontal size={16} />
-              {secondaryAction}
-            </button>
+            {secondaryActionHref ? (
+              <Link href={secondaryActionHref} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+                <SlidersHorizontal size={16} />
+                {secondaryAction}
+              </Link>
+            ) : (
+              <button type="button" onClick={() => setMode('Review')} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+                <SlidersHorizontal size={16} />
+                {secondaryAction}
+              </button>
+            )}
           </div>
         </div>
       </section>
@@ -291,20 +311,32 @@ export function FeatureWorkspace({
                     </div>
                   </div>
                 ))}
-                {filteredRecords.map((record) => (
-                  <div key={`${record.id}-${recordLabel(record)}`} className="flex items-center justify-between gap-4 p-4">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="rounded bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-500">Linked</span>
-                        <p className="truncate text-sm font-semibold text-gray-950">{recordLabel(record)}</p>
+                {filteredRecords.map((record) => {
+                  const href = recordHref(record);
+                  const content = (
+                    <>
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-500">Linked</span>
+                          <p className="truncate text-sm font-semibold text-gray-950">{recordLabel(record)}</p>
+                        </div>
+                        <p className="mt-1 truncate text-xs text-gray-500">{recordSubtext(record)}</p>
                       </div>
-                      <p className="mt-1 truncate text-xs text-gray-500">{recordSubtext(record)}</p>
+                      <div className="hidden text-xs text-gray-500 sm:block">
+                        {record?.updatedAt || record?.createdAt ? formatDate(record.updatedAt || record.createdAt) : 'No date'}
+                      </div>
+                    </>
+                  );
+                  return href ? (
+                    <Link key={`${record.id}-${recordLabel(record)}`} href={href} className="flex items-center justify-between gap-4 p-4 hover:bg-gray-50">
+                      {content}
+                    </Link>
+                  ) : (
+                    <div key={`${record.id}-${recordLabel(record)}`} className="flex items-center justify-between gap-4 p-4">
+                      {content}
                     </div>
-                    <div className="hidden text-xs text-gray-500 sm:block">
-                      {record?.updatedAt || record?.createdAt ? formatDate(record.updatedAt || record.createdAt) : 'No date'}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </>
             )}
           </div>
@@ -323,9 +355,15 @@ export function FeatureWorkspace({
                       <p className="text-sm font-semibold text-gray-950">{workflow.title}</p>
                       <p className="mt-1 text-sm text-gray-500">{workflow.detail}</p>
                     </div>
-                    <button className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50" title={workflow.action}>
-                      <ArrowRight size={16} />
-                    </button>
+                    {workflow.href ? (
+                      <Link href={workflow.href} className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50" title={workflow.action}>
+                        <ArrowRight size={16} />
+                      </Link>
+                    ) : (
+                      <button type="button" onClick={() => setShowCreate(true)} className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50" title={workflow.action}>
+                        <ArrowRight size={16} />
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}

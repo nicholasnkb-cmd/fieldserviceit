@@ -19,6 +19,10 @@ export default function DashboardsPage() {
           <h2 className="font-semibold text-lg">Field Service</h2>
           <p className="text-sm text-gray-500 mt-1">Dispatch board and technician status</p>
         </Link>
+        <Link href="/technician-mobile" className="p-6 bg-white rounded-lg border border-gray-200 hover:shadow-md transition-shadow">
+          <h2 className="font-semibold text-lg">Mobile App</h2>
+          <p className="text-sm text-gray-500 mt-1">Technician mobile workflow for field updates</p>
+        </Link>
       </div>
     </div>
   );

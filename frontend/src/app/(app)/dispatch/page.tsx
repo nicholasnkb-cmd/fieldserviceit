@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState, useRef } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { api, getListData, unwrapResponseBody } from '../../../lib/api';
 import { formatDate, getStatusColor } from '../../../lib/utils';
@@ -167,9 +168,14 @@ export default function DispatchPage() {
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Field Service</h1>
-        <button onClick={() => setShowForm(!showForm)} className="px-4 py-2 bg-primary text-white text-sm rounded-md hover:bg-primary/90">
-          {showForm ? 'Cancel' : 'New Dispatch'}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href="/technician-mobile" className="px-4 py-2 bg-gray-100 text-gray-700 text-sm rounded-md hover:bg-gray-200">
+            Mobile App
+          </Link>
+          <button onClick={() => setShowForm(!showForm)} className="px-4 py-2 bg-primary text-white text-sm rounded-md hover:bg-primary/90">
+            {showForm ? 'Cancel' : 'New Dispatch'}
+          </button>
+        </div>
       </div>
 
       {message && <div className="bg-green-50 text-green-600 p-3 rounded text-sm mb-4">{message}</div>}

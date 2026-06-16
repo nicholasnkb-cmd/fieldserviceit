@@ -1,6 +1,7 @@
 'use client';
 
 import type React from 'react';
+import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Camera, CheckCircle2, ClipboardPen, Clock3, Loader2, MapPin, Package, PenLine, RefreshCw, Route } from 'lucide-react';
 import { api, getListData } from '../../../lib/api';
@@ -165,10 +166,16 @@ export default function TechnicianMobilePage() {
             <h1 className="mt-1 text-2xl font-bold text-gray-950 md:text-3xl">Technician Mobile Workflow</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600">Update route status, capture job notes, record parts used, attach photo links, and collect completion sign-off from one compact workflow.</p>
           </div>
-          <button onClick={loadData} className="inline-flex items-center justify-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
-            <RefreshCw size={16} />
-            Refresh
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/dispatch" className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary/90">
+              <Route size={16} />
+              Field Service
+            </Link>
+            <button onClick={loadData} className="inline-flex items-center justify-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+              <RefreshCw size={16} />
+              Refresh
+            </button>
+          </div>
         </div>
       </section>
 

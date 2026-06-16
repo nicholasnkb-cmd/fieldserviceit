@@ -94,29 +94,33 @@ export default function TicketDetailPage() {
   const [emailDeliveries, setEmailDeliveries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const { user } = useAuthStore();
+  const { user, activeCompanyContext } = useAuthStore();
+  const isGlobalSuperAdmin = user?.role === 'SUPER_ADMIN' && !activeCompanyContext;
+  const ticketEndpoint = isGlobalSuperAdmin ? `/admin/tickets/${id}` : `/tickets/${id}`;
   const isAdmin = user?.role === 'TENANT_ADMIN' || user?.role === 'SUPER_ADMIN';
   const isGlobalTech = user?.role === 'GLOBAL_TECH';
   const isTech = user?.role === 'TECHNICIAN' || isGlobalTech || isAdmin;
+  const canManageTicket = isTech && !isGlobalSuperAdmin;
 
   useEffect(() => {
     Promise.all([
-      api.get(`/tickets/${id}`),
-      api.get('/users/options?roles=TECHNICIAN,TENANT_ADMIN'),
+      api.get(ticketEndpoint),
+      isGlobalSuperAdmin ? Promise.resolve([]) : api.get('/users/options?roles=TECHNICIAN,TENANT_ADMIN'),
     ]).then(([t, u]) => {
       setTicket(t);
       setUsers(getListData(u));
       setSelectedUser(t.assignedTo?.id || '');
     }).catch(() => router.push('/tickets'))
     .finally(() => setLoading(false));
-  }, [id, router]);
+  }, [id, isGlobalSuperAdmin, router, ticketEndpoint]);
 
   useEffect(() => {
     if (!isTech) return;
-    api.get(`/tickets/${id}/email-deliveries`)
+    const endpoint = isGlobalSuperAdmin ? `/admin/tickets/${id}/email-deliveries` : `/tickets/${id}/email-deliveries`;
+    api.get(endpoint)
       .then((data) => setEmailDeliveries(getListData(data)))
       .catch(() => setEmailDeliveries([]));
-  }, [id, isTech]);
+  }, [id, isGlobalSuperAdmin, isTech]);
 
   useEffect(() => {
     if (!user?.companyId) return;
@@ -134,13 +138,15 @@ export default function TicketDetailPage() {
   }, [user?.companyId, user?.id, id, toast]);
 
   const refreshTimeline = async () => {
-    const timeline = await api.get(`/tickets/${id}/timeline`);
+    const endpoint = isGlobalSuperAdmin ? `/admin/tickets/${id}/timeline` : `/tickets/${id}/timeline`;
+    const timeline = await api.get(endpoint);
     setTicket((prev: any) => ({ ...prev, timeline: getListData(timeline) }));
   };
 
   const refreshEmailDeliveries = async () => {
     if (!isTech) return;
-    const deliveries = await api.get(`/tickets/${id}/email-deliveries`);
+    const endpoint = isGlobalSuperAdmin ? `/admin/tickets/${id}/email-deliveries` : `/tickets/${id}/email-deliveries`;
+    const deliveries = await api.get(endpoint);
     setEmailDeliveries(getListData(deliveries));
   };
 
@@ -351,7 +357,7 @@ export default function TicketDetailPage() {
                     className="text-primary hover:underline truncate max-w-[200px]">
                     {a.fileName}
                   </a>
-                  {isTech && (
+                  {canManageTicket && (
                     <button onClick={() => removeAttachment(a.id)} className="text-gray-400 hover:text-red-500 ml-1">&times;</button>
                   )}
                 </div>
@@ -360,7 +366,13 @@ export default function TicketDetailPage() {
           </div>
         )}
 
-        {isTech && (
+        {isGlobalSuperAdmin && (
+          <div className="mb-4 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+            Global super admin view is read-only here. Select a company context to manage assignment, status, attachments, or comments.
+          </div>
+        )}
+
+        {canManageTicket && (
           <>
             <div className="border-t pt-4 mb-4">
               <h3 className="text-sm font-medium text-gray-500 mb-2">Status</h3>
@@ -480,7 +492,7 @@ export default function TicketDetailPage() {
           </div>
         )}
 
-        {isTech && (
+        {canManageTicket && (
           <div className="border-t pt-4 mt-4">
             <h3 className="text-sm font-medium text-gray-500 mb-2">Add Comment</h3>
             <textarea value={commentText} onChange={(e) => setCommentText(e.target.value)}

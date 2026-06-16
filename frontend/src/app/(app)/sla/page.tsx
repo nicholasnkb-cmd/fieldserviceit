@@ -9,6 +9,7 @@ export default function SlaPage() {
       description="Define business hours, priority timers, response and resolution targets, breach warnings, and SLA reporting."
       primaryAction="Create SLA rule"
       secondaryAction="Breach review"
+      secondaryActionHref="/reports"
       apiSources={['tickets']}
       recordsTitle="SLA Ticket Watchlist"
       recordsHint="Open tickets that should be measured against response and resolution targets."
@@ -19,9 +20,9 @@ export default function SlaPage() {
         { label: 'Breaches', value: 'Reportable', tone: 'red' },
       ]}
       workflows={[
-        { title: 'Business hours', detail: 'Apply support calendars and holidays to SLA calculations.', action: 'Open calendars' },
+        { title: 'Business hours', detail: 'Apply support calendars and holidays to SLA calculations.', action: 'Open calendars', href: '/settings' },
         { title: 'Priority targets', detail: 'Map critical, high, medium, and low tickets to response commitments.', action: 'Open targets' },
-        { title: 'Breach reporting', detail: 'Export SLA performance by company, site, technician, and queue.', action: 'Open reports' },
+        { title: 'Breach reporting', detail: 'Export SLA performance by company, site, technician, and queue.', action: 'Open reports', href: '/reports' },
       ]}
       automationItems={[
         'Warn technicians before a response or resolution breach.',
