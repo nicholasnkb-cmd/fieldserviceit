@@ -14,6 +14,11 @@ export const metadata: Metadata = {
   description:
     'IT service management and field service software for tickets, technician dispatch, assets, customer portals, reporting, and billing.',
   applicationName: 'FieldserviceIT',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'FieldserviceIT',
+  },
   authors: [{ name: 'FieldserviceIT' }],
   creator: 'FieldserviceIT',
   publisher: 'FieldserviceIT',

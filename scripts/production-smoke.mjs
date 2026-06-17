@@ -401,6 +401,29 @@ await check('frontend maintenance page shell', () => expectOk(`${baseUrl}/mainte
 await check('frontend security center page shell', () => expectOk(`${baseUrl}/security-center`));
 await check('frontend technician mobile page shell', () => expectOk(`${baseUrl}/technician-mobile`));
 await check('frontend customer portal page shell', () => expectOk(`${baseUrl}/customer-portal`));
+await check('frontend PWA manifest', async () => {
+  const manifest = await expectJson(`${baseUrl}/manifest.webmanifest`);
+  if (manifest.start_url !== '/dashboard?source=pwa') throw new Error(`Unexpected start_url: ${manifest.start_url}`);
+  if (manifest.display !== 'standalone') throw new Error(`Unexpected display: ${manifest.display}`);
+  const iconSizes = new Set((manifest.icons || []).map((icon) => icon.sizes));
+  for (const size of ['192x192', '512x512']) {
+    if (!iconSizes.has(size)) throw new Error(`Missing install icon size ${size}`);
+  }
+  const shortcuts = new Set((manifest.shortcuts || []).map((shortcut) => shortcut.name));
+  for (const shortcut of ['Technician Mobile', 'Tickets', 'Dispatch']) {
+    if (!shortcuts.has(shortcut)) throw new Error(`Missing PWA shortcut: ${shortcut}`);
+  }
+});
+await check('frontend PWA offline shell', async () => {
+  const offline = await expectOk(`${baseUrl}/offline.html`);
+  const html = await offline.text();
+  if (!html.includes('You are offline')) throw new Error('Offline page message is missing');
+});
+await check('frontend PWA service worker', async () => {
+  const worker = await expectOk(`${baseUrl}/sw.js`);
+  const script = await worker.text();
+  if (!script.includes('/offline.html')) throw new Error('Service worker does not reference offline fallback');
+});
 await check('backend health', () => expectOk(`${apiUrl}/v1/health`));
 await check('backend readiness', () => expectOk(`${apiUrl}/v1/health/ready`));
 await check('backend liveness', () => expectOk(`${apiUrl}/v1/health/live`));

@@ -1,6 +1,6 @@
 # FieldserviceIT
 
-Project guidance: [Product roadmap](docs/PRODUCT_ROADMAP.md) | [Quality gates](docs/QUALITY_GATES.md) | [Tenant customization](docs/TENANT_CUSTOMIZATION.md)
+Project guidance: [Product roadmap](docs/PRODUCT_ROADMAP.md) | [Quality gates](docs/QUALITY_GATES.md) | [Mobile app QA](docs/MOBILE_APP_QA.md) | [Tenant customization](docs/TENANT_CUSTOMIZATION.md)
 
 Multi-tenant enterprise workflow + IT operations platform (ITSM/MSP).
 
@@ -9,6 +9,7 @@ Multi-tenant enterprise workflow + IT operations platform (ITSM/MSP).
 | Layer | Technology |
 |-------|-----------|
 | Frontend | Next.js 15, React 18, Tailwind CSS, shadcn/ui, Zustand |
+| Mobile app | Installable PWA with service worker, offline shell, and technician workflow shortcuts |
 | Backend | Node.js 20, NestJS 11, REST |
 | Database | MySQL 8.0 |
 | Auth | JWT, bcrypt |
@@ -95,6 +96,7 @@ Target: **Hostinger shared/cloud hosting** (Node.js 20 + MySQL 8.0).
 The backend creates/ensures its MySQL tables at startup through the SQL data access layer.
 Docker-based local deployment is defined in `infra/docker-compose.yml`.
 Use `docs/HOSTINGER_DEPLOYMENT.md` plus the Hostinger env templates in `backend/.env.hostinger.example` and `frontend/.env.hostinger.example` for production setup.
+Use `docs/MOBILE_APP_QA.md` for mobile install, offline, and real-device release checks.
 
 Production database name on Hostinger:
 

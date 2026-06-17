@@ -7,6 +7,7 @@ import { api } from '../lib/api';
 import { ToastProvider } from '../components/ui/Toast';
 import { Analytics } from '../components/marketing/Analytics';
 import { TenantTheme } from '../components/layout/TenantTheme';
+import { MobileAppInstallPrompt } from '../components/layout/MobileAppInstallPrompt';
 
 const PUBLIC_PATHS = [
   '/',
@@ -133,6 +134,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     <ToastProvider>
       <TenantTheme />
       <Analytics />
+      <MobileAppInstallPrompt />
       {children}
     </ToastProvider>
   );

@@ -9,6 +9,7 @@ Every pull request and deployment must pass:
 - Unit and component tests.
 - Automated accessibility tests for shared primitives and critical forms.
 - Browser smoke coverage for login, administration, settings, reports, billing, and ticket lifecycle.
+- PWA/mobile smoke coverage for manifest installability, app icons, shortcuts, service worker, offline fallback, and small viewport overflow.
 
 ## Backend
 
@@ -26,6 +27,7 @@ Every pull request and deployment must pass:
 - Authenticated smoke checks for the deployed role.
 - Monitoring dashboard check when `MONITORING_API_KEY` is configured.
 - Temporary mutation checks only when explicitly enabled.
+- Real-device mobile install check on Android Chrome and iPhone Safari before public launch.
 
 ## Repository hygiene
 
@@ -38,4 +40,3 @@ Every pull request and deployment must pass:
 
 Files approaching 800 lines should be reviewed for extraction by domain responsibility. Files over
 1,200 lines require a documented exception or a decomposition change in the same development cycle.
-
