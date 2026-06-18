@@ -146,7 +146,7 @@ export default function BillingPage() {
     }
 
     const params = new URLSearchParams(window.location.search);
-    if (params.get('success') === '1') setNotice('Subscription checkout completed. Stripe confirmation may take a moment to appear.');
+    if (params.get('success') === '1') setNotice('Subscription checkout completed. Payment confirmation may take a moment to appear.');
     if (params.get('canceled') === '1') setNotice('Checkout was canceled. Your subscription was not changed.');
     loadBilling();
   }, [loadBilling, router, user]);
@@ -439,5 +439,6 @@ function humanize(value: string) {
 function providerName(value?: string | null) {
   if (!value) return 'Stripe';
   if (value === 'LEMON_SQUEEZY') return 'Lemon Squeezy';
+  if (value === 'PAYPAL') return 'PayPal';
   return humanize(value.toLowerCase());
 }

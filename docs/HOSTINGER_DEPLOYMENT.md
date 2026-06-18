@@ -30,6 +30,17 @@ STRIPE_SECRET_KEY=sk_live_replace_me
 STRIPE_WEBHOOK_SECRET=whsec_replace_me
 ```
 
+Optional PayPal subscription variables:
+
+```env
+BILLING_PROVIDER=PAYPAL
+PAYPAL_CLIENT_ID=live_client_id
+PAYPAL_CLIENT_SECRET=live_client_secret
+PAYPAL_WEBHOOK_ID=live_webhook_id
+PAYPAL_ENVIRONMENT=production
+PAYPAL_SUBSCRIPTION_MANAGE_URL=https://www.paypal.com/myaccount/autopay/
+```
+
 Start command:
 
 ```bash
@@ -95,6 +106,14 @@ Enable these events:
 - `customer.subscription.deleted`
 
 Copy the webhook signing secret into `STRIPE_WEBHOOK_SECRET`.
+
+For PayPal subscriptions, create matching live PayPal plans for each billing interval you sell, save their plan IDs as `PAYPAL` price mappings in Super Admin system controls, and create a webhook endpoint:
+
+```text
+https://api.fieldserviceit.com/v1/billing/webhook/paypal
+```
+
+Enable subscription and sale/payment events, then copy the PayPal webhook ID into `PAYPAL_WEBHOOK_ID`.
 
 ## 5. Final Checks
 
