@@ -18,6 +18,7 @@ const PUBLIC_PATHS = [
   '/privacy',
   '/security-overview',
   '/status',
+  '/terms',
   '/track',
   '/unsubscribe',
   '/login',

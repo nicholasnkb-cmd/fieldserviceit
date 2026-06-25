@@ -16,7 +16,6 @@ interface Plan {
   trialDays: number;
   maxUsers: number;
   maxTickets: number;
-  stripePriceId?: string;
   isActive: boolean;
   features: Record<string, boolean>;
 }
@@ -25,7 +24,7 @@ interface Readiness {
   status: string;
   generatedAt: string;
   environment: string;
-  stripeWebhookPath: string;
+  paypalWebhookPath: string;
   checks: { name: string; status: string; detail: string }[];
   deployment?: {
     frontendVersion?: string;
@@ -175,7 +174,6 @@ export default function SystemControlsPage() {
         trialDays: Number(draft.trialDays),
         maxUsers: Number(draft.maxUsers),
         maxTickets: Number(draft.maxTickets),
-        stripePriceId: draft.stripePriceId || '',
         isActive: draft.isActive,
         features: draft.features,
       });
@@ -216,14 +214,14 @@ export default function SystemControlsPage() {
     setMessage('User function controls saved');
   };
 
-  const testProvider = async (key: string) => {
-    setTestingProvider(key);
+  const testProvider = async () => {
+    setTestingProvider('PAYPAL');
     setMessage('');
     try {
-      const result = await api.post(`/admin/billing/providers/${key}/test`, {});
-      setMessage(result.detail || `${key} connection test completed`);
+      const result = await api.post('/admin/billing/paypal/test', {});
+      setMessage(result.detail || 'PayPal connection test completed');
     } catch (err: any) {
-      setMessage(err.message || `${key} connection test failed`);
+      setMessage(err.message || 'PayPal connection test failed');
     } finally {
       setTestingProvider('');
     }
@@ -232,7 +230,7 @@ export default function SystemControlsPage() {
   const saveBillingPrice = async (planId: string, provider: string, billingInterval: string, component: string) => {
     const key = `${planId}:${provider}:${billingInterval}:${component}`;
     try {
-      const rows = await api.post('/admin/billing/prices', { planId, provider, interval: billingInterval, component, externalPriceId: priceDrafts[key] || '' });
+      const rows = await api.post('/admin/billing/prices', { planId, interval: billingInterval, component, externalPriceId: priceDrafts[key] || '' });
       setBillingPrices(getListData<BillingPrice>(rows));
       setMessage(`${provider} ${billingInterval.toLowerCase()} ${component.toLowerCase()} price saved`);
     } catch (err: any) {
@@ -259,7 +257,7 @@ export default function SystemControlsPage() {
           <div className="flex flex-col gap-2 border-b border-gray-100 pb-4 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="text-lg font-semibold text-gray-950">Production readiness</h2>
-              <p className="text-sm text-gray-500">{readiness.environment} environment · webhook {readiness.stripeWebhookPath}</p>
+              <p className="text-sm text-gray-500">{readiness.environment} environment · webhook {readiness.paypalWebhookPath}</p>
             </div>
             <span className="w-fit rounded border border-gray-200 bg-gray-50 px-3 py-1 text-sm font-medium text-gray-700">{readiness.status.replaceAll('_', ' ')}</span>
           </div>
@@ -292,7 +290,7 @@ export default function SystemControlsPage() {
 
       <section className="border border-gray-200 bg-white p-5">
         <div className="border-b border-gray-100 pb-4">
-          <h2 className="text-lg font-semibold text-gray-950">Billing providers</h2>
+          <h2 className="text-lg font-semibold text-gray-950">PayPal billing</h2>
           <p className="mt-1 text-sm text-gray-500">Connection readiness, webhook routes, {billingPrices.length} price mappings, and recent synchronization events.</p>
         </div>
         <div className="mt-4 grid gap-4 lg:grid-cols-2">
@@ -303,7 +301,7 @@ export default function SystemControlsPage() {
                   <h3 className="font-semibold text-gray-950">{item.name}{item.isDefault ? ' (default)' : ''}</h3>
                   <p className="mt-1 text-xs text-gray-500">{item.webhookPath} · {item.priceCount} mapped prices</p>
                 </div>
-                <button type="button" disabled={!item.configured || testingProvider === item.key} onClick={() => testProvider(item.key)} className="border border-gray-300 px-3 py-2 text-sm font-medium text-gray-800 disabled:opacity-40">
+                <button type="button" disabled={!item.configured || testingProvider === item.key} onClick={testProvider} className="border border-gray-300 px-3 py-2 text-sm font-medium text-gray-800 disabled:opacity-40">
                   {testingProvider === item.key ? 'Testing...' : 'Test'}
                 </button>
               </div>
@@ -323,7 +321,8 @@ export default function SystemControlsPage() {
           <table className="w-full min-w-[900px] text-sm">
             <thead><tr className="border-b border-gray-200 text-left text-xs uppercase text-gray-500"><th className="pb-2">Plan</th><th className="pb-2">Provider</th><th className="pb-2">Cycle</th><th className="pb-2">Component</th><th className="pb-2">External price ID</th><th className="pb-2 text-right">Action</th></tr></thead>
             <tbody>
-              {plans.filter((plan) => Number(plan.monthlyPrice) > 0).flatMap((plan) => billingProviders.flatMap((item) => ['MONTH', 'YEAR'].flatMap((cycle) => ['BASE', 'SEAT'].map((component) => {
+              {plans.filter((plan) => Number(plan.monthlyPrice) > 0).flatMap((plan) => billingProviders.flatMap((item) => ['MONTH', 'YEAR'].map((cycle) => {
+                const component = 'BASE';
                 const key = `${plan.id}:${item.key}:${cycle}:${component}`;
                 return (
                   <tr key={key} className="border-b border-gray-100">
@@ -332,7 +331,7 @@ export default function SystemControlsPage() {
                     <td className="py-2 text-right"><button type="button" onClick={() => saveBillingPrice(plan.id, item.key, cycle, component)} className="border border-gray-300 px-3 py-1.5 font-medium">Save</button></td>
                   </tr>
                 );
-              }))))}
+              })))}
             </tbody>
           </table>
         </div>
@@ -428,14 +427,6 @@ export default function SystemControlsPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Trial days</label>
                   <input type="number" min={0} value={draft.trialDays || 0} onChange={(e) => updateDraft(plan.id, { trialDays: Number(e.target.value) })} className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Stripe price ID</label>
-                  <input
-                    value={draft.stripePriceId || ''}
-                    onChange={(e) => updateDraft(plan.id, { stripePriceId: e.target.value })}
-                    className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm"
-                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Max users</label>

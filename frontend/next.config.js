@@ -1,9 +1,31 @@
+const { execFileSync } = require('node:child_process');
+const { version } = require('./package.json');
+
+function gitCommit() {
+  try {
+    return execFileSync('git', ['rev-parse', 'HEAD'], {
+      cwd: __dirname,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+  } catch {
+    return 'unknown';
+  }
+}
+
+const frontendVersion = process.env.FRONTEND_VERSION || process.env.APP_VERSION || version;
+const frontendCommit = process.env.FRONTEND_COMMIT || process.env.GITHUB_SHA || gitCommit();
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   poweredByHeader: false,
   output: 'standalone',
   distDir: process.env.NEXT_DIST_DIR || '.next',
   outputFileTracingRoot: __dirname,
+  env: {
+    NEXT_PUBLIC_APP_VERSION: frontendVersion,
+    NEXT_PUBLIC_APP_COMMIT: frontendCommit,
+  },
   async rewrites() {
     return [
       {

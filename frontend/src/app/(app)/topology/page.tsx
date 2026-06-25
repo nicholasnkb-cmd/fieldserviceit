@@ -97,6 +97,7 @@ export default function TopologyPage() {
   const [interfaces, setInterfaces] = useState<InterfaceMetric[]>([]);
   const [actions, setActions] = useState<DeviceAction[]>([]);
   const [changes, setChanges] = useState<any[]>([]);
+  const [alertCorrelations, setAlertCorrelations] = useState<any[]>([]);
   const [shares, setShares] = useState<any[]>([]);
   const [settings, setSettings] = useState<any>({});
   const [companies, setCompanies] = useState<any[]>([]);
@@ -126,10 +127,11 @@ export default function TopologyPage() {
       const params = new URLSearchParams();
       if (search.trim()) params.set('search', search.trim());
       if (siteId) params.set('siteId', siteId);
-      const [summaryRes, mapRes, companiesRes] = await Promise.all([
+      const [summaryRes, mapRes, companiesRes, correlationRes] = await Promise.all([
         api.get('/topology/summary'),
         api.get(`/topology/map?${params.toString()}`),
         api.get('/admin/companies?limit=100').catch(() => []),
+        api.get('/topology/alerts/correlations').catch(() => []),
       ]);
       const nextNodes = getListData<TopologyNode>(mapRes?.nodes);
       setSummary(summaryRes || {});
@@ -140,6 +142,7 @@ export default function TopologyPage() {
       setInterfaces(getListData<InterfaceMetric>(mapRes?.interfaces));
       setActions(getListData<DeviceAction>(mapRes?.actions));
       setChanges(getListData(mapRes?.changes));
+      setAlertCorrelations(getListData(correlationRes));
       setShares(getListData(mapRes?.shares));
       setSettings(mapRes?.settings || {});
       setCompanies(getListData(companiesRes));
@@ -581,6 +584,26 @@ export default function TopologyPage() {
               <div key={item.id} className="border-b border-gray-100 p-3 text-sm last:border-b-0">
                 <div className="flex items-center justify-between gap-2"><p className="font-semibold text-gray-950">{item.title}</p><span className="rounded bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700">{item.status}</span></div>
                 <p className="mt-1 text-xs text-gray-500">{[item.changeType, item.detectedAt ? formatDate(item.detectedAt) : null].filter(Boolean).join(' | ')}</p>
+              </div>
+            ))}
+          </Panel>
+
+          <Panel title="Alert Correlations">
+            {alertCorrelations.length === 0 ? <Empty text="No active alert correlations." /> : alertCorrelations.slice(0, 8).map((item) => (
+              <div key={`${item.assetId}-${item.ruleId}-${item.title}`} className="border-b border-gray-100 p-3 text-sm last:border-b-0">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-gray-950">{item.title}</p>
+                    <p className="mt-1 text-xs text-gray-500">{[item.assetName, item.location, `${item.alertCount} alerts`].filter(Boolean).join(' | ')}</p>
+                  </div>
+                  <span className="rounded bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700">{item.impactScore}</span>
+                </div>
+                <p className="mt-2 text-xs text-gray-600">{item.recommendation}</p>
+                {item.linkedTicket ? (
+                  <p className="mt-2 text-xs font-semibold text-primary">{item.linkedTicket.ticketNumber} ({item.linkedTicket.status})</p>
+                ) : (
+                  <button onClick={() => setSelectedId(item.assetId)} className="mt-2 rounded border border-gray-300 px-2 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50">Review asset</button>
+                )}
               </div>
             ))}
           </Panel>

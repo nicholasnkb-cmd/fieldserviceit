@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '../../../stores/authStore';
 import { setSessionTokens, unwrapResponseBody } from '../../../lib/api';
+import { PRIVACY_VERSION, TERMS_VERSION } from '../../../lib/legal';
 
 interface PlanOption { id: string; name: string; monthlyPrice: number }
 const fallbackPlans: PlanOption[] = [
@@ -22,6 +23,7 @@ function RegisterForm() {
   const [preferredContactMethod, setPreferredContactMethod] = useState('Email');
   const [timezone, setTimezone] = useState('');
   const [password, setPassword] = useState('');
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { setUser } = useAuthStore();
@@ -69,6 +71,9 @@ function RegisterForm() {
           preferredContactMethod,
           timezone,
           planName: selectedPlan,
+          termsAccepted,
+          termsVersion: TERMS_VERSION,
+          privacyVersion: PRIVACY_VERSION,
         }),
       });
 
@@ -249,9 +254,20 @@ function RegisterForm() {
             />
           </div>
 
+          <label className="flex items-start gap-3 text-sm leading-6 text-gray-600">
+            <input
+              type="checkbox"
+              required
+              checked={termsAccepted}
+              onChange={(event) => setTermsAccepted(event.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+            />
+            <span>I agree to the <Link href="/terms" target="_blank" className="font-semibold text-primary hover:underline">Terms of Service</Link> and acknowledge the <Link href="/privacy" target="_blank" className="font-semibold text-primary hover:underline">Privacy Policy</Link>.</span>
+          </label>
+
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !termsAccepted}
             className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50"
           >
             {loading ? 'Creating account...' : 'Create account'}

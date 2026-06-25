@@ -81,9 +81,58 @@ jobs:
           MONITORING_API_KEY: ${{ secrets.MONITORING_API_KEY }}
         run: node scripts/security-deployment-check.mjs
 
+  deploy-hostinger:
+    name: Deploy Hostinger Applications
+    needs: [build-backend, build-frontend, hostinger-preflight]
+    runs-on: ubuntu-latest
+    environment: production
+    outputs:
+      backend_commit: ${{ steps.sync.outputs.backend_commit }}
+      frontend_commit: ${{ steps.sync.outputs.frontend_commit }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Sync Hostinger deployment repositories
+        id: sync
+        env:
+          DEPLOY_REPOS_TOKEN: ${{ secrets.DEPLOY_REPOS_TOKEN }}
+        run: |
+          test -n "$DEPLOY_REPOS_TOKEN" || { echo "DEPLOY_REPOS_TOKEN is required"; exit 1; }
+          backend_commit=$(git subtree split --prefix=backend HEAD)
+          frontend_commit=$(git subtree split --prefix=frontend HEAD)
+          backend_remote=$(git ls-remote https://github.com/nicholasnkb-cmd/fieldserviceit-backend.git refs/heads/master | cut -f1)
+          frontend_remote=$(git ls-remote https://github.com/nicholasnkb-cmd/fieldserviceit-frontend.git refs/heads/master | cut -f1)
+          git push "--force-with-lease=refs/heads/master:${backend_remote}" \
+            "https://x-access-token:${DEPLOY_REPOS_TOKEN}@github.com/nicholasnkb-cmd/fieldserviceit-backend.git" \
+            "${backend_commit}:refs/heads/master"
+          git push "--force-with-lease=refs/heads/master:${frontend_remote}" \
+            "https://x-access-token:${DEPLOY_REPOS_TOKEN}@github.com/nicholasnkb-cmd/fieldserviceit-frontend.git" \
+            "${frontend_commit}:refs/heads/master"
+          echo "backend_commit=$backend_commit" >> "$GITHUB_OUTPUT"
+          echo "frontend_commit=$frontend_commit" >> "$GITHUB_OUTPUT"
+
+      - name: Trigger backend deployment
+        env:
+          DEPLOY_WEBHOOK_URL: ${{ secrets.HOSTINGER_BACKEND_DEPLOY_WEBHOOK_URL }}
+        run: |
+          test -n "$DEPLOY_WEBHOOK_URL" || { echo "HOSTINGER_BACKEND_DEPLOY_WEBHOOK_URL is required"; exit 1; }
+          curl --fail --silent --show-error --retry 3 --request POST "$DEPLOY_WEBHOOK_URL"
+
+      - name: Trigger frontend deployment
+        env:
+          DEPLOY_WEBHOOK_URL: ${{ secrets.HOSTINGER_FRONTEND_DEPLOY_WEBHOOK_URL }}
+        run: |
+          test -n "$DEPLOY_WEBHOOK_URL" || { echo "HOSTINGER_FRONTEND_DEPLOY_WEBHOOK_URL is required"; exit 1; }
+          curl --fail --silent --show-error --retry 3 --request POST "$DEPLOY_WEBHOOK_URL"
+
+      - name: Allow Hostinger builds to start
+        run: sleep 30
+
   production-smoke:
     name: Production Smoke Tests
-    needs: [build-backend, build-frontend, hostinger-preflight]
+    needs: [deploy-hostinger]
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -103,4 +152,6 @@ jobs:
           SMOKE_RMM_TESTS: ${{ vars.SMOKE_RMM_TESTS || 'false' }}
           SMOKE_RMM_PROVIDERS: ${{ vars.SMOKE_RMM_PROVIDERS || 'connectwise,datto,ninjaone,atera,syncro,kaseya,nable' }}
           MONITORING_API_KEY: ${{ secrets.MONITORING_API_KEY }}
+          SMOKE_EXPECT_FRONTEND_COMMIT: ${{ needs.deploy-hostinger.outputs.frontend_commit }}
+          SMOKE_EXPECT_BACKEND_COMMIT: ${{ needs.deploy-hostinger.outputs.backend_commit }}
         run: node scripts/production-smoke.mjs

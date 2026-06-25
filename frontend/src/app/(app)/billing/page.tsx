@@ -16,6 +16,7 @@ import {
   Users,
 } from 'lucide-react';
 import { api, getListData } from '../../../lib/api';
+import { PRIVACY_VERSION, TERMS_VERSION } from '../../../lib/legal';
 import { useAuthStore } from '../../../stores/authStore';
 
 interface Plan {
@@ -31,15 +32,12 @@ interface Plan {
   maxTickets: number;
   features: Record<string, boolean>;
   sortOrder: number;
-  stripePriceId?: string | null;
 }
 
 interface Subscription {
   id: string;
   status: string;
-  stripeCustomerId?: string | null;
   providerCustomerId?: string | null;
-  billingProvider?: string | null;
   billingInterval?: 'MONTH' | 'YEAR';
   seatQuantity?: number;
   gracePeriodEndsAt?: string | null;
@@ -97,13 +95,13 @@ export default function BillingPage() {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [interval, setInterval] = useState<'MONTH' | 'YEAR'>('MONTH');
   const [seats, setSeats] = useState(1);
-  const [provider, setProvider] = useState('STRIPE');
   const [loading, setLoading] = useState(true);
   const [loadingInvoices, setLoadingInvoices] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [checkoutPlanId, setCheckoutPlanId] = useState<string | null>(null);
   const [openingPortal, setOpeningPortal] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const autoCheckoutStarted = useRef(false);
 
   const loadBilling = useCallback(async () => {
@@ -119,7 +117,6 @@ export default function BillingPage() {
       setSubscription(current || null);
       const availableProviders = getListData<Provider>(providerData).filter((item) => item.configured);
       setProviders(availableProviders);
-      setProvider(current?.billingProvider || availableProviders.find((item) => item.isDefault)?.key || availableProviders[0]?.key || 'STRIPE');
       setInterval(current?.billingInterval === 'YEAR' ? 'YEAR' : 'MONTH');
       setSeats(Math.max(1, Number(current?.seatQuantity || 1)));
 
@@ -157,10 +154,12 @@ export default function BillingPage() {
     try {
       const data = await api.post('/billing/checkout', {
         planId,
-        provider,
         interval,
         seats,
         useTrial: true,
+        termsAccepted,
+        termsVersion: TERMS_VERSION,
+        privacyVersion: PRIVACY_VERSION,
         successUrl: `${window.location.origin}/billing?success=1`,
         cancelUrl: `${window.location.origin}/billing?canceled=1`,
       });
@@ -170,10 +169,10 @@ export default function BillingPage() {
       setError(err.message || 'Failed to create checkout session');
       setCheckoutPlanId(null);
     }
-  }, [interval, provider, seats]);
+  }, [interval, seats, termsAccepted]);
 
   useEffect(() => {
-    if (loading || autoCheckoutStarted.current || plans.length === 0) return;
+    if (loading || !termsAccepted || autoCheckoutStarted.current || plans.length === 0) return;
     const requestedPlanName = new URLSearchParams(window.location.search).get('plan');
     if (!requestedPlanName) return;
 
@@ -182,7 +181,7 @@ export default function BillingPage() {
 
     autoCheckoutStarted.current = true;
     handleCheckout(requestedPlan.id);
-  }, [handleCheckout, loading, plans, subscription?.plan?.id]);
+  }, [handleCheckout, loading, plans, subscription?.plan?.id, termsAccepted]);
 
   const handlePortal = async () => {
     setOpeningPortal(true);
@@ -224,7 +223,7 @@ export default function BillingPage() {
           <h1 className="mt-2 text-2xl font-semibold text-gray-950">Billing and subscription</h1>
           <p className="mt-1 text-sm text-gray-600">Manage the plan, payment method, and invoices for {company?.name || 'your company'}.</p>
         </div>
-        {(subscription?.providerCustomerId || subscription?.stripeCustomerId) && (
+        {subscription?.providerCustomerId && (
           <button
             type="button"
             onClick={handlePortal}
@@ -256,7 +255,7 @@ export default function BillingPage() {
         <div className="border-l-2 border-gray-300 pl-4">
           <p className="text-xs font-semibold uppercase text-gray-500">Next renewal</p>
           <p className="mt-2 text-xl font-semibold text-gray-950">{formatDate(subscription?.currentPeriodEnd)}</p>
-          <p className="mt-1 text-sm text-gray-600">Managed through {providerName(subscription?.billingProvider)}</p>
+          <p className="mt-1 text-sm text-gray-600">Managed through PayPal</p>
         </div>
       </section>
 
@@ -285,11 +284,9 @@ export default function BillingPage() {
             <p className="mt-1 text-xs text-gray-500">First seat included; additional seats use the plan add-on.</p>
           </div>
           <div>
-            <label htmlFor="billing-provider" className="text-sm font-semibold text-gray-800">Payment provider</label>
-            <select id="billing-provider" value={provider} onChange={(event) => setProvider(event.target.value)} className="mt-2 w-full border border-gray-300 bg-white px-3 py-2 text-sm">
-              {providers.length > 0 ? providers.map((item) => <option key={item.key} value={item.key}>{item.name}{item.isDefault ? ' (recommended)' : ''}</option>) : <option value="STRIPE">Stripe</option>}
-            </select>
-            <p className="mt-1 text-xs text-gray-500">Promotion codes can be entered during supported checkout flows.</p>
+            <p className="text-sm font-semibold text-gray-800">Payment provider</p>
+            <div className="mt-2 border border-gray-300 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-900">PayPal</div>
+            <p className="mt-1 text-xs text-gray-500">Checkout and subscription management are handled securely by PayPal.</p>
           </div>
         </div>
 
@@ -318,11 +315,11 @@ export default function BillingPage() {
                 <button
                   type="button"
                   onClick={() => handleCheckout(plan.id)}
-                  disabled={isCurrent || checkoutPlanId === plan.id || providers.length === 0}
+                  disabled={isCurrent || checkoutPlanId === plan.id || providers.length === 0 || !termsAccepted}
                   className="mt-7 inline-flex w-full items-center justify-center gap-2 rounded bg-gray-950 px-4 py-3 text-sm font-semibold text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-500"
                 >
                   {checkoutPlanId === plan.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CircleDollarSign className="h-4 w-4" />}
-                  {isCurrent ? 'Current plan' : providers.length === 0 ? 'Checkout not configured' : `Continue with ${providerName(provider)}`}
+                  {isCurrent ? 'Current plan' : providers.length === 0 ? 'PayPal checkout not configured' : 'Continue with PayPal'}
                 </button>
               </div>
             );
@@ -346,13 +343,18 @@ export default function BillingPage() {
             </div>
           </div>
         </div>
+
+        <label className="mt-5 flex items-start gap-3 rounded border border-gray-200 bg-gray-50 p-4 text-sm leading-6 text-gray-700">
+          <input type="checkbox" checked={termsAccepted} onChange={(event) => setTermsAccepted(event.target.checked)} className="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
+          <span>I agree to the <a href="/terms" target="_blank" rel="noreferrer" className="font-semibold text-primary hover:underline">Terms of Service</a>, including recurring billing, and acknowledge the <a href="/privacy" target="_blank" rel="noreferrer" className="font-semibold text-primary hover:underline">Privacy Policy</a>. The subscription renews at the selected interval until canceled; taxes may apply.</span>
+        </label>
       </section>
 
       <section className="mt-12 border-t border-gray-200 pt-8">
         <div className="flex items-center justify-between gap-4">
           <div>
             <h2 className="text-lg font-semibold text-gray-950">Invoice history</h2>
-            <p className="mt-1 text-sm text-gray-600">The latest invoices issued by your payment provider.</p>
+            <p className="mt-1 text-sm text-gray-600">The latest transactions reported by PayPal.</p>
           </div>
           <FileText className="h-5 w-5 text-gray-400" />
         </div>
@@ -365,7 +367,7 @@ export default function BillingPage() {
           <div className="mt-5 border-y border-gray-200 py-8 text-center">
             <ReceiptText className="mx-auto h-6 w-6 text-gray-400" />
             <p className="mt-3 text-sm font-medium text-gray-900">No invoices yet</p>
-            <p className="mt-1 text-sm text-gray-500">Paid and open invoices will appear after your provider creates them.</p>
+            <p className="mt-1 text-sm text-gray-500">Completed PayPal transactions will appear here.</p>
           </div>
         ) : (
           <div className="mt-5 overflow-x-auto">
@@ -405,7 +407,7 @@ export default function BillingPage() {
       </section>
 
       <section className="mt-10 grid gap-4 border-t border-gray-200 pt-8 sm:grid-cols-3">
-        <div className="flex items-start gap-3"><CreditCard className="mt-0.5 h-5 w-5 text-emerald-700" /><div><h2 className="text-sm font-semibold">Secure checkout</h2><p className="mt-1 text-sm leading-6 text-gray-600">Payment details are entered and stored by the selected billing provider.</p></div></div>
+        <div className="flex items-start gap-3"><CreditCard className="mt-0.5 h-5 w-5 text-emerald-700" /><div><h2 className="text-sm font-semibold">Secure checkout</h2><p className="mt-1 text-sm leading-6 text-gray-600">Payment details are entered and stored by PayPal.</p></div></div>
         <div className="flex items-start gap-3"><CalendarDays className="mt-0.5 h-5 w-5 text-emerald-700" /><div><h2 className="text-sm font-semibold">Subscription control</h2><p className="mt-1 text-sm leading-6 text-gray-600">Update payment methods and cancellation settings in the billing portal.</p></div></div>
         <div className="flex items-start gap-3"><ShieldCheck className="mt-0.5 h-5 w-5 text-emerald-700" /><div><h2 className="text-sm font-semibold">Webhook synchronized</h2><p className="mt-1 text-sm leading-6 text-gray-600">Plan status follows verified payment and subscription events.</p></div></div>
       </section>
@@ -434,11 +436,4 @@ function formatStatus(value?: string | null) {
 
 function humanize(value: string) {
   return value.replace(/_/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/^./, (letter) => letter.toUpperCase());
-}
-
-function providerName(value?: string | null) {
-  if (!value) return 'Stripe';
-  if (value === 'LEMON_SQUEEZY') return 'Lemon Squeezy';
-  if (value === 'PAYPAL') return 'PayPal';
-  return humanize(value.toLowerCase());
 }

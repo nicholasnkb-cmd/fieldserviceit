@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Eye } from 'lucide-react';
-import { api } from '../../../lib/api';
+import { Eye, History, RotateCcw } from 'lucide-react';
+import { api, getListData } from '../../../lib/api';
+import { formatDate } from '../../../lib/utils';
 import { useAuthStore } from '../../../stores/authStore';
 import { TenantCustomizationEditor } from '../../../components/settings/TenantCustomizationEditor';
 
@@ -25,6 +26,7 @@ export default function SettingsPage() {
     enabled: true,
   });
   const [emailPreview, setEmailPreview] = useState('');
+  const [settingsHistory, setSettingsHistory] = useState<any[]>([]);
   const [previewing, setPreviewing] = useState(false);
   const { user } = useAuthStore();
   const router = useRouter();
@@ -48,6 +50,9 @@ export default function SettingsPage() {
       api.get('/notifications/email/templates/TICKET_PARTICIPANT')
         .then((data) => setEmailTemplate((current: any) => ({ ...current, ...data, enabled: data.enabled !== false && data.enabled !== 0 })))
         .catch(() => {});
+      api.get('/settings/history')
+        .then((data) => setSettingsHistory(getListData(data)))
+        .catch(() => setSettingsHistory([]));
     }
   }, [isAdmin, router, user]);
 
@@ -84,6 +89,27 @@ export default function SettingsPage() {
       setMessage(err.message || 'Email preview could not be generated');
     } finally {
       setPreviewing(false);
+    }
+  };
+
+  const rollbackSettings = async (historyId: string) => {
+    setSaving(true);
+    try {
+      const updated = await api.post(`/settings/history/${historyId}/rollback`, {});
+      setSettings(updated);
+      setForm({ name: updated.name || '', domain: updated.domain || '' });
+      setBranding({
+        primaryColor: updated.branding?.primaryColor || '#2563eb',
+        logoUrl: updated.branding?.logoUrl || '',
+        companyName: updated.branding?.companyName || updated.name || '',
+      });
+      const history = await api.get('/settings/history').catch(() => []);
+      setSettingsHistory(getListData(history));
+      setMessage('Settings version restored');
+    } catch (err: any) {
+      setMessage(err.message || 'Settings rollback failed');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -207,6 +233,36 @@ export default function SettingsPage() {
       )}
 
       {isAdmin && settings && <div className="mb-6"><TenantCustomizationEditor initial={settings} onMessage={setMessage} /></div>}
+
+      {isAdmin && (
+        <div className="mb-6 rounded-lg bg-white p-6 shadow">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="flex items-center gap-2 text-lg font-semibold"><History size={18} /> Settings Version History</h2>
+              <p className="mt-1 text-sm text-gray-500">Recent snapshots captured before settings, branding, and customization changes.</p>
+            </div>
+            <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-600">{settingsHistory.length}</span>
+          </div>
+          <div className="divide-y divide-gray-100 rounded-md border border-gray-200">
+            {settingsHistory.length === 0 ? (
+              <div className="p-4 text-sm text-gray-500">No settings versions captured yet.</div>
+            ) : settingsHistory.slice(0, 8).map((entry) => (
+              <div key={entry.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">{entry.action?.replaceAll('_', ' ') || 'Settings update'}</p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    {[formatDate(entry.createdAt), entry.actor?.email, entry.summary?.companyName].filter(Boolean).join(' | ')}
+                  </p>
+                </div>
+                <button onClick={() => rollbackSettings(entry.id)} disabled={saving} className="inline-flex items-center justify-center gap-2 rounded-md border border-gray-300 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+                  <RotateCcw size={14} />
+                  Restore
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {settings?.settings && (
         <div className="bg-white rounded-lg shadow p-6">

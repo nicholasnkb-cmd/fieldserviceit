@@ -26,13 +26,6 @@ PORT=4000
 FRONTEND_URL=https://fieldserviceit.com
 CORS_ORIGIN=https://fieldserviceit.com
 JWT_SECRET=replace-with-a-long-random-production-secret
-STRIPE_SECRET_KEY=sk_live_replace_me
-STRIPE_WEBHOOK_SECRET=whsec_replace_me
-```
-
-Optional PayPal subscription variables:
-
-```env
 BILLING_PROVIDER=PAYPAL
 PAYPAL_CLIENT_ID=live_client_id
 PAYPAL_CLIENT_SECRET=live_client_secret
@@ -83,37 +76,30 @@ Start command:
 npm run start
 ```
 
-## 4. Stripe
+## 4. PayPal
 
-Create live Stripe prices for:
+Create live PayPal subscription plans for:
 
 - Starter: individual paid plan
 - Business: company plan
 
-Add the live Stripe price IDs in the Super Admin system controls page.
+Add the live PayPal plan IDs as `PAYPAL` price mappings in the Super Admin system controls page for every monthly or annual interval you sell.
 
-Create a Stripe webhook endpoint:
-
-```text
-https://api.fieldserviceit.com/v1/billing/webhook
-```
-
-Enable these events:
-
-- `checkout.session.completed`
-- `invoice.payment_succeeded`
-- `customer.subscription.updated`
-- `customer.subscription.deleted`
-
-Copy the webhook signing secret into `STRIPE_WEBHOOK_SECRET`.
-
-For PayPal subscriptions, create matching live PayPal plans for each billing interval you sell, save their plan IDs as `PAYPAL` price mappings in Super Admin system controls, and create a webhook endpoint:
+Create a PayPal webhook endpoint:
 
 ```text
 https://api.fieldserviceit.com/v1/billing/webhook/paypal
 ```
 
+Enable these events:
+
+- subscription activated, updated, suspended, cancelled, and expired events
+- subscription payment completed, failed, refunded, or reversed events
+- sale/payment completed events used by your PayPal subscription configuration
+
 Enable subscription and sale/payment events, then copy the PayPal webhook ID into `PAYPAL_WEBHOOK_ID`.
+
+PayPal checkout does not by itself determine every sales-tax obligation. Maintain a documented process for registration, calculation, collection, and remittance wherever the company has nexus.
 
 ## 5. Final Checks
 
@@ -126,10 +112,9 @@ In the app, open:
 Confirm Production readiness shows:
 
 - Database: ok
-- Stripe secret key: ok
-- Stripe webhook: ok
-- Business plan price: ok
-- Starter plan price: ok
+- PayPal API credentials: ok
+- PayPal webhook: ok
+- Business monthly and annual PayPal plans: ok
 - Frontend URL: ok
 - CORS origin: ok
 - JWT secret: ok
@@ -142,6 +127,9 @@ Create these GitHub production environment secrets:
 HOSTINGER_API_TOKEN=<Hostinger API token from hPanel>
 SMOKE_EMAIL=smoke-superadmin@fieldserviceit.com
 SMOKE_PASSWORD=<the smoke super admin password stored in your password manager>
+DEPLOY_REPOS_TOKEN=<fine-grained GitHub token with Contents write access to both deployment repositories>
+HOSTINGER_BACKEND_DEPLOY_WEBHOOK_URL=<backend Git deployment webhook from hPanel>
+HOSTINGER_FRONTEND_DEPLOY_WEBHOOK_URL=<frontend Git deployment webhook from hPanel>
 ```
 
 Optional production environment variables:
@@ -160,11 +148,13 @@ The smoke workflows are:
 - `.github/workflows/production-smoke.yml` for scheduled/manual API and browser smoke tests.
 - `.github/workflows/deploy.yml` for push-time backend/frontend builds, Hostinger API preflight, and production smoke checks.
 
-Hostinger's public API can verify account access and hosted websites, but it does not currently provide a shared-hosting Node.js file upload/redeploy endpoint in the public OpenAPI surface. Keep production deployment manual in hPanel until one of these deploy transports is configured:
+Hostinger's public API can verify account access and hosted websites, but it does not currently provide a shared-hosting Node.js file upload/redeploy endpoint in the public OpenAPI surface. The production workflow splits the monorepo into the backend/frontend deployment repositories using `DEPLOY_REPOS_TOKEN`, then uses the two protected Git deployment webhooks after validation succeeds. If webhooks are unavailable, keep deployment manual in hPanel until one of these deploy transports is configured:
 
 - Hostinger Git deployment/webhook.
 - SSH/SFTP deployment credentials.
 - VPS/Docker deployment, where Hostinger's API exposes Docker project update/restart endpoints.
+
+The uptime workflow opens an `uptime-alert` GitHub issue assigned to the repository owner when a scheduled check fails and closes it after recovery. Ensure GitHub notifications are enabled for assigned issues.
 
 ## 7. Database Credential Rotation
 

@@ -27,7 +27,7 @@ Set the results as `JWT_SECRET` and `JWT_REFRESH_SECRET` in the protected Hostin
 Rotate any credential that may have appeared in logs, handoff files, copied environment files, or repository history:
 
 - SMTP password and email webhook secret
-- Stripe secret and webhook signing secret
+- PayPal client secret and webhook ID
 - S3 access keys
 - OIDC client secrets
 - RMM and network vendor credentials

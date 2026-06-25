@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '../../../stores/authStore';
 import { setSessionTokens, unwrapResponseBody } from '../../../lib/api';
+import { PRIVACY_VERSION, TERMS_VERSION } from '../../../lib/legal';
 
 interface PlanOption { id: string; name: string; monthlyPrice: number }
 const fallbackPlans: PlanOption[] = [
@@ -24,6 +25,7 @@ function RegisterBusinessForm() {
   const [preferredContactMethod, setPreferredContactMethod] = useState('Email');
   const [timezone, setTimezone] = useState('');
   const [password, setPassword] = useState('');
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [companyName, setCompanyName] = useState('');
   const [inviteCode, setInviteCode] = useState('');
   const [error, setError] = useState('');
@@ -66,6 +68,9 @@ function RegisterBusinessForm() {
       credentials: 'include',
       body: JSON.stringify({
         planId: plan.id,
+        termsAccepted,
+        termsVersion: TERMS_VERSION,
+        privacyVersion: PRIVACY_VERSION,
         successUrl: `${window.location.origin}/billing?success=1`,
         cancelUrl: `${window.location.origin}/billing?canceled=1&plan=${encodeURIComponent(plan.name)}`,
       }),
@@ -117,6 +122,9 @@ function RegisterBusinessForm() {
           preferredContactMethod,
           timezone,
           planName: selectedPlan,
+          termsAccepted,
+          termsVersion: TERMS_VERSION,
+          privacyVersion: PRIVACY_VERSION,
           ...(inviteCode ? { inviteCode } : { companyName: companyName.trim() }),
         }),
       });
@@ -269,7 +277,22 @@ function RegisterBusinessForm() {
             </p>
           </div>
 
-          <button type="submit" disabled={loading}
+          <div className="rounded border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-blue-950">
+            The Business plan renews automatically at the price and billing interval shown at checkout until canceled. Taxes may apply. You can cancel through the billing portal, effective at the end of the current paid period.
+          </div>
+
+          <label className="flex items-start gap-3 text-sm leading-6 text-gray-600">
+            <input
+              type="checkbox"
+              required
+              checked={termsAccepted}
+              onChange={(event) => setTermsAccepted(event.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+            />
+            <span>I agree to the <Link href="/terms" target="_blank" className="font-semibold text-primary hover:underline">Terms of Service</Link>, including recurring billing, and acknowledge the <Link href="/privacy" target="_blank" className="font-semibold text-primary hover:underline">Privacy Policy</Link>.</span>
+          </label>
+
+          <button type="submit" disabled={loading || !termsAccepted}
             className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50">
             {loading ? 'Registering...' : 'Register'}
           </button>

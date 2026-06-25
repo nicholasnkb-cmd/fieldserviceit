@@ -4,6 +4,8 @@ const email = process.env.SMOKE_EMAIL;
 const password = process.env.SMOKE_PASSWORD;
 const expectedFrontend = process.env.SMOKE_EXPECT_FRONTEND_VERSION;
 const expectedBackend = process.env.SMOKE_EXPECT_BACKEND_VERSION;
+const expectedFrontendCommit = process.env.SMOKE_EXPECT_FRONTEND_COMMIT;
+const expectedBackendCommit = process.env.SMOKE_EXPECT_BACKEND_COMMIT;
 const monitoringKey = process.env.MONITORING_API_KEY;
 const runMutations = process.env.SMOKE_MUTATIONS === 'true';
 const runRmmTests = process.env.SMOKE_RMM_TESTS === 'true';
@@ -425,6 +427,22 @@ await check('frontend PWA service worker', async () => {
   if (!script.includes('/offline.html')) throw new Error('Service worker does not reference offline fallback');
 });
 await check('backend health', () => expectOk(`${apiUrl}/v1/health`));
+if (expectedBackendCommit) {
+  await check('backend deployment commit', async () => {
+    const health = await expectJson(`${apiUrl}/v1/health`);
+    if (health.commit !== expectedBackendCommit) {
+      throw new Error(`commit expected ${expectedBackendCommit}, got ${health.commit || 'missing'}`);
+    }
+  });
+}
+if (expectedFrontendCommit) {
+  await check('frontend deployment commit', async () => {
+    const response = await expectOk(`${baseUrl}/about`);
+    const html = await response.text();
+    const shortCommit = expectedFrontendCommit.slice(0, 7);
+    if (!html.includes(shortCommit)) throw new Error(`commit ${shortCommit} is not visible on the about page`);
+  });
+}
 await check('backend readiness', () => expectOk(`${apiUrl}/v1/health/ready`));
 await check('backend liveness', () => expectOk(`${apiUrl}/v1/health/live`));
 if (monitoringKey) {
@@ -508,6 +526,14 @@ if (email && password) {
   await check('MFA status API', () => expectOk(`${apiUrl}/v1/auth/mfa/status`));
   await expectList('session management API', `${apiUrl}/v1/auth/sessions`);
   await check('effective feature API', () => expectOk(`${apiUrl}/v1/users/me/features`));
+  await check('billing provider readiness API', () => expectOk(`${apiUrl}/v1/billing/providers`));
+  await check('billing current plan API', () => expectOk(`${apiUrl}/v1/billing/current-plan`));
+  await check('billing invoice list API', () => expectOk(`${apiUrl}/v1/billing/invoices`));
+  await check('password reset request API', () => expectOk(`${apiUrl}/v1/auth/forgot-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  }));
   await check('AI tools API', () => expectOk(`${apiUrl}/v1/ai-agent/tools`));
   await check('RMM providers API', () => expectOk(`${apiUrl}/v1/integrations/rmm/providers`));
   await check('RMM configuration list API', () => expectOk(`${apiUrl}/v1/integrations/rmm/configs`));

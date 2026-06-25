@@ -94,3 +94,12 @@ frontend/playwright-report/
 marketing/output/
 marketing-video/frames/
 marketing-video/*.mp4
+
+# Local artifact workspaces (preserved locally, excluded from product releases)
+/artifacts/
+/marketing/
+/marketing-video/
+/output/
+/tmp/
+/package.json
+/package-lock.json

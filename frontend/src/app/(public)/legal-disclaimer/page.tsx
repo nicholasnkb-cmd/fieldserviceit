@@ -87,7 +87,7 @@ export default function LegalDisclaimerPage() {
           {[
             [
               'Third-party services',
-              'FieldserviceIT may connect to external systems such as vendor controllers, RMM platforms, payment providers, email services, hosting providers, or other APIs. Third-party availability, data quality, terms, pricing, rate limits, and behavior are controlled by those providers.',
+              'FieldserviceIT may connect to external systems such as vendor controllers, RMM platforms, PayPal, email services, hosting providers, or other APIs. Third-party availability, data quality, terms, pricing, rate limits, and behavior are controlled by those providers.',
             ],
             [
               'Security and credentials',

@@ -31,7 +31,7 @@ FieldserviceIT/
 │       └── modules/             # Feature modules
 │           ├── admin/           # Platform & tenant admin (roles, permissions, audit logs)
 │           ├── auth/            # Authentication & authorization
-│           ├── billing/         # Plans, Stripe subscriptions, usage counters
+│           ├── billing/         # Plans, PayPal subscriptions, usage counters
 │           ├── cmdb/            # Asset/CMDB management
 │           ├── companies/       # Tenant management
 │           ├── field-service/   # Technician dispatch & mobile
@@ -111,7 +111,7 @@ DATABASE_URL=mysql://USERNAME:PASSWORD@HOST:3306/u209468809_fieldserviceit
 - **Field Service** — Technician dispatch, GPS, signatures, photo uploads
 - **RMM Integration** — ConnectWise, Datto, NinjaOne sync
 - **Workflow Engine** — Custom workflow definitions, triggers, and run tracking
-- **Billing** — Plan management, Stripe subscriptions, usage counters
+- **Billing** — Plan management, PayPal subscriptions, usage counters
 - **Notifications** — In-app notifications and email delivery (password reset, ticket updates)
 - **Admin** — Platform/tenant admin: roles, permissions, audit logs, system readiness
 - **Search** — Cross-domain search across tickets, assets, contacts

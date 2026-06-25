@@ -3,7 +3,7 @@
 import type React from 'react';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Camera, CheckCircle2, ClipboardPen, Clock3, Loader2, MapPin, Package, PenLine, RefreshCw, Route } from 'lucide-react';
+import { Camera, CheckCircle2, ClipboardList, ClipboardPen, Clock3, Download, Loader2, MapPin, Package, PenLine, RefreshCw, Route } from 'lucide-react';
 import { api, getListData } from '../../../lib/api';
 import { formatDate } from '../../../lib/utils';
 
@@ -36,6 +36,7 @@ export default function TechnicianMobilePage() {
   const [signature, setSignature] = useState('');
   const [photoUrls, setPhotoUrls] = useState('');
   const [partUsage, setPartUsage] = useState({ partId: '', quantity: 1, notes: '' });
+  const [offlinePacket, setOfflinePacket] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -68,6 +69,16 @@ export default function TechnicianMobilePage() {
 
   const selected = useMemo(() => dispatches.find((item) => item.id === selectedId), [dispatches, selectedId]);
   const photos = useMemo(() => parsePhotos(selected?.photoUrls), [selected?.photoUrls]);
+
+  useEffect(() => {
+    if (!selectedId) return;
+    try {
+      const cached = localStorage.getItem(`fsit.offlinePacket.${selectedId}`);
+      setOfflinePacket(cached ? JSON.parse(cached) : null);
+    } catch {
+      setOfflinePacket(null);
+    }
+  }, [selectedId]);
 
   const updateStatus = async (status: string) => {
     if (!selected) return;
@@ -148,6 +159,22 @@ export default function TechnicianMobilePage() {
       await loadData();
     } catch (err: any) {
       setError(contextMessage(err.message || 'Failed to record part usage'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const cacheOfflinePacket = async () => {
+    if (!selected) return;
+    setSaving(true);
+    setError('');
+    try {
+      const packet = await api.get(`/dispatch/${selected.id}/offline-packet`);
+      localStorage.setItem(`fsit.offlinePacket.${selected.id}`, JSON.stringify(packet));
+      setOfflinePacket(packet);
+      setMessage('Offline job packet cached on this device');
+    } catch (err: any) {
+      setError(contextMessage(err.message || 'Failed to cache offline packet'));
     } finally {
       setSaving(false);
     }
@@ -238,6 +265,21 @@ export default function TechnicianMobilePage() {
               </div>
 
               <div className="grid gap-5 xl:grid-cols-2">
+                <Panel title="Offline Packet" icon={Download}>
+                  <p className="text-sm text-gray-600">
+                    {offlinePacket ? `Cached ${formatDate(offlinePacket.generatedAt)} with ${offlinePacket.relatedArticles?.length || 0} related articles.` : 'No packet cached for this job yet.'}
+                  </p>
+                  <button onClick={cacheOfflinePacket} disabled={saving} className="mt-3 w-full rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Cache packet</button>
+                  {offlinePacket?.checklist?.length > 0 && (
+                    <div className="mt-3 rounded-md bg-gray-50 p-3">
+                      <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase text-gray-500"><ClipboardList size={14} /> Checklist</div>
+                      <ul className="space-y-1 text-xs text-gray-600">
+                        {offlinePacket.checklist.slice(0, 5).map((item: string) => <li key={item}>{item}</li>)}
+                      </ul>
+                    </div>
+                  )}
+                </Panel>
+
                 <Panel title="Job Notes" icon={ClipboardPen}>
                   <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary" placeholder="Work performed, diagnosis, next steps..." />
                   <button onClick={saveNotes} disabled={saving || !notes.trim()} className="mt-3 w-full rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Save notes</button>

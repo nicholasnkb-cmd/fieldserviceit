@@ -18,6 +18,9 @@ const auditDotClasses: Record<string, string> = {
   ASSIGNED: 'bg-green-400',
   RESOLVED: 'bg-emerald-500',
   HOLD: 'bg-orange-400',
+  APPROVAL_REQUESTED: 'bg-amber-400',
+  APPROVAL_APPROVED: 'bg-emerald-500',
+  APPROVAL_REJECTED: 'bg-red-500',
   ATTACHMENT: 'bg-cyan-500',
   ATTACHMENT_REMOVED: 'bg-red-400',
   TIME: 'bg-indigo-400',
@@ -36,6 +39,9 @@ function getAuditTitle(entry: any) {
     ASSIGNED: 'Assignment changed',
     RESOLVED: 'Ticket resolved',
     HOLD: 'Ticket placed on hold',
+    APPROVAL_REQUESTED: 'Approval requested',
+    APPROVAL_APPROVED: 'Approval approved',
+    APPROVAL_REJECTED: 'Approval rejected',
     ATTACHMENT: 'Attachment added',
     ATTACHMENT_REMOVED: 'Attachment removed',
     TIME: 'Time logged',
@@ -52,6 +58,14 @@ function getAuditDetail(entry: any) {
   }
   if (entry.action === 'RESOLVED' && entry.comment) {
     return entry.comment;
+  }
+  if (String(entry.action || '').startsWith('APPROVAL_') && entry.comment) {
+    try {
+      const parsed = JSON.parse(entry.comment);
+      return [parsed.checkpoint || parsed.requestedCheckpoint, parsed.detail, parsed.comment, parsed.decision]
+        .filter(Boolean)
+        .join(' | ');
+    } catch {}
   }
   return entry.comment || '';
 }
@@ -75,6 +89,15 @@ function emailStatusClass(status: string) {
   return classes[status] || classes.SUPPRESSED;
 }
 
+function MetricLine({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-xs text-gray-500">{label}</p>
+      <p className="font-semibold text-gray-900">{value}</p>
+    </div>
+  );
+}
+
 export default function TicketDetailPage() {
   const { id } = useParams();
   const router = useRouter();
@@ -92,6 +115,13 @@ export default function TicketDetailPage() {
   const [submittingComment, setSubmittingComment] = useState(false);
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const [emailDeliveries, setEmailDeliveries] = useState<any[]>([]);
+  const [recommendations, setRecommendations] = useState<any[]>([]);
+  const [profitability, setProfitability] = useState<any>(null);
+  const [approvals, setApprovals] = useState<any[]>([]);
+  const [approvalDetail, setApprovalDetail] = useState('');
+  const [approvalAmount, setApprovalAmount] = useState('');
+  const [approvalCheckpoint, setApprovalCheckpoint] = useState('WORK_APPROVAL');
+  const [featureLoading, setFeatureLoading] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const { user, activeCompanyContext } = useAuthStore();
@@ -121,6 +151,28 @@ export default function TicketDetailPage() {
       .then((data) => setEmailDeliveries(getListData(data)))
       .catch(() => setEmailDeliveries([]));
   }, [id, isGlobalSuperAdmin, isTech]);
+
+  const loadFeaturePanels = async () => {
+    if (!canManageTicket) return;
+    setFeatureLoading(true);
+    try {
+      const [recRes, profitRes, approvalsRes] = await Promise.all([
+        api.get(`/dispatch/recommendations/${id}`).catch(() => ({ recommendations: [] })),
+        api.get(`/tickets/${id}/profitability`).catch(() => null),
+        api.get(`/tickets/${id}/approvals`).catch(() => []),
+      ]);
+      setRecommendations(getListData(recRes?.recommendations));
+      setProfitability(profitRes);
+      setApprovals(getListData(approvalsRes));
+    } finally {
+      setFeatureLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadFeaturePanels().catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, canManageTicket]);
 
   useEffect(() => {
     if (!user?.companyId) return;
@@ -220,6 +272,53 @@ export default function TicketDetailPage() {
   const assignUser = () => {
     if (!selectedUser) return;
     updateTicket({ assignedToId: selectedUser });
+  };
+
+  const dispatchRecommended = async (technicianId: string) => {
+    try {
+      await api.post('/dispatch', { ticketId: id, technicianId });
+      setSelectedUser(technicianId);
+      toast('success', 'Technician dispatched');
+      await Promise.all([api.post(`/tickets/${id}/assign`, { userId: technicianId }).catch(() => undefined), loadFeaturePanels()]);
+    } catch (err: any) {
+      toast('error', err.message || 'Dispatch failed');
+    }
+  };
+
+  const requestApproval = async () => {
+    try {
+      await api.post(`/tickets/${id}/approvals`, {
+        checkpoint: approvalCheckpoint,
+        detail: approvalDetail || undefined,
+        amount: approvalAmount ? Number(approvalAmount) : undefined,
+      });
+      setApprovalDetail('');
+      setApprovalAmount('');
+      toast('success', 'Approval requested');
+      await Promise.all([loadFeaturePanels(), refreshTimeline()]);
+    } catch (err: any) {
+      toast('error', err.message || 'Approval request failed');
+    }
+  };
+
+  const decideApproval = async (approvalId: string, decision: 'APPROVED' | 'REJECTED') => {
+    try {
+      await api.post(`/tickets/${id}/approvals/${approvalId}/decision`, { decision });
+      toast('success', `Approval ${decision.toLowerCase()}`);
+      await Promise.all([loadFeaturePanels(), refreshTimeline()]);
+    } catch (err: any) {
+      toast('error', err.message || 'Approval update failed');
+    }
+  };
+
+  const createKbDraft = async () => {
+    try {
+      const article: any = await api.post(`/knowledge-base/from-ticket/${id}`, {});
+      toast('success', 'Knowledge draft created');
+      router.push(`/knowledge-base?article=${article.id}`);
+    } catch (err: any) {
+      toast('error', err.message || 'Knowledge draft failed');
+    }
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -435,6 +534,92 @@ export default function TicketDetailPage() {
                   className="px-4 py-2 bg-primary text-white text-sm rounded-md hover:bg-primary/90 disabled:opacity-50">
                   Assign
                 </button>
+              </div>
+            </div>
+
+            <div className="border-t pt-4 mb-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h3 className="text-sm font-medium text-gray-500">Recommended Technicians</h3>
+                {featureLoading && <span className="text-xs text-gray-400">Refreshing...</span>}
+              </div>
+              {recommendations.length === 0 ? (
+                <p className="rounded-md border border-dashed border-gray-200 p-3 text-sm text-gray-500">No dispatch recommendations available.</p>
+              ) : (
+                <div className="grid gap-2 md:grid-cols-3">
+                  {recommendations.slice(0, 3).map((rec) => (
+                    <div key={rec.technicianId} className="rounded-md border border-gray-200 bg-gray-50 p-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900">{rec.name}</p>
+                          <p className="text-xs text-gray-500">{rec.activeTickets + rec.activeDispatches} active jobs</p>
+                        </div>
+                        <span className="rounded bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">{rec.score}</span>
+                      </div>
+                      <ul className="mt-2 space-y-1 text-xs text-gray-600">
+                        {(rec.reasons || []).slice(0, 3).map((reason: string) => <li key={reason}>{reason}</li>)}
+                      </ul>
+                      <button onClick={() => dispatchRecommended(rec.technicianId)} className="mt-3 w-full rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary/90">
+                        Assign + Dispatch
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="grid gap-4 border-t pt-4 mb-4 lg:grid-cols-2">
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 mb-2">Profitability</h3>
+                <div className="rounded-md border border-gray-200 bg-white p-3">
+                  {profitability ? (
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <MetricLine label="Billable" value={`${profitability.totals?.billableMinutes || 0} min`} />
+                      <MetricLine label="Revenue" value={`$${Number(profitability.totals?.laborRevenue || 0).toFixed(2)}`} />
+                      <MetricLine label="Cost" value={`$${Number(profitability.totals?.estimatedCost || 0).toFixed(2)}`} />
+                      <MetricLine label="Margin" value={`$${Number(profitability.totals?.estimatedMargin || 0).toFixed(2)}`} />
+                    </div>
+                  ) : <p className="text-sm text-gray-500">No profitability data yet.</p>}
+                </div>
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 mb-2">Knowledge Draft</h3>
+                <div className="rounded-md border border-gray-200 bg-white p-3">
+                  <p className="text-sm text-gray-600">Draft an internal article from the ticket description, public timeline, and resolution notes.</p>
+                  <button onClick={createKbDraft} className="mt-3 rounded-md border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50">
+                    Create KB draft
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t pt-4 mb-4">
+              <h3 className="text-sm font-medium text-gray-500 mb-2">Approval Checkpoints</h3>
+              <div className="grid gap-2 md:grid-cols-[180px_1fr_120px_auto]">
+                <select value={approvalCheckpoint} onChange={(e) => setApprovalCheckpoint(e.target.value)} className="rounded border border-gray-300 px-3 py-2 text-sm">
+                  <option value="WORK_APPROVAL">Work</option>
+                  <option value="QUOTE_CHANGE">Quote change</option>
+                  <option value="PARTS_APPROVAL">Parts</option>
+                  <option value="SCOPE_CHANGE">Scope</option>
+                </select>
+                <input value={approvalDetail} onChange={(e) => setApprovalDetail(e.target.value)} className="rounded border border-gray-300 px-3 py-2 text-sm" placeholder="Approval details" />
+                <input value={approvalAmount} onChange={(e) => setApprovalAmount(e.target.value)} className="rounded border border-gray-300 px-3 py-2 text-sm" placeholder="Amount" />
+                <button onClick={requestApproval} className="rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary/90">Request</button>
+              </div>
+              <div className="mt-3 space-y-2">
+                {approvals.length === 0 ? <p className="text-sm text-gray-500">No approvals requested.</p> : approvals.map((approval) => (
+                  <div key={approval.approvalId} className="flex flex-col gap-2 rounded-md border border-gray-200 bg-gray-50 p-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">{approval.checkpoint || approval.requestedCheckpoint || 'Approval'} <span className="text-xs text-gray-500">({approval.status})</span></p>
+                      <p className="text-xs text-gray-600">{approval.detail || approval.decisionComment || 'No detail provided.'}</p>
+                    </div>
+                    {approval.status === 'PENDING' && (
+                      <div className="flex gap-2">
+                        <button onClick={() => decideApproval(approval.approvalId, 'APPROVED')} className="rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-700">Approve</button>
+                        <button onClick={() => decideApproval(approval.approvalId, 'REJECTED')} className="rounded-md border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-red-700">Reject</button>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
 

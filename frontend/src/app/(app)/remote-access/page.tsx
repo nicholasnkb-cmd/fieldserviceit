@@ -56,8 +56,10 @@ export default function RemoteAccessPage() {
 
   const launch = async (endpoint: any) => {
     setError('');
+    const authorized = window.confirm(`Confirm that you are authorized to remotely access ${endpoint.assetName} and that any required customer or end-user notice has been provided.`);
+    if (!authorized) return;
     try {
-      const session = await api.post(`/endpoint-operations/remote-access/endpoints/${endpoint.id}/session`, {});
+      const session = await api.post(`/endpoint-operations/remote-access/endpoints/${endpoint.id}/session`, { authorizationConfirmed: true });
       setMessage(`${endpoint.provider} session launched for ${endpoint.assetName}`);
       window.location.assign(session.launchUrl);
     } catch (err: any) {

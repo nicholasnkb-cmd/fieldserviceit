@@ -99,7 +99,8 @@ export default function KnowledgeBasePage() {
       const list = getListData<Article>(articleResponse);
       setArticles(list);
       setSummary(summaryResponse);
-      setSelected((current) => list.find((article) => article.id === current?.id) || list[0] || null);
+      const requestedArticleId = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('article') : null;
+      setSelected((current) => list.find((article) => article.id === requestedArticleId) || list.find((article) => article.id === current?.id) || list[0] || null);
     } catch (err: any) {
       setError(err?.body?.message || err?.message || 'Knowledge base could not be loaded.');
       setArticles([]);
