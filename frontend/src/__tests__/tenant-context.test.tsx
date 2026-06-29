@@ -14,7 +14,7 @@ jest.mock('../stores/authStore', () => ({
   useAuthStore: () => authState,
 }));
 
-describe('tenant context smoke checks', () => {
+describe('tenant context checks', () => {
   it('blocks tenant pages for global super admin context', () => {
     authState = { user: { role: 'SUPER_ADMIN' }, activeCompanyContext: null };
 
@@ -37,4 +37,3 @@ describe('tenant context smoke checks', () => {
     expect(screen.getByText(/Acme IT/i)).toBeInTheDocument();
   });
 });
-

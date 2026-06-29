@@ -25,8 +25,8 @@ jobs:
           node-version: 24
       - name: Run uptime checks
         env:
-          UPTIME_WEB_URL: ${{ vars.SMOKE_BASE_URL || 'https://fieldserviceit.com' }}
-          UPTIME_API_URL: ${{ vars.SMOKE_API_URL || 'https://api.fieldserviceit.com' }}
+          UPTIME_WEB_URL: ${{ vars.UPTIME_WEB_URL || 'https://fieldserviceit.com' }}
+          UPTIME_API_URL: ${{ vars.UPTIME_API_URL || 'https://api.fieldserviceit.com' }}
         run: node scripts/uptime-check.mjs
 
   notify:
@@ -44,14 +44,15 @@ jobs:
             const issues = await github.paginate(github.rest.issues.listForRepo, {
               owner,
               repo,
-              state: 'open',
+              state: 'all',
               labels: 'uptime-alert',
               per_page: 100,
             });
             const existing = issues.find((issue) => issue.title === title);
+            const openIncident = existing?.state === 'open' ? existing : undefined;
             const failed = '${{ needs.check.result }}' !== 'success';
             const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
-            if (failed && !existing) {
+            if (failed && !openIncident) {
               await github.rest.issues.createLabel({
                 owner,
                 repo,
@@ -61,25 +62,40 @@ jobs:
               }).catch((error) => {
                 if (error.status !== 422) throw error;
               });
-              await github.rest.issues.create({
-                owner,
-                repo,
-                title,
-                labels: ['uptime-alert'],
-                assignees: [owner],
-                body: `The scheduled production uptime check failed.\n\n[Open workflow run](${runUrl})`,
-              });
-            } else if (!failed && existing) {
+              if (existing) {
+                await github.rest.issues.createComment({
+                  owner,
+                  repo,
+                  issue_number: existing.number,
+                  body: `Production checks failed again. [Open workflow run](${runUrl})`,
+                });
+                await github.rest.issues.update({
+                  owner,
+                  repo,
+                  issue_number: existing.number,
+                  state: 'open',
+                });
+              } else {
+                await github.rest.issues.create({
+                  owner,
+                  repo,
+                  title,
+                  labels: ['uptime-alert'],
+                  assignees: [owner],
+                  body: `The scheduled production uptime check failed.\n\n[Open workflow run](${runUrl})`,
+                });
+              }
+            } else if (!failed && openIncident) {
               await github.rest.issues.createComment({
                 owner,
                 repo,
-                issue_number: existing.number,
+                issue_number: openIncident.number,
                 body: `Production checks recovered. [Open workflow run](${runUrl})`,
               });
               await github.rest.issues.update({
                 owner,
                 repo,
-                issue_number: existing.number,
+                issue_number: openIncident.number,
                 state: 'closed',
                 state_reason: 'completed',
               });

@@ -1,3 +1,9 @@
+import dns from "node:dns";
+
+// Hostinger publishes IPv4 and IPv6 records, but GitHub-hosted runners do not
+// always have a working IPv6 route. Prefer IPv4 while retaining IPv6 fallback.
+dns.setDefaultResultOrder("ipv4first");
+
 const targets = [
   ["website", process.env.UPTIME_WEB_URL || "https://fieldserviceit.com/"],
   [
@@ -21,6 +27,18 @@ const targets = [
 let failed = false;
 const maxAttempts = 3;
 
+function errorMessage(error) {
+  if (!(error instanceof Error)) return String(error);
+
+  const cause = error.cause;
+  if (cause instanceof Error) {
+    const code = "code" in cause && cause.code ? ` ${cause.code}` : "";
+    return `${error.message}: ${cause.message}${code}`;
+  }
+
+  return error.message;
+}
+
 for (const [name, url] of targets) {
   let passed = false;
 
@@ -40,7 +58,7 @@ for (const [name, url] of targets) {
       passed = true;
       break;
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const message = errorMessage(error);
       if (attempt === maxAttempts) {
         console.error(`FAIL ${name}: ${message} (${maxAttempts} attempts)`);
       } else {

@@ -15,7 +15,7 @@ reliable, and measurable.
 ## Phase 1: Trust and reliability
 
 - Maintain tenant-isolation tests for every tenant-scoped controller.
-- Require full unit, E2E, accessibility, build, migration, and smoke gates before deployment.
+- Require full unit, E2E, accessibility, build, and migration gates before deployment.
 - Provide visible API errors and correlation IDs for support.
 - Version and restore tenant settings, branding, workflows, permissions, and security policies.
 - Track uptime, error rate, slow queries, email delivery, background jobs, and deployment versions.
@@ -24,7 +24,7 @@ Success measures:
 
 - No cross-tenant data findings.
 - More than 99.9% successful API requests outside planned maintenance.
-- Critical workflow browser smoke tests pass on every release.
+- Critical workflow browser regression tests pass on every release.
 - Median support diagnosis time under 15 minutes.
 
 ## Phase 2: Service execution
@@ -68,4 +68,3 @@ Success measures:
 - Repositories and the database adapter own persistence.
 - Shared UI primitives own accessibility, semantic theming, loading, and error behavior.
 - Generated media, reports, logs, coverage, and build output stay outside source control.
-

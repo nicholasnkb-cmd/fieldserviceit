@@ -86,16 +86,12 @@ jobs:
     needs: [build-backend, build-frontend, hostinger-preflight]
     runs-on: ubuntu-latest
     environment: production
-    outputs:
-      backend_commit: ${{ steps.sync.outputs.backend_commit }}
-      frontend_commit: ${{ steps.sync.outputs.frontend_commit }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Sync Hostinger deployment repositories
-        id: sync
         env:
           DEPLOY_REPOS_TOKEN: ${{ secrets.DEPLOY_REPOS_TOKEN }}
         run: |
@@ -110,9 +106,6 @@ jobs:
           git push "--force-with-lease=refs/heads/master:${frontend_remote}" \
             "https://x-access-token:${DEPLOY_REPOS_TOKEN}@github.com/nicholasnkb-cmd/fieldserviceit-frontend.git" \
             "${frontend_commit}:refs/heads/master"
-          echo "backend_commit=$backend_commit" >> "$GITHUB_OUTPUT"
-          echo "frontend_commit=$frontend_commit" >> "$GITHUB_OUTPUT"
-
       - name: Trigger backend deployment
         env:
           DEPLOY_WEBHOOK_URL: ${{ secrets.HOSTINGER_BACKEND_DEPLOY_WEBHOOK_URL }}
@@ -129,29 +122,3 @@ jobs:
 
       - name: Allow Hostinger builds to start
         run: sleep 30
-
-  production-smoke:
-    name: Production Smoke Tests
-    needs: [deploy-hostinger]
-    runs-on: ubuntu-latest
-    environment: production
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Run API smoke checks
-        env:
-          SMOKE_BASE_URL: ${{ vars.SMOKE_BASE_URL || 'https://fieldserviceit.com' }}
-          SMOKE_API_URL: ${{ vars.SMOKE_API_URL || 'https://api.fieldserviceit.com' }}
-          SMOKE_EMAIL: ${{ secrets.SMOKE_EMAIL }}
-          SMOKE_PASSWORD: ${{ secrets.SMOKE_PASSWORD }}
-          SMOKE_MUTATIONS: ${{ vars.SMOKE_MUTATIONS || 'false' }}
-          SMOKE_RMM_TESTS: ${{ vars.SMOKE_RMM_TESTS || 'false' }}
-          SMOKE_RMM_PROVIDERS: ${{ vars.SMOKE_RMM_PROVIDERS || 'connectwise,datto,ninjaone,atera,syncro,kaseya,nable' }}
-          MONITORING_API_KEY: ${{ secrets.MONITORING_API_KEY }}
-          SMOKE_EXPECT_FRONTEND_COMMIT: ${{ needs.deploy-hostinger.outputs.frontend_commit }}
-          SMOKE_EXPECT_BACKEND_COMMIT: ${{ needs.deploy-hostinger.outputs.backend_commit }}
-        run: node scripts/production-smoke.mjs

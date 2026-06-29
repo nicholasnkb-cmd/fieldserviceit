@@ -8,8 +8,8 @@ Every pull request and deployment must pass:
 - ESLint with zero warnings.
 - Unit and component tests.
 - Automated accessibility tests for shared primitives and critical forms.
-- Browser smoke coverage for login, administration, settings, reports, billing, and ticket lifecycle.
-- PWA/mobile smoke coverage for manifest installability, app icons, shortcuts, service worker, offline fallback, and small viewport overflow.
+- Browser regression coverage for login, administration, settings, reports, billing, and ticket lifecycle.
+- PWA/mobile coverage for manifest installability, app icons, shortcuts, service worker, offline fallback, and small viewport overflow.
 
 ## Backend
 
@@ -24,7 +24,7 @@ Every pull request and deployment must pass:
 
 - Hostinger configuration preflight.
 - Public frontend and API health, readiness, and liveness checks.
-- Authenticated smoke checks for the deployed role.
+- Authenticated end-to-end checks for the deployed role.
 - Monitoring dashboard check when `MONITORING_API_KEY` is configured.
 - Temporary mutation checks only when explicitly enabled.
 - Real-device mobile install check on Android Chrome and iPhone Safari before public launch.

@@ -47,19 +47,4 @@ npm run build
 npm run test:e2e:prod -- --grep "PWA"
 ```
 
-Production smoke checks:
-
-```bash
-node scripts/production-smoke.mjs
-```
-
-Authenticated production checks require:
-
-```bash
-SMOKE_EMAIL=...
-SMOKE_PASSWORD=...
-SMOKE_API_URL=https://api.fieldserviceit.com
-SMOKE_BASE_URL=https://fieldserviceit.com
-```
-
 Hostinger and monitoring checks require `HOSTINGER_API_TOKEN` and `MONITORING_API_KEY`.

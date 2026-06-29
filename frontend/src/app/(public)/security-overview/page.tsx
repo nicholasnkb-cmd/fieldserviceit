@@ -11,7 +11,7 @@ const controls = [
   ['Identity and access', 'Cookie-based sessions, optional MFA and OIDC, session management, scoped permissions, and administrative audit trails protect access.'],
   ['Credential protection', 'Integration and device credentials are encrypted before storage and remain masked during normal administration.'],
   ['Application security', 'Input validation, rate limits, secure response headers, upload validation, dependency audits, and automated authorization checks run as release gates.'],
-  ['Operational monitoring', 'Health probes, scheduled production smoke tests, first-party frontend error reporting, and security operations dashboards support incident detection.'],
+  ['Operational monitoring', 'Health probes, first-party frontend error reporting, and security operations dashboards support incident detection.'],
   ['Data lifecycle', 'Configurable retention, encrypted backup workflows, restore-integrity checks, and soft deletion support controlled data handling.'],
 ];
 

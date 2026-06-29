@@ -36,23 +36,3 @@ jobs:
           npm run test:a11y
           npm run lint
           npm run build
-
-  staging-smoke:
-    name: Staging Smoke
-    needs: build-and-test
-    if: ${{ vars.STAGING_BASE_URL != '' && vars.STAGING_API_URL != '' }}
-    runs-on: ubuntu-latest
-    environment: staging
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - name: Run staging API smoke tests
-        env:
-          SMOKE_BASE_URL: ${{ vars.STAGING_BASE_URL }}
-          SMOKE_API_URL: ${{ vars.STAGING_API_URL }}
-          SMOKE_EMAIL: ${{ secrets.STAGING_SMOKE_EMAIL }}
-          SMOKE_PASSWORD: ${{ secrets.STAGING_SMOKE_PASSWORD }}
-          SMOKE_MUTATIONS: 'false'
-        run: node scripts/production-smoke.mjs

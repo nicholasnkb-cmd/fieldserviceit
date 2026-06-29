@@ -8,7 +8,7 @@ Use this runbook because a previous local handoff file contained production-look
 2. Update the application database user password.
 3. Update `DATABASE_URL` in the protected Hostinger backend environment.
 4. Redeploy the backend and confirm `GET /v1/health` returns a healthy response.
-5. Run the authenticated production smoke tests.
+5. Verify the health endpoint and sign in with a production administrator account.
 6. Revoke the previous password after the new connection is verified.
 
 ## 2. Rotate JWT secrets
@@ -31,15 +31,8 @@ Rotate any credential that may have appeared in logs, handoff files, copied envi
 - S3 access keys
 - OIDC client secrets
 - RMM and network vendor credentials
-- Production smoke-test account password
+- Production administrator account password
 
 ## 4. Verify
 
-```powershell
-$env:SMOKE_EMAIL = "<production smoke account>"
-$env:SMOKE_PASSWORD = "<password from password manager>"
-$env:SMOKE_MUTATIONS = "false"
-node scripts/production-smoke.mjs
-```
-
-Confirm login, registration, refresh, logout, health, email, billing, and integration workflows as applicable. Keep all replacement values only in the password manager and protected hosting environment.
+Confirm the health endpoint, login, registration, refresh, logout, email, billing, and integration workflows as applicable. Keep all replacement values only in the password manager and protected hosting environment.

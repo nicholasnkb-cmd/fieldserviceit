@@ -110,7 +110,7 @@ const trustSignals = [
   { title: 'Tenant-aware controls', body: 'Company workspaces, roles, permissions, and feature access help keep customer operations separated.' },
   { title: 'Audit-ready activity', body: 'Sensitive administrative and operational changes can be preserved for review and accountability.' },
   { title: 'Credential handling', body: 'RMM, email, OIDC, and network credential workflows are designed around hidden and rotated secrets.' },
-  { title: 'Production readiness checks', body: 'Health checks, smoke tests, security operations, and deployment docs support disciplined releases.' },
+  { title: 'Production readiness checks', body: 'Health checks, regression tests, security operations, and deployment docs support disciplined releases.' },
 ];
 
 export default function LandingPageClient() {

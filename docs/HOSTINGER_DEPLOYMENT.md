@@ -119,14 +119,12 @@ Confirm Production readiness shows:
 - CORS origin: ok
 - JWT secret: ok
 
-## 6. Production Smoke Automation
+## 6. Production Deployment Automation
 
 Create these GitHub production environment secrets:
 
 ```env
 HOSTINGER_API_TOKEN=<Hostinger API token from hPanel>
-SMOKE_EMAIL=smoke-superadmin@fieldserviceit.com
-SMOKE_PASSWORD=<the smoke super admin password stored in your password manager>
 DEPLOY_REPOS_TOKEN=<fine-grained GitHub token with Contents write access to both deployment repositories>
 HOSTINGER_BACKEND_DEPLOY_WEBHOOK_URL=<backend Git deployment webhook from hPanel>
 HOSTINGER_FRONTEND_DEPLOY_WEBHOOK_URL=<frontend Git deployment webhook from hPanel>
@@ -136,17 +134,11 @@ Optional production environment variables:
 
 ```env
 HOSTINGER_EXPECTED_DOMAINS=fieldserviceit.com,api.fieldserviceit.com
-SMOKE_BASE_URL=https://fieldserviceit.com
-SMOKE_API_URL=https://api.fieldserviceit.com
-SMOKE_MUTATIONS=false
+UPTIME_WEB_URL=https://fieldserviceit.com
+UPTIME_API_URL=https://api.fieldserviceit.com
 ```
 
-Use `SMOKE_MUTATIONS=true` only for a deliberate controlled run. It creates, edits, and deactivates temporary smoke records.
-
-The smoke workflows are:
-
-- `.github/workflows/production-smoke.yml` for scheduled/manual API and browser smoke tests.
-- `.github/workflows/deploy.yml` for push-time backend/frontend builds, Hostinger API preflight, and production smoke checks.
+The `.github/workflows/deploy.yml` workflow runs backend/frontend builds and tests, performs the Hostinger API preflight, synchronizes the deployment repositories, and triggers both protected deployment webhooks.
 
 Hostinger's public API can verify account access and hosted websites, but it does not currently provide a shared-hosting Node.js file upload/redeploy endpoint in the public OpenAPI surface. The production workflow splits the monorepo into the backend/frontend deployment repositories using `DEPLOY_REPOS_TOKEN`, then uses the two protected Git deployment webhooks after validation succeeds. If webhooks are unavailable, keep deployment manual in hPanel until one of these deploy transports is configured:
 
@@ -166,7 +158,7 @@ Safe rotation order:
 2. Grant it the application privileges needed by the backend.
 3. Update the backend `DATABASE_URL` to use the new user/password.
 4. Redeploy or restart the backend app.
-5. Run `node scripts/production-smoke.mjs` with `SMOKE_MUTATIONS=true`.
-6. After smoke passes, remove or change the old exposed MySQL user password.
+5. Confirm `GET https://api.fieldserviceit.com/v1/health` succeeds and sign in through the production frontend.
+6. After verification passes, remove or change the old exposed MySQL user password.
 
 Do not revoke the old credential before step 5 passes, or the live app can lose database access.
