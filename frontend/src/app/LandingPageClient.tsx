@@ -21,6 +21,7 @@ import {
 import { useAuthStore } from '../stores/authStore';
 import { TrackedLink } from '../components/marketing/TrackedLink';
 import { Footer } from '../components/layout/Footer';
+import { api } from '../lib/api';
 
 interface LiveOperations {
   openTickets: number;
@@ -116,12 +117,8 @@ const trustSignals = [
 export default function LandingPageClient() {
   const { isAuthenticated } = useAuthStore();
   const [scrolled, setScrolled] = useState(false);
-  const [liveOperations, setLiveOperations] = useState<LiveOperations>({
-    openTickets: 0,
-    onRoute: 0,
-    slaMet: 100,
-    activities: [],
-  });
+  const [liveOperations, setLiveOperations] = useState<LiveOperations | null>(null);
+  const [operationsAvailable, setOperationsAvailable] = useState(true);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 18);
@@ -132,13 +129,12 @@ export default function LandingPageClient() {
 
   useEffect(() => {
     const loadOperations = () => {
-      fetch('/v1/public/operations')
-        .then((response) => response.ok ? response.json() : null)
-        .then((body) => {
-          const data = body?.data || body;
-          if (data) setLiveOperations(data);
+      api.get('/public/operations', { skipAuth: true, suppressGlobalError: true })
+        .then((data) => {
+          setLiveOperations(data);
+          setOperationsAvailable(true);
         })
-        .catch(() => {});
+        .catch(() => setOperationsAvailable(false));
     };
     loadOperations();
     const interval = window.setInterval(loadOperations, 60000);
@@ -248,14 +244,14 @@ export default function LandingPageClient() {
 
           <div className="hidden self-end rounded border border-white/70 bg-white/[0.82] p-5 shadow-xl backdrop-blur lg:block">
             <div className="flex items-center justify-between border-b border-gray-200 pb-3">
-              <span className="text-sm font-semibold text-gray-950">Today&apos;s operations Live</span>
-              <span className="rounded bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">Live</span>
+              <span className="text-sm font-semibold text-gray-950">Today&apos;s operations</span>
+              <span className={`rounded px-2 py-1 text-xs font-medium ${operationsAvailable ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-800'}`}>{operationsAvailable ? 'Live' : 'Unavailable'}</span>
             </div>
             <div className="mt-4 grid grid-cols-3 gap-3">
               {[
-                [String(liveOperations.openTickets), 'Open tickets'],
-                [String(liveOperations.onRoute), 'On route'],
-                [`${liveOperations.slaMet}%`, 'SLA met'],
+                [liveOperations ? String(liveOperations.openTickets) : '—', 'Open tickets'],
+                [liveOperations ? String(liveOperations.onRoute) : '—', 'On route'],
+                [liveOperations ? `${liveOperations.slaMet}%` : '—', 'SLA met'],
               ].map(([value, label]) => (
                 <div key={label} className="rounded border border-gray-200 bg-white p-3">
                   <div className="text-2xl font-semibold text-gray-950">{value}</div>
@@ -264,9 +260,9 @@ export default function LandingPageClient() {
               ))}
             </div>
             <div className="mt-4 space-y-2">
-              {(liveOperations.activities.length
+              {(liveOperations?.activities.length
                 ? liveOperations.activities.map((item) => item.label)
-                : ['Waiting for current operations activity']).map((item) => (
+                : [operationsAvailable ? 'Loading current operations activity' : 'Live operations are temporarily unavailable']).map((item) => (
                 <div key={item} className="flex items-center gap-2 rounded border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700">
                   <Check className="h-4 w-4 text-emerald-600" aria-hidden="true" />
                   {item}
