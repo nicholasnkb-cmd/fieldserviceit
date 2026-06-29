@@ -107,21 +107,7 @@ jobs:
           git push "--force-with-lease=refs/heads/master:${frontend_remote}" \
             "https://x-access-token:${DEPLOY_REPOS_TOKEN}@github.com/nicholasnkb-cmd/fieldserviceit-frontend.git" \
             "${frontend_commit}:refs/heads/master"
-      - name: Trigger backend deployment
-        env:
-          DEPLOY_WEBHOOK_URL: ${{ secrets.HOSTINGER_BACKEND_DEPLOY_WEBHOOK_URL }}
-        run: |
-          test -n "$DEPLOY_WEBHOOK_URL" || { echo "HOSTINGER_BACKEND_DEPLOY_WEBHOOK_URL is required"; exit 1; }
-          curl --fail --silent --show-error --retry 3 --request POST "$DEPLOY_WEBHOOK_URL"
-
-      - name: Trigger frontend deployment
-        env:
-          DEPLOY_WEBHOOK_URL: ${{ secrets.HOSTINGER_FRONTEND_DEPLOY_WEBHOOK_URL }}
-        run: |
-          test -n "$DEPLOY_WEBHOOK_URL" || { echo "HOSTINGER_FRONTEND_DEPLOY_WEBHOOK_URL is required"; exit 1; }
-          curl --fail --silent --show-error --retry 3 --request POST "$DEPLOY_WEBHOOK_URL"
-
-      - name: Allow Hostinger builds to start
+      - name: Allow Hostinger auto-deployments to start
         run: sleep 30
 
   verify-production:
