@@ -122,3 +122,22 @@ jobs:
 
       - name: Allow Hostinger builds to start
         run: sleep 30
+
+  verify-production:
+    name: Verify Production
+    needs: [deploy-hostinger]
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Verify deployed application without mutations
+        env:
+          VERIFICATION_WEB_URL: ${{ vars.VERIFICATION_WEB_URL || 'https://fieldserviceit.com' }}
+          VERIFICATION_API_URL: ${{ vars.VERIFICATION_API_URL || 'https://api.fieldserviceit.com' }}
+          VERIFICATION_EMAIL: ${{ secrets.VERIFICATION_EMAIL }}
+          VERIFICATION_PASSWORD: ${{ secrets.VERIFICATION_PASSWORD }}
+        run: node scripts/production-verification.mjs

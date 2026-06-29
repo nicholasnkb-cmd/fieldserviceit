@@ -11,6 +11,7 @@ interface TicketSummary { total: number; byStatus: { status: string; _count: num
 interface SlaCompliance { total: number; compliant: number; rate: number }
 interface TechPerf { id: string; name: string; resolvedTickets: number; avgResolutionTime: number; totalDispatches: number }
 interface AssetInv { assetType: string; _count: number }
+interface ServiceOutcomes { resolvedWithVisits: number; firstVisitResolved: number; firstVisitResolutionRate: number; recordedMinutes: number; billableMinutes: number; billableUtilizationRate: number; averageFirstResponseMinutes: number; profitabilityStatus: string }
 interface CustomReport {
   name: string;
   columns: { key: string; label: string }[];
@@ -37,11 +38,12 @@ const ticketStatuses = ['OPEN', 'ASSIGNED', 'IN_PROGRESS', 'ON_HOLD', 'RESOLVED'
 const ticketPriorities = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
 
 export default function ReportsPage() {
-  const [tab, setTab] = useState<'tickets' | 'sla' | 'technician' | 'assets' | 'custom'>('tickets');
+  const [tab, setTab] = useState<'tickets' | 'sla' | 'technician' | 'outcomes' | 'assets' | 'custom'>('tickets');
   const [ticketSummary, setTicketSummary] = useState<TicketSummary | null>(null);
   const [sla, setSla] = useState<SlaCompliance | null>(null);
   const [techPerf, setTechPerf] = useState<TechPerf[]>([]);
   const [assetInv, setAssetInv] = useState<AssetInv[]>([]);
+  const [outcomes, setOutcomes] = useState<ServiceOutcomes | null>(null);
   const [preferences, setPreferences] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [customLoading, setCustomLoading] = useState(false);
@@ -74,6 +76,7 @@ export default function ReportsPage() {
       tickets: api.get('/reports/tickets'),
       sla: api.get('/reports/sla'),
       technician: api.get('/reports/technician'),
+      outcomes: api.get('/reports/outcomes'),
       assets: api.get('/reports/assets'),
     };
     Promise.all([fetches[tab], api.get('/reports/preferences')]).then(([data, reportPreferences]) => {
@@ -81,6 +84,7 @@ export default function ReportsPage() {
       if (tab === 'tickets') setTicketSummary(data);
       if (tab === 'sla') setSla(data);
       if (tab === 'technician') setTechPerf(data || []);
+      if (tab === 'outcomes') setOutcomes(data);
       if (tab === 'assets') setAssetInv(data || []);
     }).catch(() => {}).finally(() => setLoading(false));
   }, [activeCompanyContext, tab, user?.role]);
@@ -89,6 +93,7 @@ export default function ReportsPage() {
     { key: 'tickets' as const, label: 'Tickets' },
     ...(isAdmin ? [{ key: 'sla' as const, label: 'SLA Compliance' }] : []),
     ...(isAdmin ? [{ key: 'technician' as const, label: 'Technician Performance' }] : []),
+    ...(isAdmin ? [{ key: 'outcomes' as const, label: 'Service Outcomes' }] : []),
     { key: 'assets' as const, label: 'Asset Inventory' },
     { key: 'custom' as const, label: 'Custom Report' },
   ];
@@ -266,6 +271,25 @@ export default function ReportsPage() {
                   {assetInv.length === 0 && <tr><td colSpan={2} className="px-6 py-8 text-center text-gray-500">No assets found</td></tr>}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {tab === 'outcomes' && outcomes && (
+            <div className="space-y-6">
+              <div className="grid gap-4 md:grid-cols-3">
+                {[
+                  ['First-visit resolution', `${outcomes.firstVisitResolutionRate.toFixed(1)}%`, `${outcomes.firstVisitResolved} of ${outcomes.resolvedWithVisits} resolved visits`],
+                  ['Billable utilization', `${outcomes.billableUtilizationRate.toFixed(1)}%`, `${outcomes.billableMinutes} of ${outcomes.recordedMinutes} recorded minutes`],
+                  ['Average first response', `${outcomes.averageFirstResponseMinutes} min`, 'Assignment, status update, or customer response'],
+                ].map(([label, value, detail]) => (
+                  <div key={label} className="rounded-lg bg-white p-6 shadow">
+                    <p className="text-sm font-medium text-gray-500">{label}</p>
+                    <p className="mt-2 text-3xl font-bold text-gray-950">{value}</p>
+                    <p className="mt-2 text-sm text-gray-500">{detail}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">{outcomes.profitabilityStatus}</div>
             </div>
           )}
 

@@ -3,7 +3,7 @@
 import type React from 'react';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Camera, CheckCircle2, ClipboardList, ClipboardPen, Clock3, Download, Loader2, MapPin, Package, PenLine, RefreshCw, Route } from 'lucide-react';
+import { Camera, CheckCircle2, ClipboardList, ClipboardPen, Clock3, Download, Loader2, MapPin, Package, PenLine, RefreshCw, Route, Wifi, WifiOff } from 'lucide-react';
 import { api, getListData } from '../../../lib/api';
 import { formatDate } from '../../../lib/utils';
 
@@ -41,6 +41,7 @@ export default function TechnicianMobilePage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [online, setOnline] = useState(true);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -67,6 +68,17 @@ export default function TechnicianMobilePage() {
     loadData();
   }, [loadData]);
 
+  useEffect(() => {
+    const updateConnectivity = () => setOnline(navigator.onLine);
+    updateConnectivity();
+    window.addEventListener('online', updateConnectivity);
+    window.addEventListener('offline', updateConnectivity);
+    return () => {
+      window.removeEventListener('online', updateConnectivity);
+      window.removeEventListener('offline', updateConnectivity);
+    };
+  }, []);
+
   const selected = useMemo(() => dispatches.find((item) => item.id === selectedId), [dispatches, selectedId]);
   const photos = useMemo(() => parsePhotos(selected?.photoUrls), [selected?.photoUrls]);
 
@@ -75,10 +87,25 @@ export default function TechnicianMobilePage() {
     try {
       const cached = localStorage.getItem(`fsit.offlinePacket.${selectedId}`);
       setOfflinePacket(cached ? JSON.parse(cached) : null);
+      const draft = JSON.parse(localStorage.getItem(`fsit.mobileDraft.${selectedId}`) || '{}');
+      setNotes(draft.notes || '');
+      setPhotoUrls(draft.photoUrls || '');
+      setSignature(draft.signature || '');
+      setPartUsage(draft.partUsage || { partId: '', quantity: 1, notes: '' });
     } catch {
       setOfflinePacket(null);
     }
   }, [selectedId]);
+
+  useEffect(() => {
+    if (!selectedId) return;
+    const key = `fsit.mobileDraft.${selectedId}`;
+    if (!notes.trim() && !photoUrls.trim() && !signature.trim() && !partUsage.partId && !partUsage.notes.trim()) {
+      localStorage.removeItem(key);
+      return;
+    }
+    localStorage.setItem(key, JSON.stringify({ notes, photoUrls, signature, partUsage, savedAt: new Date().toISOString() }));
+  }, [notes, partUsage, photoUrls, selectedId, signature]);
 
   const updateStatus = async (status: string) => {
     if (!selected) return;
@@ -194,6 +221,10 @@ export default function TechnicianMobilePage() {
             <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600">Update route status, capture job notes, record parts used, attach photo links, and collect completion sign-off from one compact workflow.</p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <span className={`inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-semibold ${online ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-800'}`}>
+              {online ? <Wifi size={16} /> : <WifiOff size={16} />}
+              {online ? 'Online · drafts saved' : 'Offline · drafts stay on device'}
+            </span>
             <Link href="/dispatch" className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary/90">
               <Route size={16} />
               Field Service

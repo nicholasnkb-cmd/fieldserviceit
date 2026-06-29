@@ -128,6 +128,8 @@ HOSTINGER_API_TOKEN=<Hostinger API token from hPanel>
 DEPLOY_REPOS_TOKEN=<fine-grained GitHub token with Contents write access to both deployment repositories>
 HOSTINGER_BACKEND_DEPLOY_WEBHOOK_URL=<backend Git deployment webhook from hPanel>
 HOSTINGER_FRONTEND_DEPLOY_WEBHOOK_URL=<frontend Git deployment webhook from hPanel>
+VERIFICATION_EMAIL=<production administrator used for read-only login verification>
+VERIFICATION_PASSWORD=<password stored in the GitHub production environment>
 ```
 
 Optional production environment variables:
@@ -136,9 +138,11 @@ Optional production environment variables:
 HOSTINGER_EXPECTED_DOMAINS=fieldserviceit.com,api.fieldserviceit.com
 UPTIME_WEB_URL=https://fieldserviceit.com
 UPTIME_API_URL=https://api.fieldserviceit.com
+VERIFICATION_WEB_URL=https://fieldserviceit.com
+VERIFICATION_API_URL=https://api.fieldserviceit.com
 ```
 
-The `.github/workflows/deploy.yml` workflow runs backend/frontend builds and tests, performs the Hostinger API preflight, synchronizes the deployment repositories, and triggers both protected deployment webhooks.
+The `.github/workflows/deploy.yml` workflow runs backend/frontend builds and tests, performs the Hostinger API preflight, synchronizes the deployment repositories, triggers both protected deployment webhooks, and performs non-mutating production verification. Login verification is skipped when its optional credentials are not configured.
 
 Hostinger's public API can verify account access and hosted websites, but it does not currently provide a shared-hosting Node.js file upload/redeploy endpoint in the public OpenAPI surface. The production workflow splits the monorepo into the backend/frontend deployment repositories using `DEPLOY_REPOS_TOKEN`, then uses the two protected Git deployment webhooks after validation succeeds. If webhooks are unavailable, keep deployment manual in hPanel until one of these deploy transports is configured:
 
