@@ -42,3 +42,10 @@ test('login form is keyboard reachable and clearly labeled', async ({ page }) =>
   await page.keyboard.press('Tab');
   await expect(page.getByLabel('Password')).toBeFocused();
 });
+
+test('public navigation exposes a keyboard-visible skip link', async ({ page }) => {
+  await page.goto('/');
+  await page.keyboard.press('Tab');
+  const focused = page.locator(':focus');
+  await expect(focused).toHaveAttribute('href', '#main-content');
+});

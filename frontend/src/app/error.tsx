@@ -1,6 +1,9 @@
 'use client';
 
+import { useEffect } from 'react';
+
 export default function RootError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+  useEffect(() => { void import('@sentry/nextjs').then(({ captureException }) => captureException(error)); }, [error]);
   return (
     <div className="flex min-h-screen items-center justify-center bg-white px-4">
       <div className="text-center max-w-md">

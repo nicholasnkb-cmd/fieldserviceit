@@ -77,7 +77,7 @@ export function OnboardingChecklist() {
                 <button onClick={() => saveState({ dismissed: true })} className="rounded p-1 text-blue-800 hover:bg-blue-100" aria-label="Dismiss onboarding checklist"><X size={18} /></button>
               </div>
             </div>
-            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-blue-100"><div className="h-full bg-blue-600" style={{ width: `${progress}%` }} /></div>
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-blue-100" role="progressbar" aria-label="Workspace setup progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}><div className="h-full bg-blue-600 motion-safe:transition-[width]" style={{ width: `${progress}%` }} /></div>
           </div>
         </div>
         {!collapsed && (
@@ -85,7 +85,7 @@ export function OnboardingChecklist() {
             {steps.map((step) => {
               const done = completed.includes(step.id);
               return (
-                <Link key={step.id} href={step.href} className="flex items-start gap-2 rounded-md bg-white px-3 py-3 text-sm text-gray-700 shadow-sm hover:ring-1 hover:ring-blue-300">
+                <Link key={step.id} href={step.href} aria-current={pathname === step.href ? 'step' : undefined} className="flex min-h-11 items-start gap-2 rounded-md bg-white px-3 py-3 text-sm text-gray-700 shadow-sm hover:ring-1 hover:ring-blue-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">
                   {done ? <CheckCircle2 className="mt-0.5 shrink-0 text-emerald-600" size={17} /> : <Circle className="mt-0.5 shrink-0 text-blue-400" size={17} />}
                   <span className={done ? 'text-gray-500 line-through' : 'font-medium'}>{step.label}</span>
                 </Link>

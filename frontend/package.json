@@ -15,6 +15,7 @@
     "test:e2e:prod": "playwright test -c playwright.prod.config.ts"
   },
   "dependencies": {
+    "@sentry/nextjs": "^10.62.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
     "date-fns": "^3.6.0",
