@@ -1,5 +1,6 @@
 const { execFileSync } = require('node:child_process');
 const { version } = require('./package.json');
+const { withSentryConfig } = require('@sentry/nextjs');
 
 function gitCommit() {
   try {
@@ -89,4 +90,20 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+module.exports = withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG || 'fieldserviceit',
+  project: process.env.SENTRY_PROJECT || 'javascript-nextjs',
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: true,
+  telemetry: false,
+  sourcemaps: {
+    disable: !process.env.SENTRY_AUTH_TOKEN,
+    deleteSourcemapsAfterUpload: true,
+  },
+  release: {
+    name: frontendCommit,
+    create: Boolean(process.env.SENTRY_AUTH_TOKEN),
+    finalize: Boolean(process.env.SENTRY_AUTH_TOKEN),
+  },
+  treeshake: { removeDebugLogging: true },
+});
