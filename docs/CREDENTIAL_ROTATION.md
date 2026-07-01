@@ -22,7 +22,19 @@ node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 
 Set the results as `JWT_SECRET` and `JWT_REFRESH_SECRET` in the protected Hostinger backend environment, then redeploy. Existing sessions should be expected to expire.
 
-## 3. Review other production credentials
+## 3. Rotate the credential-encryption key
+
+The credential-encryption key must be independent from both JWT secrets. To rotate it without making existing encrypted values unreadable:
+
+1. Keep the current value temporarily as `CREDENTIAL_ENCRYPTION_KEY_PREVIOUS`.
+2. Generate a new value and set it as `CREDENTIAL_ENCRYPTION_KEY`.
+3. Run `npm run credentials:rotate` from the backend deployment with `DATABASE_URL` configured.
+4. Verify encrypted integration credentials, MFA secrets, and encrypted backups can be read.
+5. Remove `CREDENTIAL_ENCRYPTION_KEY_PREVIOUS` and redeploy.
+
+Never rotate the encryption key by replacing it outright; existing ciphertext requires either the current or previous key during migration.
+
+## 4. Review other production credentials
 
 Rotate any credential that may have appeared in logs, handoff files, copied environment files, or repository history:
 
@@ -33,6 +45,6 @@ Rotate any credential that may have appeared in logs, handoff files, copied envi
 - RMM and network vendor credentials
 - Production administrator account password
 
-## 4. Verify
+## 5. Verify
 
 Confirm the health endpoint, login, registration, refresh, logout, email, billing, and integration workflows as applicable. Keep all replacement values only in the password manager and protected hosting environment.
