@@ -6,6 +6,10 @@ FieldserviceIT has broad product capability and solid security foundations, but 
 
 The earlier `COMPREHENSIVE_ANALYSIS.md` is now partly stale: encrypted off-site backups, nginx, persistent login lockouts, shared rate limiting, upload validation, load-test definitions, and recovery documentation have since been implemented.
 
+## Implementation update
+
+The follow-up hardening pass completed repository-side portions of recommendations 1, 4, 5, 6, 7, 12, and 16: database/migration startup now fails closed; logical backups use a repeatable-read consistent snapshot; dynamic identifiers share one validator; authorization exemptions are inventoried by CI; pool/queue/query limits are configurable; frontend scripts use a nonce CSP; and server middleware gates protected navigation. The existing Hostinger validation/deployment workflow was confirmed during review. Live staging evidence and the larger incremental refactors remain open.
+
 ## Current evidence
 
 - 297 backend source files and 144 frontend source files.

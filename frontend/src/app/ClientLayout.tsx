@@ -8,34 +8,7 @@ import { ToastProvider } from '../components/ui/Toast';
 import { Analytics } from '../components/marketing/Analytics';
 import { TenantTheme } from '../components/layout/TenantTheme';
 import { MobileAppInstallPrompt } from '../components/layout/MobileAppInstallPrompt';
-
-const PUBLIC_PATHS = [
-  '/',
-  '/about',
-  '/contact',
-  '/forgot-password',
-  '/legal-disclaimer',
-  '/privacy',
-  '/security-overview',
-  '/status',
-  '/terms',
-  '/track',
-  '/unsubscribe',
-  '/login',
-  '/register',
-  '/register-business',
-  '/reset-password',
-  '/msp-ticketing-software',
-  '/field-service-management-software',
-  '/it-asset-management-software',
-  '/technician-dispatch-software',
-  '/topology/shared',
-  '/verify-email',
-];
-
-function isPublicPath(pathname: string) {
-  return PUBLIC_PATHS.some((path) => pathname === path || (path !== '/' && pathname.startsWith(`${path}/`)));
-}
+import { isPublicPath } from '../lib/public-routes';
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
   const { user, authChecked, setUser, setCompany, setAuthChecked, logout } = useAuthStore();

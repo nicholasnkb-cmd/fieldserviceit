@@ -75,7 +75,7 @@ the evidence field.
 - [ ] **LV-04 — Critical-path smoke tests pass** — login/logout/refresh, ticket lifecycle, asset access, permissions, uploads, notifications, and health endpoints pass after deploy.
 - [ ] **LV-05 — Load limits are known** — k6 scenarios and thresholds are defined in `load-tests/critical-paths.js`; run them in staging and record latency/error targets, pool saturation, and the first saturated resource.
 - [ ] **LV-06 — Observability is operational** — centralized structured logs, correlation IDs, error tracking, metrics, dashboards, and alerts work from a deployed environment.
-- [ ] **LV-07 — Security headers are verified** — remove unnecessary CSP `unsafe-inline`/`unsafe-eval`, deploy nonce/hash support where needed, and scan the live HTTPS response headers.
+- [ ] **LV-07 — Security headers are verified** — frontend per-request nonce/`strict-dynamic` CSP is implemented and script `unsafe-inline`/`unsafe-eval` are removed in production; scan the live HTTPS response headers before checking this gate.
 - [ ] **LV-08 — Recovery runbook is usable** — procedures are documented in `docs/PRODUCTION_OPERATIONS_RUNBOOK.md`; have someone other than the author execute and sign off on them.
 - [ ] **LV-09 — Security review is complete** — perform automated scanning plus targeted review of OIDC, tenant isolation, ABAC/RBAC, uploads, SSRF, injection, and session/token handling; triage all findings.
 
@@ -90,7 +90,7 @@ the evidence field.
 - [ ] **PE-07 — Reduce unsafe TypeScript boundaries** — establish a baseline, prohibit new explicit `any` in changed production files, and remove existing uses by module starting at API boundaries.
 - [ ] **PE-08 — Standardize frontend server state** — pilot React Query or SWR on one high-traffic screen, define cache/error/loading conventions, then migrate incrementally.
 - [ ] **PE-09 — Standardize complex forms** — pilot `react-hook-form` plus `zod` on one complex form and reuse schemas where client/server semantics align.
-- [ ] **PE-10 — Add frontend route middleware** — protect navigation and reduce authenticated-page flashes while preserving backend authorization as the security boundary.
+- [x] **PE-10 — Add frontend route middleware** — cookie-presence navigation gating and nonce CSP are implemented; backend authorization remains the security boundary.
 
 ## Tracking
 
@@ -98,8 +98,8 @@ the evidence field.
 |------|------:|-----:|----------:|--------------------|
 | Launch Blockers | 10 | 0 | 10 | All required |
 | Launch Verification | 9 | 0 | 9 | All required |
-| Post-Launch Engineering | 10 | 0 | 10 | Scheduled, not blocking |
-| **Total** | **29** | **0** | **29** | |
+| Post-Launch Engineering | 10 | 1 | 9 | Scheduled, not blocking |
+| **Total** | **29** | **1** | **28** | |
 
 ## Launch Decision
 

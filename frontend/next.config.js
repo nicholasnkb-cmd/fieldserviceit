@@ -63,22 +63,6 @@ const nextConfig = {
         key: 'Permissions-Policy',
         value: 'camera=(self), microphone=(), geolocation=(self), payment=(), usb=()',
       },
-      {
-        key: 'Content-Security-Policy',
-        value: [
-          "default-src 'self'",
-          "base-uri 'self'",
-          "object-src 'none'",
-          "frame-ancestors 'none'",
-          "form-action 'self'",
-          "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com",
-          "style-src 'self' 'unsafe-inline'",
-          "img-src 'self' data: blob: https://*.fieldserviceit.com https://*.amazonaws.com https://www.google-analytics.com",
-          "font-src 'self' data:",
-          "connect-src 'self' https://api.fieldserviceit.com wss://api.fieldserviceit.com https://www.google-analytics.com https://region1.google-analytics.com https://*.ingest.sentry.io",
-          'upgrade-insecure-requests',
-        ].join('; '),
-      },
     ];
 
     return [

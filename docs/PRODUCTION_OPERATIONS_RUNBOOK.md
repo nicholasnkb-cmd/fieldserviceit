@@ -15,6 +15,7 @@
 4. Run login, refresh, ticket, asset, permission, upload, and notification smoke tests.
 5. Shift traffic only after the smoke tests pass.
 
+
 ## Rollback
 
 1. Stop traffic to the failed release.
@@ -22,6 +23,7 @@
 3. Prefer roll-forward for database changes. Run a down migration only when it was written and rehearsed before deployment.
 4. If data restoration is required, restore into an isolated database first, validate it, take a final snapshot, and then perform the approved cutover.
 5. Repeat smoke tests and record the incident timeline.
+
 
 ## Dependency outage
 
