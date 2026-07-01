@@ -1,12 +1,13 @@
 import * as Sentry from '@sentry/nextjs';
 
-const dsn = process.env.SENTRY_SERVER_ENABLED === 'true' ? process.env.SENTRY_DSN : undefined;
+const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
+
 Sentry.init({
   dsn,
   enabled: Boolean(dsn),
   environment: process.env.NODE_ENV,
-  release: process.env.APP_VERSION || process.env.GITHUB_SHA,
-  tracesSampleRate: Number(process.env.SENTRY_TRACES_SAMPLE_RATE || 0),
+  release: process.env.NEXT_PUBLIC_APP_COMMIT,
+  tracesSampleRate: Number(process.env.NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE || 0),
   sendDefaultPii: false,
   beforeSend(event) {
     delete event.user;
@@ -18,3 +19,5 @@ Sentry.init({
     return event;
   },
 });
+
+export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;
