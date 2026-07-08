@@ -1,7 +1,9 @@
 'use client';
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { api } from '../../../lib/api';
 import { useToast } from '../../../components/ui/Toast';
+import { ProfileSecuritySection } from '../../../components/profile/ProfileSecuritySection';
 
 const notificationEvents = [
   ['ticket_created', 'New tickets'],
@@ -71,8 +73,19 @@ export default function ProfilePage() {
   if (loading) return <div className="p-8">Loading...</div>;
 
   return (
-    <div className="p-8 max-w-2xl">
-      <h1 className="text-2xl font-bold mb-6">Profile</h1>
+    <div className="max-w-4xl p-8">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Profile</h1>
+          <p className="mt-1 text-sm text-gray-600">Manage your account details and sign-in security.</p>
+        </div>
+        <Link
+          href="/profile/MFA"
+          className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90"
+        >
+          MFA and Sessions
+        </Link>
+      </div>
       <div className="bg-white rounded-lg shadow p-6 mb-6">
         <h2 className="text-lg font-semibold mb-4">Account Info</h2>
         <p className="text-sm text-gray-600 mb-4">Email: <span className="font-medium">{profile?.email}</span> &middot; Role: <span className="font-medium">{profile?.role}</span></p>
@@ -88,6 +101,11 @@ export default function ProfilePage() {
           <button type="submit" disabled={saving} className="px-4 py-2 bg-primary text-white text-sm rounded-md hover:bg-primary/90 disabled:opacity-50">{saving ? 'Saving...' : 'Save'}</button>
         </form>
       </div>
+
+      <div className="mb-6">
+        <ProfileSecuritySection />
+      </div>
+
       {preferences && (
         <div className="mb-6 rounded-lg bg-white p-6 shadow">
           <div className="mb-4">

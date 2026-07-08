@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { KeyRound, Loader2, ShieldCheck } from 'lucide-react';
 import { useAuthStore } from '../../../stores/authStore';
 import { setSessionTokens, unwrapResponseBody } from '../../../lib/api';
+import { MfaSetupCard } from '../../../components/security/MfaSetupCard';
 
 type LoginMode = 'password' | 'mfa' | 'enroll' | 'recovery';
 
@@ -80,10 +81,16 @@ export default function LoginPage() {
         return;
       }
 
+      if (mode === 'mfa') {
+        const result = await request('/auth/mfa/challenge/login', { challengeToken, code });
+        completeLogin(result);
+        router.push('/dashboard');
+        return;
+      }
+
       const result = await request('/auth/login', {
         email,
         password,
-        ...(mode === 'mfa' ? { mfaCode: code } : {}),
       });
       if (result.mfaRequired) {
         setChallengeToken(result.challengeToken);
@@ -183,9 +190,7 @@ export default function LoginPage() {
 
           {mode === 'enroll' && setup && (
             <div className="space-y-3 rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950">
-              <p>In your authenticator app, add an account using this setup key:</p>
-              <p className="break-all rounded bg-white px-3 py-2 font-mono font-semibold">{setup.secret}</p>
-              <p className="text-xs text-blue-700">The app should use TOTP, 6 digits, and a 30-second period.</p>
+              <MfaSetupCard secret={setup.secret} otpauthUri={setup.otpauthUri} />
             </div>
           )}
 

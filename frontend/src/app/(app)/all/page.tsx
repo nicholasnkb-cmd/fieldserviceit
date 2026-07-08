@@ -13,6 +13,8 @@ const allItems = [
   { label: 'Reports', href: '/reports', desc: 'Analytics and reporting' },
   { label: 'Favorites', href: '/favorites', desc: 'Your saved items' },
   { label: 'History', href: '/history', desc: 'Recent activity' },
+  { label: 'MFA', href: '/profile/MFA', desc: 'Authenticator setup, recovery codes, and active sessions' },
+  { label: 'Profile', href: '/profile', desc: 'Account details, MFA, password, notifications, and sessions' },
   { label: 'Settings', href: '/settings', desc: 'Company settings and branding' },
 ];
 

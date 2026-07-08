@@ -75,6 +75,16 @@ type FavoritePage = {
 };
 
 const navGroups = {
+  account: [
+    {
+      id: 'account',
+      label: 'Account',
+      items: [
+        { label: 'MFA', href: '/profile/MFA', icon: ShieldCheck },
+        { label: 'Profile', href: '/profile', icon: User },
+      ],
+    },
+  ],
   public: [
     {
       id: 'support',
@@ -83,7 +93,7 @@ const navGroups = {
         { label: 'My Tickets', href: '/my-tickets', icon: Ticket, feature: 'tickets', badge: 'tickets' },
         { label: 'Submit Ticket', href: '/submit-ticket', icon: FileText, feature: 'tickets' },
         { label: 'Customer Portal', href: '/customer-portal', icon: Home, feature: 'tickets' },
-        { label: 'Account Security', href: '/security', icon: ShieldCheck },
+        { label: 'Profile', href: '/profile', icon: ShieldCheck },
       ],
     },
     {
@@ -151,7 +161,7 @@ const navGroups = {
       items: [
         { label: 'Security Center', href: '/security-center', icon: ShieldCheck, feature: 'auditLogs' },
         { label: 'Access Requests', href: '/access-requests', icon: UserCheck },
-        { label: 'Account Security', href: '/security', icon: KeyRound },
+        { label: 'Profile', href: '/profile', icon: KeyRound },
         { label: 'Settings', href: '/settings', icon: Settings },
       ],
     },
@@ -171,7 +181,7 @@ const navGroups = {
         { label: 'Tickets', href: '/tickets', icon: Ticket, feature: 'tickets', badge: 'tickets' },
         { label: 'Technician Mobile', href: '/technician-mobile', icon: Smartphone, feature: 'dispatch' },
         { label: 'Knowledge Base', href: '/knowledge-base', icon: ClipboardList, feature: 'kb' },
-        { label: 'Account Security', href: '/security', icon: ShieldCheck },
+        { label: 'Profile', href: '/profile', icon: ShieldCheck },
         { label: 'Access Requests', href: '/access-requests', icon: UserCheck },
       ],
     },
@@ -182,6 +192,7 @@ const navGroups = {
       label: 'Platform',
       items: [
         { label: 'Super Admin', href: '/admin', icon: LayoutDashboard },
+        { label: 'Profile', href: '/profile', icon: User },
         { label: 'All Tickets', href: '/tickets', icon: Ticket, badge: 'tickets' },
         { label: 'Users', href: '/admin/users', icon: Users },
         { label: 'Companies', href: '/admin/companies', icon: Building2 },
@@ -201,6 +212,7 @@ const navGroups = {
       label: 'Tenant Admin',
       items: [
         { label: 'Company Users', href: '/admin/company', icon: Users },
+        { label: 'Profile', href: '/profile', icon: User },
         { label: 'Security Operations', href: '/admin/security-operations', icon: ServerCog },
         { label: 'Email Operations', href: '/admin/email-operations', icon: Mail },
       ],
@@ -342,6 +354,7 @@ export function SidePanel() {
   const baseGroups = useMemo(() => {
     if (!user) return [];
     const sourceGroups: NavGroup[] = [
+      ...navGroups.account,
       ...(user.role === 'GLOBAL_TECH'
         ? navGroups.globalTech
         : user.userType === 'PUBLIC'
