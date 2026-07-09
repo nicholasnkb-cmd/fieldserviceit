@@ -92,7 +92,15 @@ export default function LoginPage() {
       }
 
       if (mode === 'mfa') {
-        const result = await request('/auth/mfa/challenge/login', { challengeToken, code });
+        let result;
+        try {
+          result = await request('/auth/mfa/challenge/login', { challengeToken, code });
+        } catch (challengeError: any) {
+          if (!String(challengeError?.message || '').includes('Cannot POST /v1/auth/mfa/challenge/login')) {
+            throw challengeError;
+          }
+          result = await request('/auth/login', { email, password, mfaCode: code });
+        }
         completeLogin(result);
         router.push(currentReturnTo());
         return;
