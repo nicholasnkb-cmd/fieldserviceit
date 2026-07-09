@@ -25,7 +25,8 @@ export function middleware(request: NextRequest) {
   requestHeaders.set('x-nonce', nonce);
   requestHeaders.set('Content-Security-Policy', csp);
 
-  if (!isPublicPath(request.nextUrl.pathname) && !request.cookies.has('fsit_access')) {
+  const hasAuthCookie = request.cookies.has('fsit_access') || request.cookies.has('fsit_refresh');
+  if (!isPublicPath(request.nextUrl.pathname) && !hasAuthCookie) {
     const login = new URL('/login', request.url);
     login.searchParams.set('returnTo', request.nextUrl.pathname);
     const redirect = NextResponse.redirect(login);
