@@ -1,7 +1,8 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Bot, CheckCircle2, ClipboardList, Database, Lightbulb, Play, Search, ShieldCheck, Sparkles } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { AlertCircle, ArrowUpCircle, Bot, CalendarDays, CheckCircle2, ClipboardList, Database, ExternalLink, Lightbulb, MessageSquarePlus, Play, Search, ShieldCheck, Sparkles, UserPlus } from 'lucide-react';
 import { api } from '../../../lib/api';
 
 interface AgentStep {
@@ -30,6 +31,7 @@ interface AgentPlan {
   steps: AgentStep[];
   requiredApprovals: string[];
   suggestedActions?: string[];
+  recommendations?: AgentRecommendation[];
   riskSummary?: string;
   results?: any[];
   finalAnswer?: string;
@@ -43,6 +45,7 @@ interface AgentAnswer {
   answer: string;
   facts?: string[];
   suggestedActions?: string[];
+  recommendations?: AgentRecommendation[];
   contextNotes?: string[];
   snapshot?: Record<string, number>;
   results?: any[];
@@ -59,23 +62,36 @@ interface ConversationItem {
   content: string;
 }
 
+interface AgentRecommendation {
+  id: string;
+  label: string;
+  prompt: string;
+  reason: string;
+  actionType: 'ask' | 'plan' | 'navigate';
+  confidence: 'high' | 'review';
+  href?: string;
+}
+
 const starterGoals = [
-  'Summarize open high priority tickets and oldest unresolved work',
-  'Find network devices with active alerts and recent syslog activity',
-  'Check fleet compliance and summarize unmanaged or stale devices',
+  'Give me a morning briefing',
+  'What needs attention today?',
+  'Which open tickets need attention first?',
+  'Find stale or unmanaged devices',
+  'Review active network alerts',
   'Review RMM provider sync health',
-  'Create a ticket to enroll a new laptop for accounting',
-  'Generate an MDM enrollment token for a new Windows laptop',
 ];
 
 const defaultSnapshot = { tickets: 0, openTickets: 0, assets: 0, enrolledDevices: 0, activeNetworkAlerts: 0, rmmProviders: 0 };
 
 export default function AiAgentPage() {
+  const pathname = usePathname();
+  const router = useRouter();
   const [goal, setGoal] = useState(starterGoals[0]);
   const [plan, setPlan] = useState<AgentPlan | null>(null);
   const [approvedActions, setApprovedActions] = useState<string[]>([]);
   const [loading, setLoading] = useState('');
   const [message, setMessage] = useState('');
+  const [messageTone, setMessageTone] = useState<'info' | 'error'>('info');
   const [answer, setAnswer] = useState<AgentAnswer | null>(null);
   const [history, setHistory] = useState<ConversationItem[]>([]);
 
@@ -83,13 +99,14 @@ export default function AiAgentPage() {
   const activeSnapshot = plan?.snapshot || answer?.snapshot || defaultSnapshot;
   const activeIntent = plan?.intent || answer?.intent;
   const activeSuggestions = plan?.suggestedActions || answer?.suggestedActions || [];
+  const activeRecommendations = plan?.recommendations || answer?.recommendations || [];
   const activeNotes = plan?.contextNotes || answer?.contextNotes || [];
 
   const requestPlan = async () => {
     setLoading('plan');
     setMessage('');
     try {
-      const data = await api.post<AgentPlan>('/ai-agent/plan', { goal, history });
+      const data = await api.post<AgentPlan>('/ai-agent/plan', { goal, history, currentPage: pathname });
       setPlan(data);
       setAnswer(null);
       setApprovedActions([]);
@@ -99,6 +116,7 @@ export default function AiAgentPage() {
         { role: 'assistant' as const, content: data.summary },
       ].slice(-8));
     } catch (err: any) {
+      setMessageTone('error');
       setMessage(err.message || 'Failed to create plan');
     } finally {
       setLoading('');
@@ -109,15 +127,17 @@ export default function AiAgentPage() {
     setLoading('ask');
     setMessage('');
     try {
-      const data = await api.post<AgentAnswer>('/ai-agent/ask', { question: goal, history });
+      const data = await api.post<AgentAnswer>('/ai-agent/ask', { question: goal, history, currentPage: pathname });
       setAnswer(data);
-      setMessage(data.answer);
+      setMessageTone('info');
+      setMessage('');
       setHistory((current) => [
         ...current,
         { role: 'user' as const, content: goal },
         { role: 'assistant' as const, content: data.answer },
       ].slice(-8));
     } catch (err: any) {
+      setMessageTone('error');
       setMessage(err.message || 'Agent could not answer');
     } finally {
       setLoading('');
@@ -128,9 +148,10 @@ export default function AiAgentPage() {
     setLoading('execute');
     setMessage('');
     try {
-      const data = await api.post<AgentPlan>('/ai-agent/execute', { goal, approvedActions, history });
+      const data = await api.post<AgentPlan>('/ai-agent/execute', { goal, approvedActions, history, currentPage: pathname });
       setPlan(data);
       setAnswer(null);
+      setMessageTone('info');
       setMessage(data.finalAnswer || 'Agent run complete');
       setHistory((current) => [
         ...current,
@@ -138,6 +159,7 @@ export default function AiAgentPage() {
         { role: 'assistant' as const, content: data.finalAnswer || data.summary },
       ].slice(-8));
     } catch (err: any) {
+      setMessageTone('error');
       setMessage(err.message || 'Failed to execute plan');
     } finally {
       setLoading('');
@@ -146,6 +168,31 @@ export default function AiAgentPage() {
 
   const toggleApproval = (tool: string) => {
     setApprovedActions((current) => current.includes(tool) ? current.filter((item) => item !== tool) : [...current, tool]);
+  };
+
+  const applyPrompt = (prompt: string) => {
+    setGoal(prompt);
+    setMessage('');
+    setMessageTone('info');
+  };
+
+  const runRecommendation = (recommendation: AgentRecommendation) => {
+    if (recommendation.actionType === 'navigate' && recommendation.href) {
+      router.push(recommendation.href);
+      return;
+    }
+    applyPrompt(recommendation.prompt);
+    setMessageTone('info');
+    setMessage(recommendation.actionType === 'plan' ? 'Prompt loaded for planning.' : 'Prompt loaded.');
+  };
+
+  const recommendationIcon = (recommendation: AgentRecommendation) => {
+    if (recommendation.id.includes('morning')) return <CalendarDays className="h-4 w-4" aria-hidden="true" />;
+    if (recommendation.id.includes('assign')) return <UserPlus className="h-4 w-4" aria-hidden="true" />;
+    if (recommendation.id.includes('escalate')) return <ArrowUpCircle className="h-4 w-4" aria-hidden="true" />;
+    if (recommendation.id.includes('reply') || recommendation.id.includes('ticket')) return <MessageSquarePlus className="h-4 w-4" aria-hidden="true" />;
+    if (recommendation.actionType === 'navigate') return <ExternalLink className="h-4 w-4" aria-hidden="true" />;
+    return <Sparkles className="h-4 w-4" aria-hidden="true" />;
   };
 
   return (
@@ -157,11 +204,18 @@ export default function AiAgentPage() {
         </p>
         <h1 className="mt-1 text-2xl font-bold text-gray-950">AI Agent</h1>
         <p className="mt-1 max-w-3xl text-sm text-gray-500">
-          Ask operational questions, inspect tenant data, review evidence, approve write actions, and let the agent handle safer service tasks.
+          Triage tickets, assets, compliance, network health, RMM syncs, and approved service actions.
         </p>
       </div>
 
-      {message && <div className="mt-4 rounded border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">{message}</div>}
+      {message && (
+        <div className={`mt-4 flex items-start gap-2 rounded border p-3 text-sm ${
+          messageTone === 'error' ? 'border-red-200 bg-red-50 text-red-700' : 'border-blue-200 bg-blue-50 text-blue-700'
+        }`}>
+          {messageTone === 'error' ? <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" /> : <Sparkles className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />}
+          <span>{message}</span>
+        </div>
+      )}
 
       <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_390px]">
         <section className="rounded border border-gray-200 bg-white p-5">
@@ -170,7 +224,7 @@ export default function AiAgentPage() {
             <textarea
               value={goal}
               onChange={(event) => setGoal(event.target.value)}
-              rows={6}
+              rows={4}
               className="mt-2 w-full rounded border border-gray-300 px-3 py-2 text-sm"
               placeholder="Ask about tickets, assets, compliance, RMM, network alerts, or an action you want planned"
             />
@@ -178,7 +232,7 @@ export default function AiAgentPage() {
 
           <div className="mt-3 flex flex-wrap gap-2">
             {starterGoals.map((item) => (
-              <button key={item} onClick={() => setGoal(item)} className="rounded border border-gray-300 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">
+              <button key={item} onClick={() => applyPrompt(item)} className="rounded border border-gray-300 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">
                 {item}
               </button>
             ))}
@@ -215,6 +269,7 @@ export default function AiAgentPage() {
                   setHistory([]);
                   setPlan(null);
                   setAnswer(null);
+                  setMessageTone('info');
                   setMessage('Conversation context cleared');
                 }}
                 disabled={!!loading}
@@ -271,6 +326,31 @@ export default function AiAgentPage() {
                   ))}
                 </div>
               )}
+            </div>
+          )}
+
+          {!answer && !plan && !loading && (
+            <div className="mt-6 rounded border border-dashed border-gray-300 bg-gray-50 p-5">
+              <div className="flex items-start gap-3">
+                <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+                <div>
+                  <h2 className="text-sm font-semibold text-gray-950">Ask like you would ask an operations lead</h2>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Start with a daily triage question, then turn the best recommendation into a plan when action is needed.
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {[
+                      'Give me a morning briefing',
+                      'Which open tickets look urgent?',
+                      'Find stale devices and suggest next steps',
+                    ].map((item) => (
+                      <button key={item} onClick={() => applyPrompt(item)} className="rounded bg-white px-3 py-1.5 text-xs font-medium text-gray-700 ring-1 ring-gray-200 hover:bg-gray-100">
+                        {item}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
@@ -349,18 +429,59 @@ export default function AiAgentPage() {
             </div>
           </section>
 
-          {!!activeSuggestions.length && (
+          {!!activeRecommendations.length && (
+            <section className="rounded border border-gray-200 bg-white p-5">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" aria-hidden="true" />
+                <h2 className="text-sm font-semibold text-gray-950">Quick actions</h2>
+              </div>
+              <div className="mt-3 space-y-3">
+                {activeRecommendations.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => runRecommendation(item)}
+                    className="w-full rounded border border-gray-200 p-3 text-left hover:border-primary/30 hover:bg-gray-50"
+                  >
+                    <div className="flex items-start gap-3">
+                      <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded bg-primary/10 text-primary">
+                        {recommendationIcon(item)}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="flex flex-wrap items-center gap-2">
+                          <span className="text-sm font-semibold text-gray-950">{item.label}</span>
+                          <span className={`rounded border px-2 py-0.5 text-xs ${
+                            item.confidence === 'high' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-700'
+                          }`}>
+                            {item.confidence === 'high' ? 'High confidence' : 'Needs review'}
+                          </span>
+                        </span>
+                        <span className="mt-1 block text-xs text-gray-500">{item.reason}</span>
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {!activeRecommendations.length && !!activeSuggestions.length && (
             <section className="rounded border border-gray-200 bg-white p-5">
               <div className="flex items-center gap-2">
                 <Lightbulb className="h-4 w-4 text-amber-600" aria-hidden="true" />
-                <h2 className="text-sm font-semibold text-gray-950">Suggested next moves</h2>
+                <h2 className="text-sm font-semibold text-gray-950">Suggested prompts</h2>
               </div>
               <div className="mt-3 space-y-2">
                 {activeSuggestions.map((item) => (
-                  <div key={item} className="flex items-start gap-2 text-sm text-gray-600">
+                  <button
+                    key={item}
+                    type="button"
+                    onClick={() => applyPrompt(item)}
+                    className="flex w-full items-start gap-2 rounded p-2 text-left text-sm text-gray-600 hover:bg-gray-50"
+                  >
                     <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" />
                     <span>{item}</span>
-                  </div>
+                  </button>
                 ))}
               </div>
             </section>
@@ -381,24 +502,26 @@ export default function AiAgentPage() {
           )}
 
           <section className="rounded border border-gray-200 bg-white p-5">
-            <div className="flex items-center gap-2">
-              <Search className="h-4 w-4 text-primary" aria-hidden="true" />
-              <h2 className="text-sm font-semibold text-gray-950">Tool evidence</h2>
-            </div>
-            <div className="mt-4 space-y-3">
-              {(plan?.results || answer?.results || []).map((result, index) => (
-                <div key={`${result.tool}-${index}`} className="rounded border border-gray-200 p-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-sm font-medium text-gray-900">{String(result.tool || 'tool').replaceAll('_', ' ')}</span>
-                    <span className={`rounded border px-2 py-0.5 text-xs ${result.status === 'completed' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-700'}`}>
-                      {result.status}
-                    </span>
+            <details>
+              <summary className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-gray-950">
+                <Search className="h-4 w-4 text-primary" aria-hidden="true" />
+                Tool evidence
+              </summary>
+              <div className="mt-4 space-y-3">
+                {(plan?.results || answer?.results || []).map((result, index) => (
+                  <div key={`${result.tool}-${index}`} className="rounded border border-gray-200 p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm font-medium text-gray-900">{String(result.tool || 'tool').replaceAll('_', ' ')}</span>
+                      <span className={`rounded border px-2 py-0.5 text-xs ${result.status === 'completed' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-700'}`}>
+                        {result.status}
+                      </span>
+                    </div>
+                    <pre className="mt-2 max-h-44 overflow-auto whitespace-pre-wrap rounded bg-gray-50 p-2 text-xs text-gray-600">{JSON.stringify(result.data || result.message || {}, null, 2)}</pre>
                   </div>
-                  <pre className="mt-2 max-h-44 overflow-auto whitespace-pre-wrap rounded bg-gray-50 p-2 text-xs text-gray-600">{JSON.stringify(result.data || result.message || {}, null, 2)}</pre>
-                </div>
-              ))}
-              {!(plan?.results || answer?.results)?.length && <p className="text-sm text-gray-500">Ask a question or run a plan to see tool evidence.</p>}
-            </div>
+                ))}
+                {!(plan?.results || answer?.results)?.length && <p className="text-sm text-gray-500">Ask a question or run a plan to see tool evidence.</p>}
+              </div>
+            </details>
           </section>
         </aside>
       </div>
