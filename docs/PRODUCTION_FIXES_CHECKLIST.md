@@ -33,10 +33,10 @@ the evidence field.
   - Test restart, multi-replica, IPv4/IPv6, and `X-Forwarded-For` behavior.
   - Evidence: shared `LoginAbuseState` and `RateLimitState` migrations plus database-backed throttler storage implemented; staging restart/multi-replica verification still pending.
 
-- [ ] **LB-05 — SQL identifiers are injection-safe**
+- [x] **LB-05 — SQL identifiers are injection-safe**
   - Keep the identifier allowlist in `DatabaseService.escapeColumn` and add focused malicious-input tests.
   - Audit other dynamic identifiers, including the knowledge-base service, table names, sorting, grouping, and filter operators.
-  - Evidence: _pending_
+  - Evidence: shared identifier validation now covers `DatabaseService` generic table/select helpers, `RolePermission.createMany`, knowledge-base update columns, and the access-governance scoped table lookup. Malicious table/column regression coverage added in `backend/src/database/database.sql-identifiers.spec.ts`, `backend/src/common/security/sql-identifier.spec.ts`, and `backend/src/modules/knowledge-base/knowledge-base.service.spec.ts`. Verified with `npm test -- --runInBand src/database/database.sql-identifiers.spec.ts src/common/security/sql-identifier.spec.ts src/modules/knowledge-base/knowledge-base.service.spec.ts` and `npm run build` from `backend/`.
 
 - [ ] **LB-06 — File uploads are hostile-input safe**
   - Enforce per-file/request size limits, extension/MIME allowlists, and magic-byte validation.
@@ -96,10 +96,10 @@ the evidence field.
 
 | Gate | Total | Done | Remaining | Launch requirement |
 |------|------:|-----:|----------:|--------------------|
-| Launch Blockers | 10 | 0 | 10 | All required |
+| Launch Blockers | 10 | 1 | 9 | All required |
 | Launch Verification | 9 | 0 | 9 | All required |
 | Post-Launch Engineering | 10 | 1 | 9 | Scheduled, not blocking |
-| **Total** | **29** | **1** | **28** | |
+| **Total** | **29** | **2** | **27** | |
 
 ## Launch Decision
 

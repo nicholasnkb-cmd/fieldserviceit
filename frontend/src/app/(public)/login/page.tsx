@@ -17,6 +17,16 @@ const getApiBase = () => {
   return process.env.NEXT_PUBLIC_API_URL || '';
 };
 
+function safeReturnTo(value: string | null) {
+  if (!value || !value.startsWith('/') || value.startsWith('//')) return '/dashboard';
+  return value;
+}
+
+function currentReturnTo() {
+  if (typeof window === 'undefined') return '/dashboard';
+  return safeReturnTo(new URLSearchParams(window.location.search).get('returnTo'));
+}
+
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -84,7 +94,7 @@ export default function LoginPage() {
       if (mode === 'mfa') {
         const result = await request('/auth/mfa/challenge/login', { challengeToken, code });
         completeLogin(result);
-        router.push('/dashboard');
+        router.push(currentReturnTo());
         return;
       }
 
@@ -107,7 +117,7 @@ export default function LoginPage() {
         return;
       }
       completeLogin(result);
-      router.push('/dashboard');
+      router.push(currentReturnTo());
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -119,7 +129,7 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
     try {
-      const result = await request(`/auth/sso/${providerId}/start`, { redirectPath: '/dashboard' });
+      const result = await request(`/auth/sso/${providerId}/start`, { redirectPath: currentReturnTo() });
       window.location.assign(result.authorizationUrl);
     } catch (err: any) {
       setError(err.message || 'Single sign-on could not be started');
@@ -141,7 +151,7 @@ export default function LoginPage() {
           <div className="mt-6 grid grid-cols-2 gap-2 rounded-md bg-gray-950 p-4 font-mono text-sm text-white">
             {recoveryCodes.map((item) => <span key={item}>{item}</span>)}
           </div>
-          <button onClick={() => router.push('/dashboard')} className="mt-6 w-full rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white">
+          <button onClick={() => router.push(currentReturnTo())} className="mt-6 w-full rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white">
             Continue to dashboard
           </button>
         </div>
