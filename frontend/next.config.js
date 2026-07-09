@@ -16,6 +16,10 @@ function gitCommit() {
 
 const frontendVersion = process.env.FRONTEND_VERSION || process.env.APP_VERSION || version;
 const frontendCommit = process.env.FRONTEND_COMMIT || process.env.GITHUB_SHA || gitCommit();
+const apiProxyTarget =
+  process.env.API_PROXY_TARGET ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  (process.env.NODE_ENV === 'production' ? 'https://api.fieldserviceit.com' : 'http://localhost:4000');
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -31,7 +35,7 @@ const nextConfig = {
     return [
       {
         source: '/v1/:path*',
-        destination: `${process.env.API_PROXY_TARGET || 'http://localhost:4000'}/v1/:path*`,
+        destination: `${apiProxyTarget}/v1/:path*`,
       },
     ];
   },
