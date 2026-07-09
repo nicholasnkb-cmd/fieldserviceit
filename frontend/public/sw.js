@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fieldserviceit-mobile-v1';
+const CACHE_NAME = 'fieldserviceit-mobile-v2';
 const APP_SHELL_URLS = [
   '/offline.html',
   '/icon',
@@ -31,18 +31,12 @@ self.addEventListener('fetch', (event) => {
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-          return response;
-        })
-        .catch(async () => {
-          const cachedPage = await caches.match(request);
-          return cachedPage || caches.match('/offline.html');
-        }),
+        .catch(() => caches.match('/offline.html')),
     );
     return;
   }
+
+  if (url.pathname.startsWith('/v1/')) return;
 
   if (url.pathname.startsWith('/_next/static/') || APP_SHELL_URLS.includes(url.pathname)) {
     event.respondWith(
