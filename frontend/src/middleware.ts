@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isPublicPath } from './lib/public-routes';
 
 function contentSecurityPolicy(nonce: string) {
   const developmentEval = process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : '';
@@ -25,20 +24,11 @@ export function middleware(request: NextRequest) {
   requestHeaders.set('x-nonce', nonce);
   requestHeaders.set('Content-Security-Policy', csp);
 
-  const hasAuthCookie = request.cookies.has('fsit_access') || request.cookies.has('fsit_refresh');
-  if (!isPublicPath(request.nextUrl.pathname) && !hasAuthCookie) {
-    const login = new URL('/login', request.url);
-    login.searchParams.set('returnTo', request.nextUrl.pathname);
-    const redirect = NextResponse.redirect(login);
-    redirect.headers.set('Content-Security-Policy', csp);
-    return redirect;
-  }
-
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   response.headers.set('Content-Security-Policy', csp);
   return response;
 }
 
 export const config = {
-  matcher: ['/((?!v1/|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)'],
+  matcher: ['/((?!v1/|_next/static|_next/image|favicon.ico|manifest\\.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)'],
 };
