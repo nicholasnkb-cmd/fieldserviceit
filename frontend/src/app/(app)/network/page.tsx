@@ -31,7 +31,6 @@ type NetworkTab = 'overview' | 'topology' | 'vlans' | 'wifi' | 'firewall' | 'dhc
 interface NetworkDevice {
   id: string;
   name: string;
-  assetType: string;
   deviceCategory?: string;
   manufacturer?: string;
   model?: string;
@@ -411,7 +410,7 @@ export default function NetworkPage() {
     }
     setLoading(true);
     try {
-      const params = new URLSearchParams({ assetType: 'NETWORK_DEVICE', limit: '100' });
+      const params = new URLSearchParams({ deviceCategory: 'NETWORK_DEVICE', limit: '100' });
       if (debouncedSearch) params.set('search', debouncedSearch);
       const result = await api.get<{ data: NetworkDevice[] }>(`/assets?${params.toString()}`);
       const networkDevices = result.data || [];
@@ -526,7 +525,6 @@ export default function NetworkPage() {
       const newConfig = { ...defaultConfig, managementIp: form.ipAddress };
       const created = await api.post<NetworkDevice>('/assets', {
         name: form.name,
-        assetType: 'NETWORK_DEVICE',
         deviceCategory: 'NETWORK_DEVICE',
         manufacturer: form.manufacturer || form.equipmentType,
         model: form.model,
