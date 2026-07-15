@@ -8,6 +8,11 @@ import { setSessionTokens, unwrapResponseBody } from '../../../lib/api';
 import { PRIVACY_VERSION, TERMS_VERSION } from '../../../lib/legal';
 
 interface PlanOption { id: string; name: string; monthlyPrice: number }
+const apiBase = () =>
+  typeof window !== 'undefined' && ['localhost', '127.0.0.1'].includes(window.location.hostname)
+    ? ''
+    : process.env.NEXT_PUBLIC_API_URL || '';
+
 const fallbackPlans: PlanOption[] = [
   { id: 'free', name: 'Free', monthlyPrice: 0 },
   { id: 'starter', name: 'Starter', monthlyPrice: 29 },
@@ -41,7 +46,7 @@ function RegisterBusinessForm() {
   const [plans, setPlans] = useState<PlanOption[]>(fallbackPlans);
 
   useEffect(() => {
-    fetch('/v1/plans')
+    fetch(`${apiBase()}/v1/plans`, { credentials: 'include' })
       .then((response) => response.ok ? response.json() : null)
       .then((body) => {
         const data = body?.data?.data || body?.data || body;
@@ -71,8 +76,8 @@ function RegisterBusinessForm() {
         termsAccepted,
         termsVersion: TERMS_VERSION,
         privacyVersion: PRIVACY_VERSION,
-        successUrl: `${window.location.origin}/billing?success=1`,
-        cancelUrl: `${window.location.origin}/billing?canceled=1&plan=${encodeURIComponent(plan.name)}`,
+        successUrl: `${window.location.origin}/billing?success=1&provider=paypal`,
+        cancelUrl: `${window.location.origin}/billing?canceled=1&provider=paypal&plan=${encodeURIComponent(plan.name)}`,
       }),
     });
 
@@ -105,7 +110,7 @@ function RegisterBusinessForm() {
     }
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+      const apiUrl = apiBase();
       const res = await fetch(`${apiUrl}/v1/auth/register-business`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

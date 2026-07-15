@@ -687,11 +687,11 @@ export function SidePanel() {
                 'inline-flex h-9 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-900',
                 !compact && 'gap-1 text-xs font-medium',
               )}
-              aria-label={compact ? 'Profile' : undefined}
-              title="Profile"
+              aria-label={compact ? 'My profile' : undefined}
+              title="My profile"
             >
               <User size={17} />
-              {!compact && <span>Profile</span>}
+              {!compact && <span>My profile</span>}
             </Link>
             <Link
               href="/settings"

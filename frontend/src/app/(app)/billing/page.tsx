@@ -38,6 +38,7 @@ interface Subscription {
   id: string;
   status: string;
   providerCustomerId?: string | null;
+  providerSubscriptionId?: string | null;
   billingInterval?: 'MONTH' | 'YEAR';
   seatQuantity?: number;
   gracePeriodEndsAt?: string | null;
@@ -143,8 +144,8 @@ export default function BillingPage() {
     }
 
     const params = new URLSearchParams(window.location.search);
-    if (params.get('success') === '1') setNotice('Subscription checkout completed. Payment confirmation may take a moment to appear.');
-    if (params.get('canceled') === '1') setNotice('Checkout was canceled. Your subscription was not changed.');
+    if (params.get('success') === '1') setNotice('PayPal checkout completed. Subscription activation may take a moment while PayPal sends confirmation.');
+    if (params.get('canceled') === '1') setNotice('PayPal checkout was canceled. Your subscription was not changed.');
     loadBilling();
   }, [loadBilling, router, user]);
 
@@ -160,8 +161,8 @@ export default function BillingPage() {
         termsAccepted,
         termsVersion: TERMS_VERSION,
         privacyVersion: PRIVACY_VERSION,
-        successUrl: `${window.location.origin}/billing?success=1`,
-        cancelUrl: `${window.location.origin}/billing?canceled=1`,
+        successUrl: `${window.location.origin}/billing?success=1&provider=paypal`,
+        cancelUrl: `${window.location.origin}/billing?canceled=1&provider=paypal`,
       });
       if (!data.url) throw new Error('Checkout session did not return a redirect URL');
       window.location.assign(data.url);
@@ -223,7 +224,7 @@ export default function BillingPage() {
           <h1 className="mt-2 text-2xl font-semibold text-gray-950">Billing and subscription</h1>
           <p className="mt-1 text-sm text-gray-600">Manage the plan, payment method, and invoices for {company?.name || 'your company'}.</p>
         </div>
-        {subscription?.providerCustomerId && (
+        {(subscription?.providerCustomerId || subscription?.providerSubscriptionId) && (
           <button
             type="button"
             onClick={handlePortal}
@@ -238,6 +239,16 @@ export default function BillingPage() {
 
       {notice && <div className="mt-6 rounded border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{notice}</div>}
       {error && <div className="mt-6 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+      {providers.length === 0 && (
+        <div className="mt-6 rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          PayPal checkout is not fully configured yet. Add PayPal credentials, webhook ID, and plan mappings in System Controls.
+        </div>
+      )}
+      {subscription?.status === 'INCOMPLETE' && (
+        <div className="mt-6 rounded border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+          PayPal checkout has started. Finish approval in PayPal, then return here; subscription status will update after the verified webhook arrives.
+        </div>
+      )}
 
       <section className="mt-8 grid gap-5 md:grid-cols-3">
         <div className="border-l-2 border-emerald-500 pl-4">
@@ -250,7 +261,7 @@ export default function BillingPage() {
           <p className="mt-2 text-xl font-semibold text-gray-950">
             {currentPlan ? formatMoney((subscription?.billingInterval === 'YEAR' ? currentPlan.annualPrice : currentPlan.monthlyPrice) * 100, 'usd') : 'Not subscribed'}
           </p>
-          <p className="mt-1 text-sm text-gray-600">{subscription?.billingInterval === 'YEAR' ? 'Annual' : 'Monthly'} recurring subscription</p>
+          <p className="mt-1 text-sm text-gray-600">{currentPlan ? `${subscription?.billingInterval === 'YEAR' ? 'Annual' : 'Monthly'} recurring subscription` : 'Choose the Business plan to start checkout'}</p>
         </div>
         <div className="border-l-2 border-gray-300 pl-4">
           <p className="text-xs font-semibold uppercase text-gray-500">Next renewal</p>
@@ -319,7 +330,7 @@ export default function BillingPage() {
                   className="mt-7 inline-flex w-full items-center justify-center gap-2 rounded bg-gray-950 px-4 py-3 text-sm font-semibold text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-500"
                 >
                   {checkoutPlanId === plan.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CircleDollarSign className="h-4 w-4" />}
-                  {isCurrent ? 'Current plan' : providers.length === 0 ? 'PayPal checkout not configured' : 'Continue with PayPal'}
+                  {isCurrent ? (subscription?.status === 'INCOMPLETE' ? 'Checkout pending' : 'Current plan') : providers.length === 0 ? 'PayPal checkout not configured' : 'Continue with PayPal'}
                 </button>
               </div>
             );
