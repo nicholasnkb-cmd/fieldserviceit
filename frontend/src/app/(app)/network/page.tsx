@@ -391,9 +391,11 @@ export default function NetworkPage() {
   const [syslogFilter, setSyslogFilter] = useState('');
   const [pinging, setPinging] = useState(false);
   const [snmpPolling, setSnmpPolling] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [pendingAction, setPendingAction] = useState<{ action: string; port: string } | null>(null);
 
   const canEditNetwork = ['SUPER_ADMIN', 'TENANT_ADMIN', 'TECHNICIAN'].includes(user?.role || '');
+  const canDeleteNetwork = ['SUPER_ADMIN', 'TENANT_ADMIN'].includes(user?.role || '');
   const canManageCredentials = ['SUPER_ADMIN', 'TENANT_ADMIN'].includes(user?.role || '');
   const canRunActions = ['SUPER_ADMIN', 'TENANT_ADMIN', 'TECHNICIAN'].includes(user?.role || '');
   const canManageOps = ['SUPER_ADMIN', 'TENANT_ADMIN'].includes(user?.role || '');
@@ -565,6 +567,28 @@ export default function NetworkPage() {
       setMessage(err.message || 'Failed to save configuration');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const removeDevice = async () => {
+    if (!selected || deleting) return;
+    const confirmed = window.confirm(`Remove ${selected.name} from network equipment? This retires the device and removes it from active inventory.`);
+    if (!confirmed) return;
+
+    setDeleting(true);
+    try {
+      await api.delete(`/assets/${selected.id}`);
+      const remaining = devices.filter((device) => device.id !== selected.id);
+      const nextDevice = remaining[0] || null;
+      setDevices(remaining);
+      setSelected(nextDevice);
+      setConfig(nextDevice ? parseConfig(nextDevice.notes) : defaultConfig);
+      setTab('overview');
+      setMessage(`${selected.name} removed from network equipment`);
+    } catch (err: any) {
+      setMessage(err.message || 'Failed to remove network equipment');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -961,12 +985,20 @@ export default function NetworkPage() {
                     </div>
                     <p className="mt-1 text-sm text-gray-500">{[selected.manufacturer, selected.model, selected.serialNumber].filter(Boolean).join(' - ') || 'No hardware identifiers'}</p>
                   </div>
-                  {canEditNetwork && (
-                    <button onClick={saveConfig} disabled={saving} className="inline-flex items-center justify-center gap-2 rounded bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-60">
-                      <Save className="h-4 w-4" aria-hidden="true" />
-                      {saving ? 'Saving...' : 'Save config'}
-                    </button>
-                  )}
+                  <div className="flex flex-wrap gap-2">
+                    {canDeleteNetwork && (
+                      <button onClick={removeDevice} disabled={deleting || saving} className="inline-flex items-center justify-center gap-2 rounded border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-60">
+                        <Trash2 className="h-4 w-4" aria-hidden="true" />
+                        {deleting ? 'Removing...' : 'Remove device'}
+                      </button>
+                    )}
+                    {canEditNetwork && (
+                      <button onClick={saveConfig} disabled={saving || deleting} className="inline-flex items-center justify-center gap-2 rounded bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-60">
+                        <Save className="h-4 w-4" aria-hidden="true" />
+                        {saving ? 'Saving...' : 'Save config'}
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div className="mt-4 flex flex-wrap gap-2">
                   {tabItems.map(({ key, Icon, label }) => {
