@@ -947,7 +947,7 @@ export class AdminService {
       data: {
         name: dto.name,
         slug: dto.slug,
-        description: dto.description,
+        description: dto.description ?? null,
         companyId: dto.companyId || null,
       },
     });

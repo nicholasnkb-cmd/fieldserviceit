@@ -130,6 +130,6 @@ describe('Asset enrollment and lifecycle (E2E)', () => {
       .get('/v1/assets/retired')
       .set('Authorization', `Bearer ${authToken}`)
       .expect(200);
-    expect(retired.body.some((asset: { id: string }) => asset.id === assetId)).toBe(true);
+    expect(retired.body.data.some((asset: { id: string }) => asset.id === assetId)).toBe(true);
   });
 });

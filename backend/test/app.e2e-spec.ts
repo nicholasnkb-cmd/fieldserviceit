@@ -117,7 +117,7 @@ describe('FieldserviceIT E2E', () => {
         .expect(201);
 
       expect(res.body.title).toBe('E2E Test Ticket');
-      expect(res.body.ticketNumber).toMatch(/^TKT-\d+/);
+      expect(res.body.ticketNumber).toMatch(/^TKT-[A-Z0-9]+-\d+$/);
       ticketId = res.body.id;
     });
 
@@ -142,7 +142,7 @@ describe('FieldserviceIT E2E', () => {
       await request(app.getHttpServer())
         .patch(`/v1/tickets/${ticketId}`)
         .set('Authorization', `Bearer ${adminToken}`)
-        .send({ status: 'RESOLVED' })
+        .send({ status: 'CLOSED' })
         .expect(400);
     });
   });

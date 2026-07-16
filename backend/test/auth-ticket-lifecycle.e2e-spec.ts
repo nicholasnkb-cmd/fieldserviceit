@@ -495,7 +495,7 @@ describe('Auth & Ticket Lifecycle E2E', () => {
         .expect(200);
 
       expect(res.headers['content-type']).toContain('text/csv');
-      expect(res.body.length).toBeGreaterThan(0);
+      expect(res.text.length).toBeGreaterThan(0);
     });
   });
 
