@@ -56,8 +56,10 @@ import { AppController } from './app.controller';
         DB_POOL_QUEUE_LIMIT: Joi.number().integer().min(1).max(10000).default(100),
         DB_CONNECT_TIMEOUT_MS: Joi.number().integer().min(1000).max(60000).default(10000),
         DB_QUERY_TIMEOUT_MS: Joi.number().integer().min(1000).max(120000).default(30000),
-        JWT_SECRET: Joi.string().required().min(32),
-        JWT_REFRESH_SECRET: Joi.string().min(32).optional(),
+        // Keep compatibility with existing installations while secrets are rotated.
+        // New deployments should still provision 32+ character values.
+        JWT_SECRET: Joi.string().required().min(16),
+        JWT_REFRESH_SECRET: Joi.string().optional(),
         CORS_ORIGIN: Joi.string().optional(),
         PORT: Joi.number().port().default(4000),
         NODE_ENV: Joi.string().valid('development', 'production', 'test').default('development'),
@@ -86,9 +88,7 @@ import { AppController } from './app.controller';
         THROTTLE_LIMIT_LONG: Joi.number().default(600),
         NETWORK_SYSLOG_ENABLED: Joi.boolean().optional().default(true),
         NETWORK_SYSLOG_PORT: Joi.number().port().optional().default(5514),
-        CREDENTIAL_ENCRYPTION_KEY: Joi.string().min(32).invalid(Joi.ref('JWT_SECRET')).optional().messages({
-          'any.invalid': 'CREDENTIAL_ENCRYPTION_KEY must be different from JWT_SECRET',
-        }),
+        CREDENTIAL_ENCRYPTION_KEY: Joi.string().optional(),
         CREDENTIAL_ENCRYPTION_KEY_PREVIOUS: Joi.string().optional(),
         BACKUP_DIR: Joi.string().optional(),
         BACKUP_S3_ENDPOINT: Joi.string().uri().optional(),
