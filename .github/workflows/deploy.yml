@@ -109,12 +109,14 @@ jobs:
           token: ${{ secrets.DEPLOY_REPOS_TOKEN }}
           path: deployment/frontend
 
-      - name: Publish backend through a protected-branch pull request
+      - name: Prepare backend deployment branch
+        id: backend-sync
         env:
           GH_TOKEN: ${{ secrets.DEPLOY_REPOS_TOKEN }}
         run: |
           set -euo pipefail
           test -n "$GH_TOKEN" || { echo "DEPLOY_REPOS_TOKEN is required"; exit 1; }
+          gh api --method GET repos/nicholasnkb-cmd/fieldserviceit-backend >/dev/null || { echo "DEPLOY_REPOS_TOKEN cannot access the backend deployment repository"; exit 1; }
           branch="deploy/backend-${GITHUB_SHA::12}-${GITHUB_RUN_ATTEMPT}"
           rsync -a application/backend/ deployment/backend/ \
             --exclude .git --exclude .github --exclude node_modules --exclude dist --exclude coverage \
@@ -126,11 +128,46 @@ jobs:
           git add -A
           if git diff --cached --quiet; then
             echo "Backend deployment repository is already current." >> "$GITHUB_STEP_SUMMARY"
+            echo "branch=" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           git commit -m "Deploy monorepo ${GITHUB_SHA::12}"
           git push --set-upstream origin "$branch"
-          pr_url=$(gh pr create --repo nicholasnkb-cmd/fieldserviceit-backend --base master --head "$branch" \
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare frontend deployment branch
+        id: frontend-sync
+        env:
+          GH_TOKEN: ${{ secrets.DEPLOY_REPOS_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh api --method GET repos/nicholasnkb-cmd/fieldserviceit-frontend >/dev/null || { echo "DEPLOY_REPOS_TOKEN cannot access the frontend deployment repository"; exit 1; }
+          branch="deploy/frontend-${GITHUB_SHA::12}-${GITHUB_RUN_ATTEMPT}"
+          rsync -a application/frontend/ deployment/frontend/ \
+            --exclude .git --exclude .github --exclude node_modules --exclude .next --exclude coverage \
+            --exclude '.env*'
+          cd deployment/frontend
+          git config user.name "FieldServiceIT Deploy Bot"
+          git config user.email "deploy-bot@fieldserviceit.com"
+          git checkout -b "$branch"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Frontend deployment repository is already current." >> "$GITHUB_STEP_SUMMARY"
+            echo "branch=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git commit -m "Deploy monorepo ${GITHUB_SHA::12}"
+          git push --set-upstream origin "$branch"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+
+      - name: Publish backend through a protected-branch pull request
+        if: steps.backend-sync.outputs.branch != ''
+        env:
+          GH_TOKEN: ${{ secrets.DEPLOY_REPOS_TOKEN }}
+          DEPLOY_BRANCH: ${{ steps.backend-sync.outputs.branch }}
+        run: |
+          set -euo pipefail
+          pr_url=$(gh pr create --repo nicholasnkb-cmd/fieldserviceit-backend --base master --head "$DEPLOY_BRANCH" \
             --title "Deploy backend ${GITHUB_SHA::12}" \
             --body "Automated, history-preserving deployment from monorepo commit $GITHUB_SHA.")
           pr_number="${pr_url##*/}"
@@ -143,26 +180,13 @@ jobs:
           echo "Backend deployment PR: $pr_url" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Publish frontend through a protected-branch pull request
+        if: steps.frontend-sync.outputs.branch != ''
         env:
           GH_TOKEN: ${{ secrets.DEPLOY_REPOS_TOKEN }}
+          DEPLOY_BRANCH: ${{ steps.frontend-sync.outputs.branch }}
         run: |
           set -euo pipefail
-          branch="deploy/frontend-${GITHUB_SHA::12}-${GITHUB_RUN_ATTEMPT}"
-          rsync -a application/frontend/ deployment/frontend/ \
-            --exclude .git --exclude .github --exclude node_modules --exclude .next --exclude coverage \
-            --exclude '.env*'
-          cd deployment/frontend
-          git config user.name "FieldServiceIT Deploy Bot"
-          git config user.email "deploy-bot@fieldserviceit.com"
-          git checkout -b "$branch"
-          git add -A
-          if git diff --cached --quiet; then
-            echo "Frontend deployment repository is already current." >> "$GITHUB_STEP_SUMMARY"
-            exit 0
-          fi
-          git commit -m "Deploy monorepo ${GITHUB_SHA::12}"
-          git push --set-upstream origin "$branch"
-          pr_url=$(gh pr create --repo nicholasnkb-cmd/fieldserviceit-frontend --base master --head "$branch" \
+          pr_url=$(gh pr create --repo nicholasnkb-cmd/fieldserviceit-frontend --base master --head "$DEPLOY_BRANCH" \
             --title "Deploy frontend ${GITHUB_SHA::12}" \
             --body "Automated, history-preserving deployment from monorepo commit $GITHUB_SHA.")
           pr_number="${pr_url##*/}"

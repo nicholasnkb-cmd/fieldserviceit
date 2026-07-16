@@ -45,6 +45,7 @@ export class RmmSyncService implements OnModuleInit {
           this.logger.error(`Dynamic sync failed for ${config.provider}/${config.companyId}: ${err.message}`);
         }
       }, intervalMs);
+      interval.unref();
 
       this.schedulerRegistry.addInterval(jobName, interval);
       this.logger.log(`Registered dynamic sync for ${config.provider}/${config.companyId} every ${config.syncIntervalMin}min`);
@@ -73,7 +74,7 @@ export class RmmSyncService implements OnModuleInit {
       const assets = await provider.syncAllAssets(credentials);
       let assetsCreated = 0;
       let assetsUpdated = 0;
-      let assetsSkipped = 0;
+      const assetsSkipped = 0;
 
       for (const asset of assets) {
         const name = asset.name || 'Unknown Asset';
@@ -148,6 +149,7 @@ export class RmmSyncService implements OnModuleInit {
           this.logger.error(`Dynamic sync failed for ${provider}/${companyId}: ${err.message}`);
         }
       }, intervalMs);
+      interval.unref();
       this.schedulerRegistry.addInterval(jobName, interval);
       this.logger.log(`Rescheduled sync for ${provider}/${companyId} every ${config.syncIntervalMin}min`);
     }

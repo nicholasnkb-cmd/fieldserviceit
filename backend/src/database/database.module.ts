@@ -9,7 +9,15 @@ import { QueryMetricsContext } from '../common/observability/query-metrics.conte
 
 @Global()
 @Module({
-  providers: [PrismaService, DatabaseService, MigrationsService, AuthorizationRepository, SessionRepository, AssetRepository, QueryMetricsContext],
+  providers: [
+    DatabaseService,
+    { provide: PrismaService, useExisting: DatabaseService },
+    MigrationsService,
+    AuthorizationRepository,
+    SessionRepository,
+    AssetRepository,
+    QueryMetricsContext,
+  ],
   exports: [PrismaService, DatabaseService, MigrationsService, AuthorizationRepository, SessionRepository, AssetRepository, QueryMetricsContext],
 })
 export class DatabaseModule {}
