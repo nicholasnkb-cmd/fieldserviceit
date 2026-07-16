@@ -8,10 +8,10 @@ The production environment should require approval in GitHub. The approver must 
 
 Required production secrets:
 
-- `DEPLOY_REPOS_TOKEN`: permission to create branches/PRs and merge approved deployment PRs.
+- `DEPLOY_REPOS_TOKEN`: fine-grained `Contents: write` and `Pull requests: write` permission on both deployment repositories so each application can publish independently.
 - `HOSTINGER_API_TOKEN`: Hostinger API preflight access.
 - `MONITORING_API_KEY`: matches the backend monitoring key.
-- `VERIFICATION_EMAIL` and `VERIFICATION_PASSWORD`: optional non-mutating administrator login verification.
+- `VERIFICATION_EMAIL` and `VERIFICATION_PASSWORD`: dedicated non-mutating administrator account used to verify login, profile hydration, network inventory, retired inventory, and the operations dashboard.
 
 Required or recommended production variables:
 

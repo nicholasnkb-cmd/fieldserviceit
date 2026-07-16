@@ -164,9 +164,11 @@ export class CmdbService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async create(dto: any, companyId: string) {
+  async create(dto: any, companyId: string, actorId?: string) {
     const data = this.normalizeDevicePayload(dto);
-    return this.prisma.asset.create({ data: { ...data, companyId } });
+    const asset = await this.prisma.asset.create({ data: { ...data, companyId } });
+    await this.auditNetworkChange(companyId, actorId, 'asset.create', 'Asset', asset.id, { name: asset.name, deviceCategory: data.deviceCategory });
+    return asset;
   }
 
   async findAll(companyId: string, query: { page?: number; limit?: number; assetType?: string; search?: string; deviceCategory?: string; enrollmentStatus?: string; complianceStatus?: string; ownership?: string; permissionScopes?: any[]; user?: any }) {
@@ -255,12 +257,16 @@ export class CmdbService implements OnModuleInit, OnModuleDestroy {
     );
   }
 
-  async update(id: string, dto: any, companyId: string) {
-    return this.assetRepository.updateTenantAsset(id, companyId, this.normalizeDevicePayload(dto));
+  async update(id: string, dto: any, companyId: string, actorId?: string) {
+    const updated = await this.assetRepository.updateTenantAsset(id, companyId, this.normalizeDevicePayload(dto));
+    await this.auditNetworkChange(companyId, actorId, 'asset.update', 'Asset', id, { fields: Object.keys(dto || {}) });
+    return updated;
   }
 
-  async remove(id: string, companyId: string) {
-    return this.assetRepository.retireTenantAsset(id, companyId);
+  async remove(id: string, companyId: string, actorId?: string) {
+    const retired = await this.assetRepository.retireTenantAsset(id, companyId);
+    await this.auditNetworkChange(companyId, actorId, 'asset.retire', 'Asset', id);
+    return retired;
   }
 
   async listRetired(companyId: string, deviceCategory?: string) {
@@ -268,8 +274,10 @@ export class CmdbService implements OnModuleInit, OnModuleDestroy {
     return { data, meta: { total: data.length } };
   }
 
-  async restore(id: string, companyId: string) {
-    return this.assetRepository.restoreTenantAsset(id, companyId);
+  async restore(id: string, companyId: string, actorId?: string) {
+    const restored = await this.assetRepository.restoreTenantAsset(id, companyId);
+    await this.auditNetworkChange(companyId, actorId, 'asset.restore', 'Asset', id);
+    return restored;
   }
 
   async checkIn(id: string, dto: any, companyId: string) {
@@ -1860,6 +1868,11 @@ export class CmdbService implements OnModuleInit, OnModuleDestroy {
     if (data.batteryLevel !== undefined && data.batteryLevel !== '') {
       data.batteryLevel = Math.max(0, Math.min(100, Number(data.batteryLevel)));
     }
+    for (const field of ['purchaseDate', 'warrantyExpiresAt']) {
+      if (data[field]) data[field] = new Date(data[field]);
+      if (data[field] === '') data[field] = null;
+    }
     return data;
   }
+
 }

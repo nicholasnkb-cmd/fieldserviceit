@@ -125,10 +125,10 @@ Create these GitHub production environment secrets:
 
 ```env
 HOSTINGER_API_TOKEN=<Hostinger API token from hPanel>
-DEPLOY_REPOS_TOKEN=<fine-grained GitHub token with Contents write access to both deployment repositories>
+DEPLOY_REPOS_TOKEN=<fine-grained GitHub token with Contents and Pull requests write access to both deployment repositories>
 HOSTINGER_BACKEND_DEPLOY_WEBHOOK_URL=<backend Git deployment webhook from hPanel>
 HOSTINGER_FRONTEND_DEPLOY_WEBHOOK_URL=<frontend Git deployment webhook from hPanel>
-VERIFICATION_EMAIL=<production administrator used for read-only login verification>
+VERIFICATION_EMAIL=<dedicated production administrator used for read-only authenticated profile, network, retired-device, and operations checks>
 VERIFICATION_PASSWORD=<password stored in the GitHub production environment>
 ```
 

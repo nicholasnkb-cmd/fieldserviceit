@@ -8,6 +8,9 @@ interface NetworkDeviceListProps {
   search: string;
   onSearch: (value: string) => void;
   onSelect: (device: NetworkDevice) => void;
+  selectedIds?: Set<string>;
+  onToggleSelection?: (deviceId: string) => void;
+  canSelect?: boolean;
 }
 
 function DeviceIcon({ type }: { type?: string }) {
@@ -24,7 +27,7 @@ function statusClass(status?: string) {
   return 'border-gray-200 bg-gray-50 text-gray-700';
 }
 
-export function NetworkDeviceList({ devices, selectedId, loading, search, onSearch, onSelect }: NetworkDeviceListProps) {
+export function NetworkDeviceList({ devices, selectedId, loading, search, onSearch, onSelect, selectedIds = new Set(), onToggleSelection, canSelect = false }: NetworkDeviceListProps) {
   return (
     <section className="rounded border border-gray-200 bg-white" aria-label="Network equipment">
       <div className="border-b border-gray-200 p-4">
@@ -35,7 +38,9 @@ export function NetworkDeviceList({ devices, selectedId, loading, search, onSear
       </div>
       <div className="divide-y divide-gray-200">
         {devices.map((device) => (
-          <button key={device.id} onClick={() => onSelect(device)} className={`flex w-full items-start gap-3 p-4 text-left hover:bg-blue-50 ${selectedId === device.id ? 'bg-blue-50' : ''}`}>
+          <div key={device.id} className={`flex items-start hover:bg-blue-50 ${selectedId === device.id ? 'bg-blue-50' : ''}`}>
+            {canSelect && <label className="flex min-h-11 shrink-0 items-center px-3" aria-label={`Select ${device.name}`}><input type="checkbox" checked={selectedIds.has(device.id)} onChange={() => onToggleSelection?.(device.id)} className="h-4 w-4 rounded border-gray-300 text-primary" /></label>}
+            <button onClick={() => onSelect(device)} className="flex min-w-0 flex-1 items-start gap-3 p-4 text-left">
             <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded border border-gray-200 bg-gray-50 text-gray-600"><DeviceIcon type={`${device.manufacturer} ${device.model}`} /></span>
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-semibold text-gray-950">{device.name}</span>
@@ -43,9 +48,11 @@ export function NetworkDeviceList({ devices, selectedId, loading, search, onSear
               <span className="mt-2 flex flex-wrap gap-2">
                 <span className={`rounded border px-2 py-0.5 text-xs font-medium ${statusClass(device.status)}`}>{device.status}</span>
                 {device.ipAddress && <span className="rounded border border-gray-200 bg-gray-50 px-2 py-0.5 text-xs text-gray-600">{device.ipAddress}</span>}
+                {device.warrantyExpiresAt && <span className={`rounded border px-2 py-0.5 text-xs ${new Date(device.warrantyExpiresAt).getTime() < Date.now() ? 'border-red-200 bg-red-50 text-red-700' : 'border-blue-200 bg-blue-50 text-blue-700'}`}>Warranty {new Date(device.warrantyExpiresAt).toLocaleDateString()}</span>}
               </span>
             </span>
-          </button>
+            </button>
+          </div>
         ))}
         {!loading && devices.length === 0 && <div className="p-8 text-center text-sm text-gray-500">No network equipment found</div>}
         {loading && <div className="p-4 text-sm text-gray-500">Loading network equipment...</div>}
