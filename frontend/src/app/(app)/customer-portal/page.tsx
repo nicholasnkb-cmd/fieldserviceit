@@ -1,7 +1,8 @@
 'use client';
 
+import type React from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, ClipboardCheck, Loader2, MessageSquare, RefreshCw, Search, Star, Upload } from 'lucide-react';
+import { CalendarDays, CheckCircle2, ClipboardCheck, FileText, Loader2, MessageSquare, Receipt, RefreshCw, Search, Star, Upload, UserCheck } from 'lucide-react';
 import { api, getListData } from '../../../lib/api';
 import { formatActionDate, formatActionTime, formatDate, getStatusColor } from '../../../lib/utils';
 
@@ -47,6 +48,7 @@ export default function CustomerPortalPage() {
   const [selectedId, setSelectedId] = useState('');
   const [summary, setSummary] = useState<any>({});
   const [feedback, setFeedback] = useState<any[]>([]);
+  const [overview, setOverview] = useState<{ upcomingVisits: any[]; documents: any[]; invoices: any[]; quotes: any[] }>({ upcomingVisits: [], documents: [], invoices: [], quotes: [] });
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('');
   const [message, setMessage] = useState('');
@@ -64,15 +66,17 @@ export default function CustomerPortalPage() {
       const params = new URLSearchParams({ limit: '100' });
       if (query.trim()) params.set('search', query.trim());
       if (status) params.set('status', status);
-      const [ticketRes, summaryRes, feedbackRes] = await Promise.all([
+      const [ticketRes, summaryRes, feedbackRes, overviewRes] = await Promise.all([
         api.get(`/tickets?${params.toString()}`),
         api.get('/customer-portal/summary'),
         api.get('/customer-portal/feedback'),
+        api.get('/customer-portal/overview'),
       ]);
       const nextTickets = getListData<Ticket>(ticketRes);
       setTickets(nextTickets);
       setSummary(summaryRes || {});
       setFeedback(getListData(feedbackRes));
+      setOverview(overviewRes || { upcomingVisits: [], documents: [], invoices: [], quotes: [] });
       if (!selectedId && nextTickets[0]) setSelectedId(nextTickets[0].id);
     } catch (err: any) {
       setError(err.message || 'Failed to load customer portal');
@@ -199,6 +203,41 @@ export default function CustomerPortalPage() {
             <p className="mt-3 text-2xl font-bold text-gray-950">{value}</p>
           </div>
         ))}
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4" aria-label="Customer records and field visits">
+        <PortalPanel title="Upcoming visits" icon={CalendarDays} empty="No technician visits are scheduled.">
+          {overview.upcomingVisits.slice(0, 5).map((visit) => (
+            <div key={visit.id} className="border-b border-gray-100 py-2 last:border-0">
+              <p className="text-sm font-semibold text-gray-950">{visit.ticketNumber} · {visit.status.replaceAll('_', ' ')}</p>
+              <p className="mt-1 text-xs text-gray-500">{visit.technicianName || 'Technician not assigned'} · {visit.arrivedAt ? `Arrived ${formatDate(visit.arrivedAt)}` : visit.scheduledAt ? `Scheduled ${formatDate(visit.scheduledAt)}` : 'Scheduling in progress'}</p>
+            </div>
+          ))}
+        </PortalPanel>
+        <PortalPanel title="Documents" icon={FileText} empty="No customer-visible documents yet.">
+          {overview.documents.slice(0, 5).map((document) => (
+            <a key={document.id} href={document.fileUrl} target="_blank" rel="noreferrer" className="block border-b border-gray-100 py-2 last:border-0 hover:text-primary">
+              <p className="truncate text-sm font-semibold">{document.fileName}</p>
+              <p className="mt-1 text-xs text-gray-500">{document.ticketNumber} · {formatDate(document.createdAt)}</p>
+            </a>
+          ))}
+        </PortalPanel>
+        <PortalPanel title="Quotes and approvals" icon={UserCheck} empty="No quotes are awaiting or recording approval.">
+          {overview.quotes.slice(0, 5).map((quote) => (
+            <div key={quote.id} className="border-b border-gray-100 py-2 last:border-0">
+              <p className="text-sm font-semibold text-gray-950">{quote.quoteNumber} · {quote.status}</p>
+              <p className="mt-1 text-xs text-gray-500">{quote.ticketNumber} · {formatMoney(quote.total, quote.currency)}</p>
+            </div>
+          ))}
+        </PortalPanel>
+        <PortalPanel title="Invoices" icon={Receipt} empty="No issued invoices are linked to your requests.">
+          {overview.invoices.slice(0, 5).map((invoice) => (
+            <div key={invoice.id} className="border-b border-gray-100 py-2 last:border-0">
+              <p className="text-sm font-semibold text-gray-950">{invoice.invoiceNumber} · {invoice.status}</p>
+              <p className="mt-1 text-xs text-gray-500">Balance {formatMoney(invoice.balanceDue, invoice.currency)}{invoice.dueAt ? ` · Due ${formatDate(invoice.dueAt)}` : ''}</p>
+            </div>
+          ))}
+        </PortalPanel>
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
@@ -328,4 +367,18 @@ export default function CustomerPortalPage() {
       </section>
     </div>
   );
+}
+
+function PortalPanel({ title, icon: Icon, empty, children }: { title: string; icon: any; empty: string; children: React.ReactNode }) {
+  const hasChildren = Array.isArray(children) ? children.length > 0 : Boolean(children);
+  return (
+    <div className="rounded-lg border border-gray-200 bg-white p-4">
+      <div className="mb-2 flex items-center gap-2"><Icon size={17} aria-hidden="true" /><h2 className="font-semibold text-gray-950">{title}</h2></div>
+      {hasChildren ? children : <p className="py-2 text-sm text-gray-500">{empty}</p>}
+    </div>
+  );
+}
+
+function formatMoney(value: unknown, currency = 'USD') {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(Number(value || 0));
 }

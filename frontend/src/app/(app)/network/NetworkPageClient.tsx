@@ -30,6 +30,10 @@ import { useToast } from '../../../components/ui/Toast';
 import { NetworkDeviceList } from '../../../components/network/NetworkDeviceList';
 import { NetworkDeviceHeader } from '../../../components/network/NetworkDeviceHeader';
 import { RetiredNetworkDevices } from '../../../components/network/RetiredNetworkDevices';
+import { NetworkInventoryTools } from '../../../components/network/NetworkInventoryTools';
+import { NetworkDeviceOverview, type AssetHistoryItem } from '../../../components/network/NetworkDeviceOverview';
+import { NetworkDiscoveryPanel, type DiscoveryResult, type DiscoverySchedule } from '../../../components/network/NetworkDiscoveryPanel';
+import { useNetworkInventoryActions } from '../../../components/network/useNetworkInventoryActions';
 import type { NetworkDevice } from '../../../components/network/types';
 import { networkDeviceSchema } from '../../../components/network/network-device-form';
 import { retiredNetworkDevicesKey, useRetiredNetworkDevices } from '../../../components/network/useRetiredNetworkDevices';
@@ -181,16 +185,6 @@ interface FirmwareItem {
   eolStatus?: string;
   cveSummary?: string;
   checkedAt: string;
-}
-
-interface DiscoveryResult {
-  id: string;
-  subnet: string;
-  ipAddress: string;
-  hostname?: string;
-  status: string;
-  assetId?: string;
-  discoveredAt: string;
 }
 
 interface DeviceAction {
@@ -375,7 +369,9 @@ export default function NetworkPage() {
   const [pinging, setPinging] = useState(false);
   const [snmpPolling, setSnmpPolling] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [removeCandidate, setRemoveCandidate] = useState<NetworkDevice | null>(null);
+  const [lifecycle, setLifecycle] = useState({ purchaseDate: '', warrantyExpiresAt: '' });
+  const [assetHistory, setAssetHistory] = useState<AssetHistoryItem[]>([]);
+  const [discoverySchedule, setDiscoverySchedule] = useState<DiscoverySchedule>({ subnet: '192.168.1.0/24', intervalMinutes: 1440, hostLimit: 64, enabled: false });
   const [pendingAction, setPendingAction] = useState<{ action: string; port: string } | null>(null);
 
   const canEditNetwork = userCan(user, 'assets.edit');
@@ -389,6 +385,19 @@ export default function NetworkPage() {
     enabled: showRetired && canDeleteNetwork && !(user?.role === 'SUPER_ADMIN' && !activeCompanyContext),
   });
   const retiredDevices = retiredQuery.data || [];
+  const inventoryActions = useNetworkInventoryActions({
+    devices,
+    setDevices,
+    selected,
+    setSelected,
+    onFallbackSelected: (device) => {
+      setConfig(device ? parseConfig(device.notes) : defaultConfig);
+      setLifecycle({ purchaseDate: device?.purchaseDate?.slice(0, 10) || '', warrantyExpiresAt: device?.warrantyExpiresAt?.slice(0, 10) || '' });
+      setTab('overview');
+    },
+    refetchRetired: () => retiredQuery.refetch(),
+    toast,
+  });
 
   useEffect(() => {
     const handle = window.setTimeout(() => setDebouncedSearch(search.trim()), 350);
@@ -410,6 +419,7 @@ export default function NetworkPage() {
       if (!selected && networkDevices.length > 0) {
         setSelected(networkDevices[0]);
         setConfig(parseConfig(networkDevices[0].notes));
+        setLifecycle({ purchaseDate: networkDevices[0].purchaseDate?.slice(0, 10) || '', warrantyExpiresAt: networkDevices[0].warrantyExpiresAt?.slice(0, 10) || '' });
       }
     } catch (err: any) {
       setMessage(err.message || 'Failed to load network equipment');
@@ -443,6 +453,7 @@ export default function NetworkPage() {
   const selectDevice = (device: NetworkDevice) => {
     setSelected(device);
     setConfig(parseConfig(device.notes));
+    setLifecycle({ purchaseDate: device.purchaseDate?.slice(0, 10) || '', warrantyExpiresAt: device.warrantyExpiresAt?.slice(0, 10) || '' });
     setTab('overview');
     fetchMonitoring(device.id);
     fetchNetworkOperations(device.id);
@@ -475,11 +486,12 @@ export default function NetworkPage() {
 
   const fetchNetworkOperations = async (deviceId?: string) => {
     try {
-      const [events, ipam, windows, backups] = await Promise.all([
+      const [events, ipam, windows, backups, schedule] = await Promise.all([
         api.get<AlertEvent[]>('/assets/network/alert-events?status=ACTIVE').catch(() => []),
         api.get<IpReservation[]>('/assets/network/ip-reservations').catch(() => []),
         api.get<MaintenanceWindow[]>('/assets/network/maintenance-windows').catch(() => []),
         deviceId ? api.get<ConfigBackup[]>(`/assets/${deviceId}/config-backups`).catch(() => []) : Promise.resolve([]),
+        api.get<DiscoverySchedule>('/assets/network/discovery/schedule').catch(() => discoverySchedule),
       ]);
       const [ifaceData, firmwareData, actionData, seriesData, discoveryData] = await Promise.all([
         deviceId ? api.get<InterfaceMetric[]>(`/assets/${deviceId}/interfaces`).catch(() => []) : Promise.resolve([]),
@@ -499,6 +511,7 @@ export default function NetworkPage() {
       setIpReservations(ipam);
       setMaintenanceWindows(windows);
       setConfigBackups(backups);
+      setDiscoverySchedule(schedule);
       setInterfaces(ifaceData);
       setFirmware(firmwareData);
       setDeviceActions(actionData);
@@ -509,6 +522,7 @@ export default function NetworkPage() {
       setEscalations(escalationData);
       setSavedSearches(savedSearchData);
       setRetention(retentionData);
+      if (deviceId) setAssetHistory(await api.get<AssetHistoryItem[]>(`/assets/${deviceId}/history`).catch(() => []));
     } catch (err: any) {
       setMessage(err.message || 'Failed to load network operations');
     }
@@ -558,6 +572,8 @@ export default function NetworkPage() {
     try {
       const updated = await api.patch<NetworkDevice>(`/assets/${selected.id}`, {
         ipAddress: config.managementIp || selected.ipAddress,
+        purchaseDate: lifecycle.purchaseDate || null,
+        warrantyExpiresAt: lifecycle.warrantyExpiresAt || null,
         notes: serializeConfig(config, selected.notes),
       });
       setSelected(updated);
@@ -570,26 +586,16 @@ export default function NetworkPage() {
     }
   };
 
-  const removeDevice = async () => {
-    if (!removeCandidate || deleting) return;
-
-    setDeleting(true);
+  const saveDiscoverySchedule = async () => {
+    setSaving(true);
     try {
-      await api.delete(`/assets/${removeCandidate.id}`);
-      const remaining = devices.filter((device) => device.id !== removeCandidate.id);
-      const nextDevice = remaining[0] || null;
-      setDevices(remaining);
-      queryClient.setQueryData<NetworkDevice[]>(retiredNetworkDevicesKey(user?.companyId, activeCompanyContext?.id), (current = []) => [removeCandidate, ...current.filter((device) => device.id !== removeCandidate.id)]);
-      setSelected(nextDevice);
-      setConfig(nextDevice ? parseConfig(nextDevice.notes) : defaultConfig);
-      setTab('overview');
-      setMessage('');
-      toast('success', `${removeCandidate.name} retired. It can be restored from Retired devices.`);
-      setRemoveCandidate(null);
+      const updated = await api.put<DiscoverySchedule>('/assets/network/discovery/schedule', discoverySchedule);
+      setDiscoverySchedule(updated);
+      toast('success', updated.enabled ? 'Scheduled network discovery enabled.' : 'Scheduled network discovery disabled.');
     } catch (err: any) {
-      toast('error', err.message || 'Failed to retire network equipment');
+      toast('error', err.message || 'Failed to save discovery schedule');
     } finally {
-      setDeleting(false);
+      setSaving(false);
     }
   };
 
@@ -873,7 +879,7 @@ export default function NetworkPage() {
 
   return (
     <RequireCompanyContext area="Network monitoring">
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 p-4 md:p-6">
       <div className="flex flex-col gap-4 border-b border-gray-200 pb-5 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-sm font-medium text-blue-700">Network management</p>
@@ -924,6 +930,19 @@ export default function NetworkPage() {
         })}
       </div>
 
+      <div className="mt-5">
+        <NetworkInventoryTools
+          devices={devices}
+          selectedCount={inventoryActions.selectedIds.size}
+          canImport={canEditNetwork}
+          canBulkRetire={canDeleteNetwork}
+          busy={saving || deleting || inventoryActions.busy}
+          onImport={inventoryActions.importDevices}
+          onBulkRetire={() => inventoryActions.setBulkRetireOpen(true)}
+          onClearSelection={inventoryActions.clearSelection}
+        />
+      </div>
+
       {showAdd && canEditNetwork && (
         <form onSubmit={createDevice} className="mt-5 rounded border border-gray-200 bg-white p-5">
           <div className="grid gap-4 md:grid-cols-4">
@@ -972,7 +991,7 @@ export default function NetworkPage() {
       )}
 
       <div className="mt-5 grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
-        <NetworkDeviceList devices={filteredDevices} selectedId={selected?.id} loading={loading} search={search} onSearch={setSearch} onSelect={selectDevice} />
+        <NetworkDeviceList devices={filteredDevices} selectedId={selected?.id} loading={loading} search={search} onSearch={setSearch} onSelect={selectDevice} selectedIds={inventoryActions.selectedIds} onToggleSelection={inventoryActions.toggleSelection} canSelect={canDeleteNetwork} />
 
         <section className="rounded border border-gray-200 bg-white">
           {!selected ? (
@@ -983,7 +1002,7 @@ export default function NetworkPage() {
           ) : (
             <div>
               <div className="border-b border-gray-200 p-5">
-                <NetworkDeviceHeader device={selected} canEdit={canEditNetwork} canRetire={canDeleteNetwork} saving={saving} retiring={deleting} onSave={saveConfig} onRetire={() => setRemoveCandidate(selected)} />
+                <NetworkDeviceHeader device={selected} canEdit={canEditNetwork} canRetire={canDeleteNetwork} saving={saving} retiring={deleting || inventoryActions.busy} onSave={saveConfig} onRetire={() => inventoryActions.setRemoveCandidate(selected)} />
                 <div className="mt-4 flex flex-wrap gap-2">
                   {tabItems.map(({ key, Icon, label }) => {
                     const TabIcon = Icon;
@@ -999,29 +1018,7 @@ export default function NetworkPage() {
 
               <div className="p-5">
                 {tab === 'overview' && (
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <label>
-                      <span className="text-sm font-medium text-gray-700">Management IP</span>
-                      <input value={config.managementIp || selected.ipAddress || ''} onChange={(event) => setConfig({ ...config, managementIp: event.target.value })} className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm" />
-                    </label>
-                    <label>
-                      <span className="text-sm font-medium text-gray-700">WAN mode</span>
-                      <select value={config.wanMode} onChange={(event) => setConfig({ ...config, wanMode: event.target.value })} className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm">
-                        <option>DHCP</option>
-                        <option>Static</option>
-                        <option>PPPoE</option>
-                        <option>Cellular failover</option>
-                      </select>
-                    </label>
-                    <label>
-                      <span className="text-sm font-medium text-gray-700">Primary uplink</span>
-                      <input value={config.uplink} onChange={(event) => setConfig({ ...config, uplink: event.target.value })} className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm" />
-                    </label>
-                    <div className="rounded border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
-                      <div className="flex items-center gap-2 font-medium text-gray-800"><Globe2 className="h-4 w-4" aria-hidden="true" /> Last seen</div>
-                      <div className="mt-2">{selected.lastCheckInAt ? formatDate(selected.lastCheckInAt) : 'No check-in recorded'}</div>
-                    </div>
-                  </div>
+                  <NetworkDeviceOverview device={selected} config={config} onConfigChange={(patch) => setConfig({ ...config, ...patch })} lifecycle={lifecycle} onLifecycleChange={(patch) => setLifecycle({ ...lifecycle, ...patch })} history={assetHistory} />
                 )}
 
                 {tab === 'topology' && (
@@ -1273,20 +1270,7 @@ export default function NetworkPage() {
                 )}
 
                 {tab === 'discovery' && (
-                  <div className="space-y-4">
-                    <div className="grid gap-3 rounded border border-gray-200 p-4 md:grid-cols-[1fr_auto]">
-                      <TextField label="Subnet" value={discoverySubnet} onChange={setDiscoverySubnet} />
-                      <button onClick={scanSubnet} disabled={saving} className="mt-6 inline-flex h-10 items-center justify-center gap-2 rounded border border-gray-300 px-3 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-60">
-                        <Search className="h-4 w-4" />
-                        Scan
-                      </button>
-                    </div>
-                    <SimpleTable
-                      empty="No discovery results yet"
-                      headers={['Subnet', 'IP', 'Hostname', 'Status', 'Asset']}
-                      rows={discovery.map((item) => [item.subnet, item.ipAddress, item.hostname || '-', item.status, item.assetId ? 'Linked' : 'New'])}
-                    />
-                  </div>
+                  <NetworkDiscoveryPanel subnet={discoverySubnet} onSubnetChange={setDiscoverySubnet} onScan={scanSubnet} results={discovery} schedule={discoverySchedule} onScheduleChange={(patch) => setDiscoverySchedule({ ...discoverySchedule, ...patch })} onSaveSchedule={saveDiscoverySchedule} busy={saving} />
                 )}
 
                 {tab === 'actions' && (
@@ -1492,13 +1476,24 @@ export default function NetworkPage() {
         </div>
       )}
       <ConfirmDialog
-        open={Boolean(removeCandidate)}
-        title={`Retire ${removeCandidate?.name || 'device'}?`}
-        description="This removes the device from active network inventory. Its configuration and history are retained, and an administrator can restore it later from Retired devices."
+        open={Boolean(inventoryActions.removeCandidate)}
+        title={`Retire ${inventoryActions.removeCandidate?.name || 'device'}?`}
+        description={inventoryActions.removalImpact
+          ? `${inventoryActions.removalImpact.action} Dependencies retained: ${inventoryActions.removalImpact.activeTickets} active tickets, ${inventoryActions.removalImpact.topologyLinks} topology links, ${inventoryActions.removalImpact.activeAlerts} active alerts, and ${inventoryActions.removalImpact.ipReservations} IP reservations.`
+          : 'Checking tickets, topology links, alerts, and IP reservations before retirement...'}
         confirmLabel="Retire device"
-        busy={deleting}
-        onCancel={() => setRemoveCandidate(null)}
-        onConfirm={removeDevice}
+        busy={inventoryActions.busy || (Boolean(inventoryActions.removeCandidate) && !inventoryActions.removalImpact)}
+        onCancel={() => inventoryActions.setRemoveCandidate(null)}
+        onConfirm={inventoryActions.retireOne}
+      />
+      <ConfirmDialog
+        open={inventoryActions.bulkRetireOpen}
+        title={`Retire ${inventoryActions.selectedIds.size} selected device${inventoryActions.selectedIds.size === 1 ? '' : 's'}?`}
+        description="The selected devices will be hidden from active inventory. Their configurations, tickets, topology, monitoring history, and audit records are retained, and each device can be restored later."
+        confirmLabel="Retire selected"
+        busy={inventoryActions.busy}
+        onCancel={() => inventoryActions.setBulkRetireOpen(false)}
+        onConfirm={inventoryActions.bulkRetire}
       />
     </div>
     </RequireCompanyContext>

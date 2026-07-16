@@ -12,5 +12,7 @@ export interface NetworkDevice {
   notes?: string;
   lastCheckInAt?: string;
   complianceStatus?: string;
+  purchaseDate?: string;
+  warrantyExpiresAt?: string;
   createdAt: string;
 }

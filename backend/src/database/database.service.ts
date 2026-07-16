@@ -175,7 +175,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy, OnApplica
         osVersion VARCHAR(191),
         cpu VARCHAR(191),
         ram VARCHAR(191),
-        storage VARCHAR(191),
+        storage VARCHAR(191), purchaseDate DATETIME(3), warrantyExpiresAt DATETIME(3),
         status VARCHAR(191) DEFAULT 'active',
         deviceCategory VARCHAR(191) DEFAULT 'DESKTOP',
         ownership VARCHAR(191) DEFAULT 'COMPANY',
@@ -207,7 +207,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy, OnApplica
         updatedAt DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
         deletedAt DATETIME(3),
         INDEX(companyId),
-        INDEX(assetType),
+        INDEX(assetType), INDEX(warrantyExpiresAt),
         INDEX(deviceCategory),
         INDEX(enrollmentStatus),
         INDEX(complianceStatus),
@@ -788,8 +788,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy, OnApplica
       { name: 'carrier', definition: 'VARCHAR(191)' },
       { name: 'appInventory', definition: 'TEXT' },
       { name: 'policyProfile', definition: 'VARCHAR(191)' },
+      { name: 'purchaseDate', definition: 'DATETIME(3)' }, { name: 'warrantyExpiresAt', definition: 'DATETIME(3)', index: 'INDEX(warrantyExpiresAt)' },
     ];
-
     for (const column of columns) {
       try {
         await this.execute(`ALTER TABLE Asset ADD COLUMN ${this.escapeColumn(column.name)} ${column.definition}`);

@@ -85,9 +85,9 @@ jobs:
           MONITORING_API_KEY: ${{ secrets.MONITORING_API_KEY }}
         run: node scripts/security-deployment-check.mjs
 
-  deploy-hostinger:
-    name: Deploy Hostinger Applications
-    needs: [build-backend, build-frontend, hostinger-preflight]
+  deploy-backend:
+    name: Deploy Hostinger Backend
+    needs: [build-backend, hostinger-preflight]
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -101,13 +101,6 @@ jobs:
           ref: master
           token: ${{ secrets.DEPLOY_REPOS_TOKEN }}
           path: deployment/backend
-
-      - uses: actions/checkout@v4
-        with:
-          repository: nicholasnkb-cmd/fieldserviceit-frontend
-          ref: master
-          token: ${{ secrets.DEPLOY_REPOS_TOKEN }}
-          path: deployment/frontend
 
       - name: Prepare backend deployment branch
         id: backend-sync
@@ -135,31 +128,6 @@ jobs:
           git push --set-upstream origin "$branch"
           echo "branch=$branch" >> "$GITHUB_OUTPUT"
 
-      - name: Prepare frontend deployment branch
-        id: frontend-sync
-        env:
-          GH_TOKEN: ${{ secrets.DEPLOY_REPOS_TOKEN }}
-        run: |
-          set -euo pipefail
-          gh api --method GET repos/nicholasnkb-cmd/fieldserviceit-frontend >/dev/null || { echo "DEPLOY_REPOS_TOKEN cannot access the frontend deployment repository"; exit 1; }
-          branch="deploy/frontend-${GITHUB_SHA::12}-${GITHUB_RUN_ATTEMPT}"
-          rsync -a application/frontend/ deployment/frontend/ \
-            --exclude .git --exclude .github --exclude node_modules --exclude .next --exclude coverage \
-            --exclude '.env*'
-          cd deployment/frontend
-          git config user.name "FieldServiceIT Deploy Bot"
-          git config user.email "deploy-bot@fieldserviceit.com"
-          git checkout -b "$branch"
-          git add -A
-          if git diff --cached --quiet; then
-            echo "Frontend deployment repository is already current." >> "$GITHUB_STEP_SUMMARY"
-            echo "branch=" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          git commit -m "Deploy monorepo ${GITHUB_SHA::12}"
-          git push --set-upstream origin "$branch"
-          echo "branch=$branch" >> "$GITHUB_OUTPUT"
-
       - name: Publish backend through a protected-branch pull request
         if: steps.backend-sync.outputs.branch != ''
         env:
@@ -178,6 +146,53 @@ jobs:
           fi
           gh pr merge "$pr_number" --repo nicholasnkb-cmd/fieldserviceit-backend --squash --delete-branch
           echo "Backend deployment PR: $pr_url" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Allow Hostinger backend deployment to start
+        if: steps.backend-sync.outputs.branch != ''
+        run: sleep 30
+
+  deploy-frontend:
+    name: Deploy Hostinger Frontend
+    needs: [build-frontend, hostinger-preflight]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: application
+
+      - uses: actions/checkout@v4
+        with:
+          repository: nicholasnkb-cmd/fieldserviceit-frontend
+          ref: master
+          token: ${{ secrets.DEPLOY_REPOS_TOKEN }}
+          path: deployment/frontend
+
+      - name: Prepare frontend deployment branch
+        id: frontend-sync
+        env:
+          GH_TOKEN: ${{ secrets.DEPLOY_REPOS_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$GH_TOKEN" || { echo "DEPLOY_REPOS_TOKEN is required"; exit 1; }
+          gh api --method GET repos/nicholasnkb-cmd/fieldserviceit-frontend >/dev/null || { echo "DEPLOY_REPOS_TOKEN cannot access the frontend deployment repository"; exit 1; }
+          branch="deploy/frontend-${GITHUB_SHA::12}-${GITHUB_RUN_ATTEMPT}"
+          rsync -a application/frontend/ deployment/frontend/ \
+            --exclude .git --exclude .github --exclude node_modules --exclude .next --exclude coverage \
+            --exclude '.env*'
+          cd deployment/frontend
+          git config user.name "FieldServiceIT Deploy Bot"
+          git config user.email "deploy-bot@fieldserviceit.com"
+          git checkout -b "$branch"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Frontend deployment repository is already current." >> "$GITHUB_STEP_SUMMARY"
+            echo "branch=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git commit -m "Deploy monorepo ${GITHUB_SHA::12}"
+          git push --set-upstream origin "$branch"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
 
       - name: Publish frontend through a protected-branch pull request
         if: steps.frontend-sync.outputs.branch != ''
@@ -198,12 +213,14 @@ jobs:
           gh pr merge "$pr_number" --repo nicholasnkb-cmd/fieldserviceit-frontend --squash --delete-branch
           echo "Frontend deployment PR: $pr_url" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Allow Hostinger auto-deployments to start
+      - name: Allow Hostinger frontend deployment to start
+        if: steps.frontend-sync.outputs.branch != ''
         run: sleep 30
 
   verify-production:
     name: Verify Production
-    needs: [deploy-hostinger]
+    needs: [deploy-backend, deploy-frontend]
+    if: ${{ always() && !cancelled() && (needs.deploy-backend.result == 'success' || needs.deploy-frontend.result == 'success') }}
     runs-on: ubuntu-latest
     environment: production
     timeout-minutes: 8

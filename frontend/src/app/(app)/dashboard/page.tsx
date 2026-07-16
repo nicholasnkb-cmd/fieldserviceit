@@ -8,7 +8,7 @@ import { connectSocket, disconnectSocket, onSocketEvent } from '../../../lib/soc
 import { formatDate } from '../../../lib/utils';
 import { api } from '../../../lib/api';
 import { EmptyState } from '../../../components/ui/EmptyState';
-import { TicketPlus } from 'lucide-react';
+import { AlertTriangle, CalendarClock, MonitorX, ShieldAlert, TicketPlus, UsersRound } from 'lucide-react';
 
 interface TicketSummary {
   total: number;
@@ -16,6 +16,15 @@ interface TicketSummary {
   byPriority: { priority: string; _count: number }[];
   resolvedToday: number;
   avgResolutionTime: number;
+}
+
+interface OperationsSummary {
+  overdueTickets: number;
+  slaAtRisk: number;
+  offlineDevices: number;
+  warrantiesExpiring: number;
+  highSecurityFindings: number;
+  technicianWorkload: Array<{ id: string; name: string; activeTickets: number; activeDispatches: number }>;
 }
 
 const statusColors: Record<string, string> = {
@@ -48,6 +57,7 @@ const feedDotColor = (action: string) => {
 export default function DashboardPage() {
   const [summary, setSummary] = useState<TicketSummary | null>(null);
   const [activity, setActivity] = useState<any[]>([]);
+  const [operations, setOperations] = useState<OperationsSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -78,6 +88,9 @@ export default function DashboardPage() {
     api.get('/reports/activity')
       .then(setActivity)
       .catch(() => {});
+    api.get<OperationsSummary>('/reports/operations')
+      .then(setOperations)
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -94,7 +107,7 @@ export default function DashboardPage() {
   const total = summary?.total || 0;
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -119,6 +132,45 @@ export default function DashboardPage() {
           </p>
         </div>
       </div>
+
+      {operations && (
+        <section className="mb-8" aria-labelledby="operations-heading">
+          <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 id="operations-heading" className="text-lg font-semibold">Operations requiring attention</h2>
+              <p className="text-sm text-gray-500">Live SLA, infrastructure, warranty, and security risk signals.</p>
+            </div>
+            <Link href="/dashboards" className="text-sm font-semibold text-primary hover:underline">Open advanced dashboards</Link>
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            {[
+              { label: 'SLA overdue', value: operations.overdueTickets, href: '/tickets?status=OPEN', icon: AlertTriangle, tone: 'text-red-700 bg-red-50 border-red-200' },
+              { label: 'SLA at risk', value: operations.slaAtRisk, href: '/sla', icon: CalendarClock, tone: 'text-amber-700 bg-amber-50 border-amber-200' },
+              { label: 'Offline devices', value: operations.offlineDevices, href: '/network', icon: MonitorX, tone: 'text-orange-700 bg-orange-50 border-orange-200' },
+              { label: 'Warranties ≤ 90d', value: operations.warrantiesExpiring, href: '/assets', icon: CalendarClock, tone: 'text-blue-700 bg-blue-50 border-blue-200' },
+              { label: 'High security findings', value: operations.highSecurityFindings, href: '/security-center', icon: ShieldAlert, tone: 'text-purple-700 bg-purple-50 border-purple-200' },
+            ].map(({ label, value, href, icon: Icon, tone }) => (
+              <Link key={label} href={href} className={`rounded-lg border p-4 transition hover:shadow-sm ${tone}`}>
+                <div className="flex items-center justify-between gap-3"><span className="text-sm font-semibold">{label}</span><Icon size={18} aria-hidden="true" /></div>
+                <p className="mt-3 text-2xl font-bold">{value}</p>
+              </Link>
+            ))}
+          </div>
+          {operations.technicianWorkload.length > 0 && (
+            <div className="mt-4 rounded-lg border border-gray-200 bg-white p-4">
+              <div className="mb-3 flex items-center gap-2"><UsersRound size={18} aria-hidden="true" /><h3 className="font-semibold">Technician workload</h3></div>
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                {operations.technicianWorkload.map((item) => (
+                  <div key={item.id} className="rounded border border-gray-200 p-3">
+                    <p className="truncate text-sm font-semibold text-gray-950">{item.name}</p>
+                    <p className="mt-1 text-xs text-gray-500">{item.activeTickets} active tickets · {item.activeDispatches} field jobs</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-lg shadow p-6">
