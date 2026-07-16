@@ -50,7 +50,8 @@ export class RequestDeduplicationMiddleware implements NestMiddleware {
 
   constructor() {
     // Clean up old entries every 2 minutes
-    setInterval(() => this.cleanupCache(), 120000);
+    const interval = setInterval(() => this.cleanupCache(), 120000);
+    interval.unref();
   }
 
   use(req: Request, res: Response, next: NextFunction) {

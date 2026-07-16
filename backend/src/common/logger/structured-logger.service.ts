@@ -52,7 +52,8 @@ export class StructuredLogger {
 
   constructor() {
     // Report metrics every 5 minutes
-    setInterval(() => this.reportMetrics(), this.METRICS_INTERVAL);
+    const interval = setInterval(() => this.reportMetrics(), this.METRICS_INTERVAL);
+    interval.unref();
   }
 
   /**
