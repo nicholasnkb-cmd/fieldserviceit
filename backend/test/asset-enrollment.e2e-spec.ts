@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import * as request from 'supertest';
 import { AppModule } from '../src/app.module';
+import { PRIVACY_VERSION, TERMS_VERSION } from '../src/modules/auth/legal-consent';
 import { PrismaService } from '../src/database/prisma.service';
 
 /**
@@ -30,6 +31,11 @@ describe('Asset Enrollment Workflow (e2e)', () => {
   const testUser = {
     email: `test-enroll-${Date.now()}@example.com`,
     password: 'TestPassword123!',
+    firstName: 'Asset',
+    lastName: 'Enrollment',
+    termsAccepted: true,
+    termsVersion: TERMS_VERSION,
+    privacyVersion: PRIVACY_VERSION,
   };
 
   const testDevice = {

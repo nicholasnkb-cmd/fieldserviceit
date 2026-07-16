@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import * as request from 'supertest';
 import { AppModule } from '../src/app.module';
+import { PRIVACY_VERSION, TERMS_VERSION } from '../src/modules/auth/legal-consent';
 
 describe('FieldserviceIT E2E', () => {
   let app: INestApplication;
@@ -57,7 +58,15 @@ describe('FieldserviceIT E2E', () => {
     it('POST /v1/auth/register - public user', async () => {
       const res = await request(app.getHttpServer())
         .post('/v1/auth/register')
-        .send({ email: 'e2e-public@test.com', password: 'Test123!', firstName: 'E2E', lastName: 'Public' })
+        .send({
+          email: 'e2e-public@test.com',
+          password: 'Test123!',
+          firstName: 'E2E',
+          lastName: 'Public',
+          termsAccepted: true,
+          termsVersion: TERMS_VERSION,
+          privacyVersion: PRIVACY_VERSION,
+        })
         .expect(201);
 
       expect(res.body.accessToken).toBeDefined();

@@ -109,7 +109,8 @@ jobs:
           token: ${{ secrets.DEPLOY_REPOS_TOKEN }}
           path: deployment/frontend
 
-      - name: Publish backend through a protected-branch pull request
+      - name: Prepare backend deployment branch
+        id: backend-sync
         env:
           GH_TOKEN: ${{ secrets.DEPLOY_REPOS_TOKEN }}
         run: |
@@ -127,23 +128,15 @@ jobs:
           git add -A
           if git diff --cached --quiet; then
             echo "Backend deployment repository is already current." >> "$GITHUB_STEP_SUMMARY"
+            echo "branch=" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           git commit -m "Deploy monorepo ${GITHUB_SHA::12}"
           git push --set-upstream origin "$branch"
-          pr_url=$(gh pr create --repo nicholasnkb-cmd/fieldserviceit-backend --base master --head "$branch" \
-            --title "Deploy backend ${GITHUB_SHA::12}" \
-            --body "Automated, history-preserving deployment from monorepo commit $GITHUB_SHA.")
-          pr_number="${pr_url##*/}"
-          sleep 10
-          check_count=$(gh pr checks "$pr_number" --repo nicholasnkb-cmd/fieldserviceit-backend --json state --jq 'length' 2>/dev/null || echo 0)
-          if [ "$check_count" -gt 0 ]; then
-            gh pr checks "$pr_number" --repo nicholasnkb-cmd/fieldserviceit-backend --watch --fail-fast
-          fi
-          gh pr merge "$pr_number" --repo nicholasnkb-cmd/fieldserviceit-backend --squash --delete-branch
-          echo "Backend deployment PR: $pr_url" >> "$GITHUB_STEP_SUMMARY"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
 
-      - name: Publish frontend through a protected-branch pull request
+      - name: Prepare frontend deployment branch
+        id: frontend-sync
         env:
           GH_TOKEN: ${{ secrets.DEPLOY_REPOS_TOKEN }}
         run: |
@@ -160,11 +153,40 @@ jobs:
           git add -A
           if git diff --cached --quiet; then
             echo "Frontend deployment repository is already current." >> "$GITHUB_STEP_SUMMARY"
+            echo "branch=" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           git commit -m "Deploy monorepo ${GITHUB_SHA::12}"
           git push --set-upstream origin "$branch"
-          pr_url=$(gh pr create --repo nicholasnkb-cmd/fieldserviceit-frontend --base master --head "$branch" \
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+
+      - name: Publish backend through a protected-branch pull request
+        if: steps.backend-sync.outputs.branch != ''
+        env:
+          GH_TOKEN: ${{ secrets.DEPLOY_REPOS_TOKEN }}
+          DEPLOY_BRANCH: ${{ steps.backend-sync.outputs.branch }}
+        run: |
+          set -euo pipefail
+          pr_url=$(gh pr create --repo nicholasnkb-cmd/fieldserviceit-backend --base master --head "$DEPLOY_BRANCH" \
+            --title "Deploy backend ${GITHUB_SHA::12}" \
+            --body "Automated, history-preserving deployment from monorepo commit $GITHUB_SHA.")
+          pr_number="${pr_url##*/}"
+          sleep 10
+          check_count=$(gh pr checks "$pr_number" --repo nicholasnkb-cmd/fieldserviceit-backend --json state --jq 'length' 2>/dev/null || echo 0)
+          if [ "$check_count" -gt 0 ]; then
+            gh pr checks "$pr_number" --repo nicholasnkb-cmd/fieldserviceit-backend --watch --fail-fast
+          fi
+          gh pr merge "$pr_number" --repo nicholasnkb-cmd/fieldserviceit-backend --squash --delete-branch
+          echo "Backend deployment PR: $pr_url" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish frontend through a protected-branch pull request
+        if: steps.frontend-sync.outputs.branch != ''
+        env:
+          GH_TOKEN: ${{ secrets.DEPLOY_REPOS_TOKEN }}
+          DEPLOY_BRANCH: ${{ steps.frontend-sync.outputs.branch }}
+        run: |
+          set -euo pipefail
+          pr_url=$(gh pr create --repo nicholasnkb-cmd/fieldserviceit-frontend --base master --head "$DEPLOY_BRANCH" \
             --title "Deploy frontend ${GITHUB_SHA::12}" \
             --body "Automated, history-preserving deployment from monorepo commit $GITHUB_SHA.")
           pr_number="${pr_url##*/}"

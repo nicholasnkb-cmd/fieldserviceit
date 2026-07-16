@@ -938,8 +938,8 @@ export class AdminService {
   }
 
   async createRole(dto: { name: string; slug: string; description?: string; companyId?: string; permissionSlugs?: string[] }) {
-    const existing = await this.prisma.role.findUnique({
-      where: { slug_companyId: { slug: dto.slug, companyId: dto.companyId || '' } },
+    const [existing] = await this.prisma.role.findMany({
+      where: { slug: dto.slug, companyId: dto.companyId || null },
     });
     if (existing) throw new BadRequestException('Role slug already exists for this company');
 

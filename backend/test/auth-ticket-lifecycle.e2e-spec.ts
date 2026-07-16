@@ -2,6 +2,13 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import * as request from 'supertest';
 import { AppModule } from '../src/app.module';
+import { PRIVACY_VERSION, TERMS_VERSION } from '../src/modules/auth/legal-consent';
+
+const legalConsent = {
+  termsAccepted: true,
+  termsVersion: TERMS_VERSION,
+  privacyVersion: PRIVACY_VERSION,
+};
 
 describe('Auth & Ticket Lifecycle E2E', () => {
   let app: INestApplication;
@@ -29,7 +36,7 @@ describe('Auth & Ticket Lifecycle E2E', () => {
     it('POST /v1/auth/register — creates public user with emailVerified=true', async () => {
       const res = await request(app.getHttpServer())
         .post('/v1/auth/register')
-        .send({ email: 'lifecycle-public@test.com', password: 'Test123!', firstName: 'Lifecycle', lastName: 'Public' })
+        .send({ email: 'lifecycle-public@test.com', password: 'Test123!', firstName: 'Lifecycle', lastName: 'Public', ...legalConsent })
         .expect(201);
 
       expect(res.body.accessToken).toBeDefined();
@@ -42,7 +49,7 @@ describe('Auth & Ticket Lifecycle E2E', () => {
     it('POST /v1/auth/register — duplicate email returns 409', async () => {
       await request(app.getHttpServer())
         .post('/v1/auth/register')
-        .send({ email: 'lifecycle-public@test.com', password: 'Test123!', firstName: 'Dup', lastName: 'User' })
+        .send({ email: 'lifecycle-public@test.com', password: 'Test123!', firstName: 'Dup', lastName: 'User', ...legalConsent })
         .expect(409);
     });
 

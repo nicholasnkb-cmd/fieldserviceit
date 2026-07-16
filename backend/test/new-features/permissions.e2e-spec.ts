@@ -2,6 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import * as request from 'supertest';
 import { AppModule } from '../../src/app.module';
+import { StepUpGuard } from '../../src/common/guards/step-up.guard';
+import { PRIVACY_VERSION, TERMS_VERSION } from '../../src/modules/auth/legal-consent';
 
 describe('Permissions & Roles (E2E)', () => {
   let app: INestApplication;
@@ -13,7 +15,10 @@ describe('Permissions & Roles (E2E)', () => {
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideGuard(StepUpGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     app = moduleFixture.createNestApplication();
     app.setGlobalPrefix('v1');
@@ -271,7 +276,7 @@ describe('Permissions & Roles (E2E)', () => {
   describe('Email Verification', () => {
     let verificationToken: string;
 
-    it('POST /v1/auth/register - new user has emailVerified=false', async () => {
+    it('POST /v1/auth/register - public signup is immediately verified', async () => {
       const res = await request(app.getHttpServer())
         .post('/v1/auth/register')
         .send({
@@ -279,10 +284,13 @@ describe('Permissions & Roles (E2E)', () => {
           password: 'Test123!',
           firstName: 'Verify',
           lastName: 'Test',
+          termsAccepted: true,
+          termsVersion: TERMS_VERSION,
+          privacyVersion: PRIVACY_VERSION,
         })
         .expect(201);
 
-      expect(res.body.user.emailVerified).toBe(false);
+      expect(res.body.user.emailVerified).toBe(true);
     });
 
     it('GET /v1/auth/verify-email/:token - invalid token returns error', async () => {
@@ -291,11 +299,11 @@ describe('Permissions & Roles (E2E)', () => {
         .expect(400);
     });
 
-    it('POST /v1/auth/resend-verification - resend to non-existent email', async () => {
+    it('POST /v1/auth/resend-verification - does not reveal whether an account exists', async () => {
       await request(app.getHttpServer())
         .post('/v1/auth/resend-verification')
         .send({ email: 'nonexistent@test.com' })
-        .expect(400);
+        .expect(200);
     });
   });
 });

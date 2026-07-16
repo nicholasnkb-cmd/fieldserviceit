@@ -283,7 +283,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy, OnApplica
         completedAt DATETIME(3),
         notes TEXT,
         customerSignature VARCHAR(191),
-        photoUrls TEXT DEFAULT '[]',
+        photoUrls TEXT,
         latitude FLOAT,
         longitude FLOAT,
         createdAt DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
