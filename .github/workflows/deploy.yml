@@ -115,6 +115,7 @@ jobs:
         run: |
           set -euo pipefail
           test -n "$GH_TOKEN" || { echo "DEPLOY_REPOS_TOKEN is required"; exit 1; }
+          gh api --method GET repos/nicholasnkb-cmd/fieldserviceit-backend >/dev/null || { echo "DEPLOY_REPOS_TOKEN cannot access the backend deployment repository"; exit 1; }
           branch="deploy/backend-${GITHUB_SHA::12}-${GITHUB_RUN_ATTEMPT}"
           rsync -a application/backend/ deployment/backend/ \
             --exclude .git --exclude .github --exclude node_modules --exclude dist --exclude coverage \
@@ -147,6 +148,7 @@ jobs:
           GH_TOKEN: ${{ secrets.DEPLOY_REPOS_TOKEN }}
         run: |
           set -euo pipefail
+          gh api --method GET repos/nicholasnkb-cmd/fieldserviceit-frontend >/dev/null || { echo "DEPLOY_REPOS_TOKEN cannot access the frontend deployment repository"; exit 1; }
           branch="deploy/frontend-${GITHUB_SHA::12}-${GITHUB_RUN_ATTEMPT}"
           rsync -a application/frontend/ deployment/frontend/ \
             --exclude .git --exclude .github --exclude node_modules --exclude .next --exclude coverage \
