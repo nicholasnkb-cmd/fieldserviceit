@@ -1,0 +1,36 @@
+name: Hostinger Node.js Recovery
+
+on:
+  workflow_dispatch:
+    inputs:
+      domain:
+        description: Hostinger Node.js application domain
+        required: true
+        default: api.fieldserviceit.com
+        type: string
+      restart:
+        description: Restart the server after collecting build status and failure logs
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  inspect-and-recover:
+    name: Inspect and recover Node.js application
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Inspect recent builds and optionally restart
+        env:
+          HOSTINGER_API_TOKEN: ${{ secrets.HOSTINGER_API_TOKEN }}
+          HOSTINGER_DOMAIN: ${{ inputs.domain }}
+          HOSTINGER_RESTART: ${{ inputs.restart }}
+        run: node scripts/hostinger-node-recovery.mjs
