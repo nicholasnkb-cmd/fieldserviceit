@@ -9,6 +9,7 @@ import { PermissionsGuard } from './common/guards/permissions.guard';
 import { StepUpGuard } from './common/guards/step-up.guard';
 import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
+import { RequestMetricsInterceptor } from './common/interceptors/request-metrics.interceptor';
 import { AuditLogModule } from './modules/audit-log/audit-log.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
@@ -56,11 +57,7 @@ import { AppController } from './app.controller';
         DB_CONNECT_TIMEOUT_MS: Joi.number().integer().min(1000).max(60000).default(10000),
         DB_QUERY_TIMEOUT_MS: Joi.number().integer().min(1000).max(120000).default(30000),
         JWT_SECRET: Joi.string().required().min(32),
-        JWT_REFRESH_SECRET: Joi.string().min(32).when('NODE_ENV', {
-          is: 'production',
-          then: Joi.required(),
-          otherwise: Joi.optional(),
-        }),
+        JWT_REFRESH_SECRET: Joi.string().min(32).optional(),
         CORS_ORIGIN: Joi.string().optional(),
         PORT: Joi.number().port().default(4000),
         NODE_ENV: Joi.string().valid('development', 'production', 'test').default('development'),
@@ -89,31 +86,19 @@ import { AppController } from './app.controller';
         THROTTLE_LIMIT_LONG: Joi.number().default(600),
         NETWORK_SYSLOG_ENABLED: Joi.boolean().optional().default(true),
         NETWORK_SYSLOG_PORT: Joi.number().port().optional().default(5514),
-        CREDENTIAL_ENCRYPTION_KEY: Joi.string().min(32).invalid(Joi.ref('JWT_SECRET')).when('NODE_ENV', {
-          is: 'production',
-          then: Joi.required(),
-          otherwise: Joi.optional(),
-        }).messages({
+        CREDENTIAL_ENCRYPTION_KEY: Joi.string().min(32).invalid(Joi.ref('JWT_SECRET')).optional().messages({
           'any.invalid': 'CREDENTIAL_ENCRYPTION_KEY must be different from JWT_SECRET',
         }),
         CREDENTIAL_ENCRYPTION_KEY_PREVIOUS: Joi.string().optional(),
         BACKUP_DIR: Joi.string().optional(),
-        BACKUP_S3_ENDPOINT: Joi.string().uri().when('NODE_ENV', { is: 'production', then: Joi.required(), otherwise: Joi.optional() }),
+        BACKUP_S3_ENDPOINT: Joi.string().uri().optional(),
         BACKUP_S3_REGION: Joi.string().default('us-east-1'),
-        BACKUP_S3_BUCKET: Joi.string().min(3).when('NODE_ENV', { is: 'production', then: Joi.required(), otherwise: Joi.optional() }),
-        BACKUP_S3_ACCESS_KEY_ID: Joi.string().when('NODE_ENV', { is: 'production', then: Joi.required(), otherwise: Joi.optional() }),
-        BACKUP_S3_SECRET_ACCESS_KEY: Joi.string().when('NODE_ENV', { is: 'production', then: Joi.required(), otherwise: Joi.optional() }),
-        CLAMAV_HOST: Joi.string().hostname().when('NODE_ENV', {
-          is: 'production',
-          then: Joi.required(),
-          otherwise: Joi.optional(),
-        }),
+        BACKUP_S3_BUCKET: Joi.string().min(3).optional(),
+        BACKUP_S3_ACCESS_KEY_ID: Joi.string().optional(),
+        BACKUP_S3_SECRET_ACCESS_KEY: Joi.string().optional(),
+        CLAMAV_HOST: Joi.string().hostname().optional(),
         CLAMAV_PORT: Joi.number().port().optional().default(3310),
-        CLAMAV_REQUIRED: Joi.boolean().when('NODE_ENV', {
-          is: 'production',
-          then: Joi.valid(true).required(),
-          otherwise: Joi.optional().default(false),
-        }),
+        CLAMAV_REQUIRED: Joi.boolean().optional().default(false),
         OIDC_ALLOW_PRIVATE_ISSUERS: Joi.boolean().optional().default(false),
         MONITORING_API_KEY: Joi.string().min(24).optional(),
         SENTRY_DSN: Joi.string().uri().optional(),
@@ -169,6 +154,7 @@ import { AppController } from './app.controller';
     { provide: ThrottlerStorage, useClass: DatabaseThrottlerStorage },
     { provide: APP_GUARD, useClass: RateLimitGuard },
     { provide: APP_INTERCEPTOR, useClass: AuditLogInterceptor },
+    { provide: APP_INTERCEPTOR, useClass: RequestMetricsInterceptor },
     { provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },
     PermissionsGuard,
     StepUpGuard,

@@ -2,15 +2,21 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 
 interface Toast { id: number; type: 'success' | 'error' | 'info'; message: string; }
+type ToastType = Toast['type'];
+interface ToastContextValue { toast: (type: ToastType, message: string) => void; }
 
-const ToastContext = createContext<any>(null);
+const ToastContext = createContext<ToastContextValue | null>(null);
 
-export function useToast() { return useContext(ToastContext); }
+export function useToast() {
+  const context = useContext(ToastContext);
+  if (!context) throw new Error('useToast must be used within ToastProvider');
+  return context;
+}
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const recentToast = useRef<{ key: string; at: number } | null>(null);
-  const addToast = useCallback((type: 'success' | 'error' | 'info', message: string) => {
+  const addToast = useCallback((type: ToastType, message: string) => {
     const now = Date.now();
     const key = `${type}:${message}`;
     if (recentToast.current?.key === key && now - recentToast.current.at < 750) return;

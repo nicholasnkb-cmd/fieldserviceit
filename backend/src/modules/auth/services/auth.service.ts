@@ -412,7 +412,9 @@ export class AuthService {
 
   async logout(refreshToken: string) {
     if (!refreshToken) return;
-    await this.sessions.revokeByRefreshToken(refreshToken, 'logout').catch(() => {});
+    await this.sessions.revokeByRefreshToken(refreshToken, 'logout').catch((error) => {
+      this.logger.warn(`Failed to revoke refresh token during logout: ${error?.message || error}`);
+    });
   }
 
   async beginChallengeEnrollment(challengeToken: string) {
@@ -683,7 +685,9 @@ export class AuthService {
        (id, companyId, alertType, severity, subjectId, summary, detail, createdAt)
        VALUES (?, ?, ?, ?, ?, ?, ?, NOW(3))`,
       [crypto.randomUUID(), companyId, alertType, severity, subjectId, summary.slice(0, 255), JSON.stringify(detail)],
-    ).catch(() => {});
+    ).catch((error) => {
+      this.logger.error(`Failed to persist security alert ${alertType} for subject ${subjectId}: ${error?.message || error}`);
+    });
   }
 
   private async enforceLoginBackoff(email: string) {

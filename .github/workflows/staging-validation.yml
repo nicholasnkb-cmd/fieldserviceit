@@ -5,6 +5,10 @@ on:
     branches: [develop]
   workflow_dispatch:
 
+concurrency:
+  group: staging-validation-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-and-test:
     name: Build and Test
@@ -36,3 +40,23 @@ jobs:
           npm run test:a11y
           npm run lint
           npm run build
+
+  verify-staging:
+    name: Verify Staging
+    needs: [build-and-test]
+    if: ${{ vars.STAGING_WEB_URL != '' && vars.STAGING_API_URL != '' }}
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Verify staging application without mutations
+        env:
+          VERIFICATION_WEB_URL: ${{ vars.STAGING_WEB_URL }}
+          VERIFICATION_API_URL: ${{ vars.STAGING_API_URL }}
+          VERIFICATION_EMAIL: ${{ secrets.STAGING_VERIFICATION_EMAIL }}
+          VERIFICATION_PASSWORD: ${{ secrets.STAGING_VERIFICATION_PASSWORD }}
+        run: node scripts/production-verification.mjs

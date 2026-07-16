@@ -263,6 +263,15 @@ export class CmdbService implements OnModuleInit, OnModuleDestroy {
     return this.assetRepository.retireTenantAsset(id, companyId);
   }
 
+  async listRetired(companyId: string, deviceCategory?: string) {
+    const data = await this.assetRepository.listRetiredTenantAssets(companyId, deviceCategory);
+    return { data, meta: { total: data.length } };
+  }
+
+  async restore(id: string, companyId: string) {
+    return this.assetRepository.restoreTenantAsset(id, companyId);
+  }
+
   async checkIn(id: string, dto: any, companyId: string) {
     await this.findOne(id, companyId);
     const asset = await this.prisma.asset.update({

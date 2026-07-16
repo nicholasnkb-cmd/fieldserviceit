@@ -14,6 +14,7 @@ export interface User {
   timezone?: string;
   avatarUrl?: string;
   isActive: boolean;
+  permissions?: string[];
   lastLoginAt?: string;
   createdAt: string;
 }

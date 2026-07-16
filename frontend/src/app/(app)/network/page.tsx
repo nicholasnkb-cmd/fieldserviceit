@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Activity,
   AlertTriangle,
@@ -24,26 +25,18 @@ import {
 import { api } from '../../../lib/api';
 import { formatDate } from '../../../lib/utils';
 import { RequireCompanyContext } from '../../../components/layout/RequireCompanyContext';
-import { useAuthStore } from '../../../stores/authStore';
+import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
+import { useToast } from '../../../components/ui/Toast';
+import { NetworkDeviceList } from '../../../components/network/NetworkDeviceList';
+import { NetworkDeviceHeader } from '../../../components/network/NetworkDeviceHeader';
+import { RetiredNetworkDevices } from '../../../components/network/RetiredNetworkDevices';
+import type { NetworkDevice } from '../../../components/network/types';
+import { networkDeviceSchema } from '../../../components/network/network-device-form';
+import { retiredNetworkDevicesKey, useRetiredNetworkDevices } from '../../../components/network/useRetiredNetworkDevices';
+import { NetworkDeviceGlyph, networkStatusClass } from '../../../components/network/network-ui';
+import { useAuthStore, userCan } from '../../../stores/authStore';
 
 type NetworkTab = 'overview' | 'topology' | 'vlans' | 'wifi' | 'firewall' | 'dhcp' | 'monitoring' | 'interfaces' | 'firmware' | 'discovery' | 'actions' | 'vendors' | 'credentials' | 'alerts' | 'ipam' | 'backups' | 'maintenance' | 'ops';
-
-interface NetworkDevice {
-  id: string;
-  name: string;
-  deviceCategory?: string;
-  manufacturer?: string;
-  model?: string;
-  serialNumber?: string;
-  location?: string;
-  ipAddress?: string;
-  macAddress?: string;
-  status: string;
-  notes?: string;
-  lastCheckInAt?: string;
-  complianceStatus?: string;
-  createdAt: string;
-}
 
 interface VlanConfig {
   id: string;
@@ -337,26 +330,16 @@ function serializeConfig(config: NetworkConfig, notes?: string) {
   return [readableNotes, `${configMarker} ${JSON.stringify(config)}`].filter(Boolean).join('\n');
 }
 
-function statusClass(status?: string) {
-  if (status === 'active' || status === 'COMPLIANT') return 'border-emerald-200 bg-emerald-50 text-emerald-700';
-  if (status === 'maintenance' || status === 'UNKNOWN') return 'border-amber-200 bg-amber-50 text-amber-700';
-  return 'border-gray-200 bg-gray-50 text-gray-700';
-}
-
-function DeviceGlyph({ type }: { type?: string }) {
-  if (type?.toLowerCase().includes('switch')) return <Cable className="h-4 w-4" aria-hidden="true" />;
-  if (type?.toLowerCase().includes('ap') || type?.toLowerCase().includes('wireless')) return <Wifi className="h-4 w-4" aria-hidden="true" />;
-  if (type?.toLowerCase().includes('firewall')) return <Shield className="h-4 w-4" aria-hidden="true" />;
-  return <Router className="h-4 w-4" aria-hidden="true" />;
-}
-
 export default function NetworkPage() {
   const { user, activeCompanyContext } = useAuthStore();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [devices, setDevices] = useState<NetworkDevice[]>([]);
   const [selected, setSelected] = useState<NetworkDevice | null>(null);
   const [config, setConfig] = useState<NetworkConfig>(defaultConfig);
   const [form, setForm] = useState(emptyDeviceForm);
   const [showAdd, setShowAdd] = useState(false);
+  const [showRetired, setShowRetired] = useState(false);
   const [tab, setTab] = useState<NetworkTab>('overview');
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -392,13 +375,20 @@ export default function NetworkPage() {
   const [pinging, setPinging] = useState(false);
   const [snmpPolling, setSnmpPolling] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [removeCandidate, setRemoveCandidate] = useState<NetworkDevice | null>(null);
   const [pendingAction, setPendingAction] = useState<{ action: string; port: string } | null>(null);
 
-  const canEditNetwork = ['SUPER_ADMIN', 'TENANT_ADMIN', 'TECHNICIAN'].includes(user?.role || '');
-  const canDeleteNetwork = ['SUPER_ADMIN', 'TENANT_ADMIN'].includes(user?.role || '');
-  const canManageCredentials = ['SUPER_ADMIN', 'TENANT_ADMIN'].includes(user?.role || '');
-  const canRunActions = ['SUPER_ADMIN', 'TENANT_ADMIN', 'TECHNICIAN'].includes(user?.role || '');
-  const canManageOps = ['SUPER_ADMIN', 'TENANT_ADMIN'].includes(user?.role || '');
+  const canEditNetwork = userCan(user, 'assets.edit');
+  const canDeleteNetwork = userCan(user, 'assets.delete');
+  const canManageCredentials = userCan(user, 'network.credentials.manage');
+  const canRunActions = userCan(user, 'network.actions.run');
+  const canManageOps = userCan(user, 'operations.manage');
+  const retiredQuery = useRetiredNetworkDevices({
+    companyId: user?.companyId,
+    companyContextId: activeCompanyContext?.id,
+    enabled: showRetired && canDeleteNetwork && !(user?.role === 'SUPER_ADMIN' && !activeCompanyContext),
+  });
+  const retiredDevices = retiredQuery.data || [];
 
   useEffect(() => {
     const handle = window.setTimeout(() => setDebouncedSearch(search.trim()), 350);
@@ -427,6 +417,10 @@ export default function NetworkPage() {
       setLoading(false);
     }
   }, [activeCompanyContext, debouncedSearch, selected, user?.role]);
+
+  useEffect(() => {
+    if (retiredQuery.error) toast('error', (retiredQuery.error as Error).message || 'Failed to load retired network equipment');
+  }, [retiredQuery.error, toast]);
 
   useEffect(() => {
     fetchDevices();
@@ -522,22 +516,28 @@ export default function NetworkPage() {
 
   const createDevice = async (event: React.FormEvent) => {
     event.preventDefault();
+    const parsed = networkDeviceSchema.safeParse(form);
+    if (!parsed.success) {
+      toast('error', parsed.error.issues[0]?.message || 'Check the equipment details');
+      return;
+    }
+    const values = parsed.data;
     setSaving(true);
     try {
-      const newConfig = { ...defaultConfig, managementIp: form.ipAddress };
+      const newConfig = { ...defaultConfig, managementIp: values.ipAddress };
       const created = await api.post<NetworkDevice>('/assets', {
-        name: form.name,
+        name: values.name,
         deviceCategory: 'NETWORK_DEVICE',
-        manufacturer: form.manufacturer || form.equipmentType,
-        model: form.model,
-        serialNumber: form.serialNumber,
-        location: form.location,
-        ipAddress: form.ipAddress,
-        macAddress: form.macAddress,
+        manufacturer: values.manufacturer || values.equipmentType,
+        model: values.model,
+        serialNumber: values.serialNumber,
+        location: values.location,
+        ipAddress: values.ipAddress,
+        macAddress: values.macAddress,
         enrollmentStatus: 'UNMANAGED',
         managementMode: 'NETWORK',
         complianceStatus: 'UNKNOWN',
-        notes: serializeConfig(newConfig, `Equipment type: ${form.equipmentType}`),
+        notes: serializeConfig(newConfig, `Equipment type: ${values.equipmentType}`),
       });
       setDevices((current) => [created, ...current]);
       setSelected(created);
@@ -571,22 +571,41 @@ export default function NetworkPage() {
   };
 
   const removeDevice = async () => {
-    if (!selected || deleting) return;
-    const confirmed = window.confirm(`Remove ${selected.name} from network equipment? This retires the device and removes it from active inventory.`);
-    if (!confirmed) return;
+    if (!removeCandidate || deleting) return;
 
     setDeleting(true);
     try {
-      await api.delete(`/assets/${selected.id}`);
-      const remaining = devices.filter((device) => device.id !== selected.id);
+      await api.delete(`/assets/${removeCandidate.id}`);
+      const remaining = devices.filter((device) => device.id !== removeCandidate.id);
       const nextDevice = remaining[0] || null;
       setDevices(remaining);
+      queryClient.setQueryData<NetworkDevice[]>(retiredNetworkDevicesKey(user?.companyId, activeCompanyContext?.id), (current = []) => [removeCandidate, ...current.filter((device) => device.id !== removeCandidate.id)]);
       setSelected(nextDevice);
       setConfig(nextDevice ? parseConfig(nextDevice.notes) : defaultConfig);
       setTab('overview');
-      setMessage(`${selected.name} removed from network equipment`);
+      setMessage('');
+      toast('success', `${removeCandidate.name} retired. It can be restored from Retired devices.`);
+      setRemoveCandidate(null);
     } catch (err: any) {
-      setMessage(err.message || 'Failed to remove network equipment');
+      toast('error', err.message || 'Failed to retire network equipment');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const restoreDevice = async (device: NetworkDevice) => {
+    if (deleting) return;
+    setDeleting(true);
+    try {
+      const restored = await api.post<NetworkDevice>(`/assets/retired/${device.id}/restore`, {});
+      queryClient.setQueryData<NetworkDevice[]>(retiredNetworkDevicesKey(user?.companyId, activeCompanyContext?.id), (current = []) => current.filter((item) => item.id !== device.id));
+      setDevices((current) => [restored, ...current.filter((item) => item.id !== restored.id)]);
+      setSelected(restored);
+      setConfig(parseConfig(restored.notes));
+      setShowRetired(false);
+      toast('success', `${restored.name} restored to active network equipment.`);
+    } catch (err: any) {
+      toast('error', err.message || 'Failed to restore network equipment');
     } finally {
       setDeleting(false);
     }
@@ -862,6 +881,15 @@ export default function NetworkPage() {
           <p className="mt-1 text-sm text-gray-500">Add your routers, firewalls, switches, and access points, then stage their configuration in one place.</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {canDeleteNetwork && (
+            <button onClick={() => {
+              const next = !showRetired;
+              setShowRetired(next);
+            }} className="inline-flex items-center justify-center gap-2 rounded border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+              <Trash2 className="h-4 w-4" aria-hidden="true" />
+              {showRetired ? 'Hide retired' : `Retired devices${retiredDevices.length ? ` (${retiredDevices.length})` : ''}`}
+            </button>
+          )}
           <button onClick={fetchDevices} className="inline-flex items-center justify-center gap-2 rounded border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
             <RefreshCw className="h-4 w-4" aria-hidden="true" />
             Refresh
@@ -876,6 +904,10 @@ export default function NetworkPage() {
       </div>
 
       {message && <div className="mt-4 rounded border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">{message}</div>}
+
+      {showRetired && canDeleteNetwork && (
+        <RetiredNetworkDevices devices={retiredDevices} busy={deleting || retiredQuery.isFetching} onRefresh={() => void retiredQuery.refetch()} onRestore={restoreDevice} />
+      )}
 
       <div className="mt-5 grid gap-3 md:grid-cols-4">
         {stats.map((item) => {
@@ -940,33 +972,7 @@ export default function NetworkPage() {
       )}
 
       <div className="mt-5 grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
-        <section className="rounded border border-gray-200 bg-white">
-          <div className="border-b border-gray-200 p-4">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-gray-400" aria-hidden="true" />
-              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search equipment" className="w-full rounded border border-gray-300 py-2 pl-9 pr-3 text-sm" />
-            </div>
-          </div>
-          <div className="divide-y divide-gray-200">
-            {filteredDevices.map((device) => (
-              <button key={device.id} onClick={() => selectDevice(device)} className={`flex w-full items-start gap-3 p-4 text-left hover:bg-blue-50 ${selected?.id === device.id ? 'bg-blue-50' : ''}`}>
-                <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded border border-gray-200 bg-gray-50 text-gray-600">
-                  <DeviceGlyph type={`${device.manufacturer} ${device.model}`} />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-semibold text-gray-950">{device.name}</span>
-                  <span className="mt-1 block truncate text-xs text-gray-500">{[device.manufacturer, device.model].filter(Boolean).join(' ') || 'Network device'}</span>
-                  <span className="mt-2 flex flex-wrap gap-2">
-                    <span className={`rounded border px-2 py-0.5 text-xs font-medium ${statusClass(device.status)}`}>{device.status}</span>
-                    {device.ipAddress && <span className="rounded border border-gray-200 bg-gray-50 px-2 py-0.5 text-xs text-gray-600">{device.ipAddress}</span>}
-                  </span>
-                </span>
-              </button>
-            ))}
-            {!loading && filteredDevices.length === 0 && <div className="p-8 text-center text-sm text-gray-500">No network equipment found</div>}
-            {loading && <div className="p-4 text-sm text-gray-500">Loading network equipment...</div>}
-          </div>
-        </section>
+        <NetworkDeviceList devices={filteredDevices} selectedId={selected?.id} loading={loading} search={search} onSearch={setSearch} onSelect={selectDevice} />
 
         <section className="rounded border border-gray-200 bg-white">
           {!selected ? (
@@ -977,29 +983,7 @@ export default function NetworkPage() {
           ) : (
             <div>
               <div className="border-b border-gray-200 p-5">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <DeviceGlyph type={`${selected.manufacturer} ${selected.model}`} />
-                      <h2 className="text-xl font-semibold text-gray-950">{selected.name}</h2>
-                    </div>
-                    <p className="mt-1 text-sm text-gray-500">{[selected.manufacturer, selected.model, selected.serialNumber].filter(Boolean).join(' - ') || 'No hardware identifiers'}</p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {canDeleteNetwork && (
-                      <button onClick={removeDevice} disabled={deleting || saving} className="inline-flex items-center justify-center gap-2 rounded border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-60">
-                        <Trash2 className="h-4 w-4" aria-hidden="true" />
-                        {deleting ? 'Removing...' : 'Remove device'}
-                      </button>
-                    )}
-                    {canEditNetwork && (
-                      <button onClick={saveConfig} disabled={saving || deleting} className="inline-flex items-center justify-center gap-2 rounded bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-60">
-                        <Save className="h-4 w-4" aria-hidden="true" />
-                        {saving ? 'Saving...' : 'Save config'}
-                      </button>
-                    )}
-                  </div>
-                </div>
+                <NetworkDeviceHeader device={selected} canEdit={canEditNetwork} canRetire={canDeleteNetwork} saving={saving} retiring={deleting} onSave={saveConfig} onRetire={() => setRemoveCandidate(selected)} />
                 <div className="mt-4 flex flex-wrap gap-2">
                   {tabItems.map(({ key, Icon, label }) => {
                     const TabIcon = Icon;
@@ -1045,8 +1029,8 @@ export default function NetworkPage() {
                     {devices.map((device) => (
                       <button key={device.id} onClick={() => selectDevice(device)} className={`rounded border p-4 text-left hover:bg-blue-50 ${selected.id === device.id ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-white'}`}>
                         <div className="flex items-center justify-between gap-3">
-                          <span className="flex h-10 w-10 items-center justify-center rounded border border-gray-200 bg-gray-50 text-gray-600"><DeviceGlyph type={`${device.manufacturer} ${device.model}`} /></span>
-                          <span className={`rounded border px-2 py-0.5 text-xs font-medium ${statusClass(device.complianceStatus === 'COMPLIANT' ? 'active' : 'UNKNOWN')}`}>{device.complianceStatus || 'UNKNOWN'}</span>
+                          <span className="flex h-10 w-10 items-center justify-center rounded border border-gray-200 bg-gray-50 text-gray-600"><NetworkDeviceGlyph type={`${device.manufacturer} ${device.model}`} /></span>
+                          <span className={`rounded border px-2 py-0.5 text-xs font-medium ${networkStatusClass(device.complianceStatus === 'COMPLIANT' ? 'active' : 'UNKNOWN')}`}>{device.complianceStatus || 'UNKNOWN'}</span>
                         </div>
                         <div className="mt-3 font-medium text-gray-950">{device.name}</div>
                         <div className="mt-1 text-sm text-gray-500">{device.ipAddress || 'No management IP'}</div>
@@ -1173,7 +1157,7 @@ export default function NetworkPage() {
                           {snapshots.map((snapshot) => (
                             <div key={snapshot.id} className="flex items-start justify-between gap-3 px-4 py-3 text-sm">
                               <div>
-                                <span className={`rounded border px-2 py-0.5 text-xs font-medium ${statusClass(snapshot.status === 'ONLINE' ? 'active' : 'UNKNOWN')}`}>{snapshot.status}</span>
+                                <span className={`rounded border px-2 py-0.5 text-xs font-medium ${networkStatusClass(snapshot.status === 'ONLINE' ? 'active' : 'UNKNOWN')}`}>{snapshot.status}</span>
                                 <div className="mt-2 text-gray-600">{snapshot.message || snapshot.source}</div>
                                 <div className="mt-1 text-xs text-gray-500">{formatDate(snapshot.createdAt)}</div>
                               </div>
@@ -1507,6 +1491,15 @@ export default function NetworkPage() {
           </div>
         </div>
       )}
+      <ConfirmDialog
+        open={Boolean(removeCandidate)}
+        title={`Retire ${removeCandidate?.name || 'device'}?`}
+        description="This removes the device from active network inventory. Its configuration and history are retained, and an administrator can restore it later from Retired devices."
+        confirmLabel="Retire device"
+        busy={deleting}
+        onCancel={() => setRemoveCandidate(null)}
+        onConfirm={removeDevice}
+      />
     </div>
     </RequireCompanyContext>
   );

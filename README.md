@@ -96,6 +96,7 @@ Target: **Hostinger shared/cloud hosting** (Node.js 20 + MySQL 8.0).
 The backend creates/ensures its MySQL tables at startup through the SQL data access layer.
 Docker-based local deployment is defined in `infra/docker-compose.yml`.
 Use `docs/HOSTINGER_DEPLOYMENT.md` plus the Hostinger env templates in `backend/.env.hostinger.example` and `frontend/.env.hostinger.example` for production setup.
+Use `docs/RELEASES.md` for the protected-branch release flow, staging configuration, rollback, release evidence, and observability checks.
 Use `docs/MOBILE_APP_QA.md` for mobile install, offline, and real-device release checks.
 
 Production database name on Hostinger:

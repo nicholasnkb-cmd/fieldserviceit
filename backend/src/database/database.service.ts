@@ -4,6 +4,7 @@ import { randomUUID } from 'crypto';
 import { MigrationsService } from './migrations/migrations.service';
 import { StructuredLogger } from '../common/logger/structured-logger.service';
 import { escapeSqlIdentifier } from '../common/security/sql-identifier';
+import { QueryMetricsContext } from '../common/observability/query-metrics.context';
 
 interface QueryOptions {
   nestTables?: boolean;
@@ -19,6 +20,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy, OnApplica
   constructor(
     @Optional() private readonly migrationsService?: MigrationsService,
     @Optional() private readonly structuredLogger?: StructuredLogger,
+    @Optional() private readonly queryMetrics?: QueryMetricsContext,
   ) {
     const databaseUrl = process.env.DATABASE_URL || '';
     const parsed = this.parseDatabaseUrl(databaseUrl);
@@ -864,6 +866,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy, OnApplica
     const start = Date.now();
     const [rows] = await this.pool.query({ sql, timeout: this.queryTimeoutMs }, values || []);
     const latency = Date.now() - start;
+    this.queryMetrics?.record(latency);
 
     // Track performance metrics
     if (this.structuredLogger) {
@@ -877,6 +880,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy, OnApplica
     const start = Date.now();
     const [result] = await this.pool.execute({ sql, timeout: this.queryTimeoutMs }, values || []);
     const latency = Date.now() - start;
+    this.queryMetrics?.record(latency);
 
     // Track performance metrics
     if (this.structuredLogger) {

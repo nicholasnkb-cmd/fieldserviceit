@@ -5,6 +5,10 @@ on:
     branches: [master]
   workflow_dispatch:
 
+concurrency:
+  group: production-deployment
+  cancel-in-progress: false
+
 jobs:
   build-backend:
     name: Build Backend
@@ -89,24 +93,87 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
-          persist-credentials: false
+          path: application
 
-      - name: Sync Hostinger deployment repositories
+      - uses: actions/checkout@v4
+        with:
+          repository: nicholasnkb-cmd/fieldserviceit-backend
+          ref: master
+          token: ${{ secrets.DEPLOY_REPOS_TOKEN }}
+          path: deployment/backend
+
+      - uses: actions/checkout@v4
+        with:
+          repository: nicholasnkb-cmd/fieldserviceit-frontend
+          ref: master
+          token: ${{ secrets.DEPLOY_REPOS_TOKEN }}
+          path: deployment/frontend
+
+      - name: Publish backend through a protected-branch pull request
         env:
-          DEPLOY_REPOS_TOKEN: ${{ secrets.DEPLOY_REPOS_TOKEN }}
+          GH_TOKEN: ${{ secrets.DEPLOY_REPOS_TOKEN }}
         run: |
-          test -n "$DEPLOY_REPOS_TOKEN" || { echo "DEPLOY_REPOS_TOKEN is required"; exit 1; }
-          backend_commit=$(git subtree split --prefix=backend HEAD)
-          frontend_commit=$(git subtree split --prefix=frontend HEAD)
-          backend_remote=$(git ls-remote https://github.com/nicholasnkb-cmd/fieldserviceit-backend.git refs/heads/master | cut -f1)
-          frontend_remote=$(git ls-remote https://github.com/nicholasnkb-cmd/fieldserviceit-frontend.git refs/heads/master | cut -f1)
-          git push "--force-with-lease=refs/heads/master:${backend_remote}" \
-            "https://x-access-token:${DEPLOY_REPOS_TOKEN}@github.com/nicholasnkb-cmd/fieldserviceit-backend.git" \
-            "${backend_commit}:refs/heads/master"
-          git push "--force-with-lease=refs/heads/master:${frontend_remote}" \
-            "https://x-access-token:${DEPLOY_REPOS_TOKEN}@github.com/nicholasnkb-cmd/fieldserviceit-frontend.git" \
-            "${frontend_commit}:refs/heads/master"
+          set -euo pipefail
+          test -n "$GH_TOKEN" || { echo "DEPLOY_REPOS_TOKEN is required"; exit 1; }
+          branch="deploy/backend-${GITHUB_SHA::12}-${GITHUB_RUN_ATTEMPT}"
+          rsync -a application/backend/ deployment/backend/ \
+            --exclude .git --exclude .github --exclude node_modules --exclude dist --exclude coverage \
+            --exclude '.env*'
+          cd deployment/backend
+          git config user.name "FieldServiceIT Deploy Bot"
+          git config user.email "deploy-bot@fieldserviceit.com"
+          git checkout -b "$branch"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Backend deployment repository is already current." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          git commit -m "Deploy monorepo ${GITHUB_SHA::12}"
+          git push --set-upstream origin "$branch"
+          pr_url=$(gh pr create --repo nicholasnkb-cmd/fieldserviceit-backend --base master --head "$branch" \
+            --title "Deploy backend ${GITHUB_SHA::12}" \
+            --body "Automated, history-preserving deployment from monorepo commit $GITHUB_SHA.")
+          pr_number="${pr_url##*/}"
+          sleep 10
+          check_count=$(gh pr checks "$pr_number" --repo nicholasnkb-cmd/fieldserviceit-backend --json state --jq 'length' 2>/dev/null || echo 0)
+          if [ "$check_count" -gt 0 ]; then
+            gh pr checks "$pr_number" --repo nicholasnkb-cmd/fieldserviceit-backend --watch --fail-fast
+          fi
+          gh pr merge "$pr_number" --repo nicholasnkb-cmd/fieldserviceit-backend --squash --delete-branch
+          echo "Backend deployment PR: $pr_url" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish frontend through a protected-branch pull request
+        env:
+          GH_TOKEN: ${{ secrets.DEPLOY_REPOS_TOKEN }}
+        run: |
+          set -euo pipefail
+          branch="deploy/frontend-${GITHUB_SHA::12}-${GITHUB_RUN_ATTEMPT}"
+          rsync -a application/frontend/ deployment/frontend/ \
+            --exclude .git --exclude .github --exclude node_modules --exclude .next --exclude coverage \
+            --exclude '.env*'
+          cd deployment/frontend
+          git config user.name "FieldServiceIT Deploy Bot"
+          git config user.email "deploy-bot@fieldserviceit.com"
+          git checkout -b "$branch"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Frontend deployment repository is already current." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          git commit -m "Deploy monorepo ${GITHUB_SHA::12}"
+          git push --set-upstream origin "$branch"
+          pr_url=$(gh pr create --repo nicholasnkb-cmd/fieldserviceit-frontend --base master --head "$branch" \
+            --title "Deploy frontend ${GITHUB_SHA::12}" \
+            --body "Automated, history-preserving deployment from monorepo commit $GITHUB_SHA.")
+          pr_number="${pr_url##*/}"
+          sleep 10
+          check_count=$(gh pr checks "$pr_number" --repo nicholasnkb-cmd/fieldserviceit-frontend --json state --jq 'length' 2>/dev/null || echo 0)
+          if [ "$check_count" -gt 0 ]; then
+            gh pr checks "$pr_number" --repo nicholasnkb-cmd/fieldserviceit-frontend --watch --fail-fast
+          fi
+          gh pr merge "$pr_number" --repo nicholasnkb-cmd/fieldserviceit-frontend --squash --delete-branch
+          echo "Frontend deployment PR: $pr_url" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Allow Hostinger auto-deployments to start
         run: sleep 30
 
@@ -117,10 +184,10 @@ jobs:
     environment: production
     timeout-minutes: 8
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 20
       - name: Verify deployed application without mutations
         env:
           VERIFICATION_WEB_URL: ${{ vars.VERIFICATION_WEB_URL || 'https://fieldserviceit.com' }}

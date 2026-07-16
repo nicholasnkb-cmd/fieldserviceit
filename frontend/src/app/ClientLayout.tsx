@@ -9,6 +9,7 @@ import { Analytics } from '../components/marketing/Analytics';
 import { TenantTheme } from '../components/layout/TenantTheme';
 import { MobileAppInstallPrompt } from '../components/layout/MobileAppInstallPrompt';
 import { isPublicPath } from '../lib/public-routes';
+import { AppQueryProvider } from '../components/providers/AppQueryProvider';
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
   const { user, authChecked, setUser, setCompany, setAuthChecked, logout } = useAuthStore();
@@ -105,11 +106,13 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <ToastProvider>
-      <TenantTheme />
-      <Analytics />
-      <MobileAppInstallPrompt />
-      {children}
-    </ToastProvider>
+    <AppQueryProvider>
+      <ToastProvider>
+        <TenantTheme />
+        <Analytics />
+        <MobileAppInstallPrompt />
+        {children}
+      </ToastProvider>
+    </AppQueryProvider>
   );
 }

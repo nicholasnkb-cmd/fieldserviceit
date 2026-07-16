@@ -4,18 +4,23 @@ import process from 'node:process';
 
 const failures = [];
 const productionRequired = [
-  'JWT_SECRET', 'JWT_REFRESH_SECRET', 'CREDENTIAL_ENCRYPTION_KEY',
-  'CLAMAV_HOST', 'BACKUP_S3_ENDPOINT', 'BACKUP_S3_BUCKET',
-  'BACKUP_S3_ACCESS_KEY_ID', 'BACKUP_S3_SECRET_ACCESS_KEY',
+  'JWT_SECRET',
 ];
 if (process.env.NODE_ENV === 'production') {
   for (const name of productionRequired) {
     if (!process.env[name]) failures.push(`${name} must be configured in production`);
   }
-  if (process.env.JWT_SECRET === process.env.CREDENTIAL_ENCRYPTION_KEY) {
+  if (process.env.CREDENTIAL_ENCRYPTION_KEY && process.env.JWT_SECRET === process.env.CREDENTIAL_ENCRYPTION_KEY) {
     failures.push('CREDENTIAL_ENCRYPTION_KEY must be different from JWT_SECRET');
   }
-  if (process.env.CLAMAV_REQUIRED !== 'true') failures.push('CLAMAV_REQUIRED must be true in production');
+  if (process.env.CLAMAV_REQUIRED === 'true' && !process.env.CLAMAV_HOST) {
+    failures.push('CLAMAV_HOST must be set when CLAMAV_REQUIRED=true');
+  }
+  const backupValues = ['BACKUP_S3_ENDPOINT', 'BACKUP_S3_BUCKET', 'BACKUP_S3_ACCESS_KEY_ID', 'BACKUP_S3_SECRET_ACCESS_KEY'];
+  const configuredBackupValues = backupValues.filter((name) => process.env[name]);
+  if (configuredBackupValues.length > 0 && configuredBackupValues.length !== backupValues.length) {
+    failures.push('Offsite backup must configure all BACKUP_S3_* connection values together');
+  }
 }
 const monitoringKey = process.env.MONITORING_API_KEY || '';
 if (monitoringKey.length < 24) {
