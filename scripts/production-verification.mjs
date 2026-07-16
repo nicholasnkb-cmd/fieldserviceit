@@ -59,6 +59,7 @@ for (const [name, url] of checks) {
         }
       }
     : undefined);
+}
 
 if (email && password) {
   const loginResponse = await request("administrator login", `${apiUrl}/v1/auth/login`, {
