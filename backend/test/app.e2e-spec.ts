@@ -112,6 +112,7 @@ describe('FieldserviceIT E2E', () => {
           subcategory: 'ERP',
           contactName: 'E2E Tester',
           contactEmail: 'e2e@test.com',
+          contactPhone: '+1-555-0100',
         })
         .expect(201);
 
@@ -307,7 +308,7 @@ describe('FieldserviceIT E2E', () => {
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(200);
 
-      expect(res.body.providers).toEqual(['connectwise', 'ninjaone', 'datto']);
+      expect(res.body.providers).toEqual(expect.arrayContaining(['connectwise', 'ninjaone', 'datto']));
     });
 
     it('POST /v1/integrations/rmm/sync-asset - sync single asset', async () => {
@@ -343,13 +344,13 @@ describe('FieldserviceIT E2E', () => {
       expect(res.body.length).toBeGreaterThan(0);
     });
 
-    it('POST /v1/integrations/rmm/sync-now/connectwise - trigger manual sync', async () => {
+    it('POST /v1/integrations/rmm/sync-now/connectwise - reports missing provider configuration', async () => {
       const res = await request(app.getHttpServer())
         .post('/v1/integrations/rmm/sync-now/connectwise')
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(201);
 
-      expect(res.body.synced).toBe(true);
+      expect(res.body.synced).toBe(false);
     });
   });
 

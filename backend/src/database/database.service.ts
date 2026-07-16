@@ -42,6 +42,12 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy, OnApplica
       enableKeepAlive: true,
       keepAliveInitialDelay: 0,
       queueLimit: this.positiveInteger('DB_POOL_QUEUE_LIMIT', 100),
+      typeCast: (field, next) => {
+        if (field.type === 'TINY' && field.length === 1) {
+          return field.string() === '1';
+        }
+        return next();
+      },
     });
   }
 
@@ -1978,6 +1984,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy, OnApplica
     findMany: async ({ where, include }: { where?: Record<string, any>; include?: Record<string, any> }) => {
       let sql = 'SELECT * FROM UserRole';
       const values: any[] = [];
+      where = where?.userId_roleId || where;
       if (where && Object.keys(where).length > 0) {
         const clauses = Object.entries(where).map(([k, v]) => {
           if (v === null) return `${this.escapeColumn(k)} IS NULL`;
@@ -2014,6 +2021,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy, OnApplica
     },
 
     delete: async ({ where }: { where: Record<string, any> }) => {
+      where = where.userId_roleId || where;
       const whereClauses = Object.entries(where).map(([k, v]) => `${this.escapeColumn(k)} = ?`);
       const values = Object.values(where);
       const sql = `DELETE FROM UserRole WHERE ${whereClauses.join(' AND ')}`;
@@ -2038,13 +2046,13 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy, OnApplica
     },
 
     upsert: async ({ where, update, create, include }: { where: Record<string, any>; update: Record<string, any>; create: Record<string, any>; include?: Record<string, any> }) => {
-      const rows = await this.userRole.findMany({ where } as any);
+      const normalizedWhere = where.userId_roleId || where;
+      const rows = await this.userRole.findMany({ where: normalizedWhere, include } as any);
       if (rows.length > 0) {
-        await this.userRole.delete({ where });
-        await this.userRole.create({ data: { ...update } } as any);
         return { ...rows[0], ...update };
       }
-      return this.userRole.create({ data: create } as any);
+      await this.userRole.create({ data: create } as any);
+      return this.userRole.findUnique({ where: normalizedWhere, include } as any);
     },
   };
 

@@ -113,7 +113,7 @@ describe('Permissions & Roles (E2E)', () => {
           name: 'Test Custom Role',
           slug: 'test-custom-role',
           description: 'A role created during E2E test',
-          permissionSlugs: ['tickets:read', 'tickets:create', 'assets:read'],
+          permissionSlugs: ['tickets.view', 'tickets.create', 'assets.view'],
         })
         .expect(201);
 
@@ -126,7 +126,7 @@ describe('Permissions & Roles (E2E)', () => {
       const res = await request(app.getHttpServer())
         .patch(`/v1/admin/roles/${testRoleId}`)
         .set('Authorization', `Bearer ${superToken}`)
-        .send({ permissionSlugs: ['tickets:read', 'tickets:create', 'tickets:update', 'users:read'] })
+        .send({ permissionSlugs: ['tickets.view', 'tickets.create', 'tickets.edit', 'users.view'] })
         .expect(200);
 
       expect(res.body.permissions).toHaveLength(4);
@@ -246,7 +246,7 @@ describe('Permissions & Roles (E2E)', () => {
         .send({
           name: 'Company Custom Role',
           slug: 'company-custom-role',
-          permissionSlugs: ['tickets:read', 'assets:read'],
+          permissionSlugs: ['tickets.view', 'assets.view'],
         })
         .expect(201);
 
