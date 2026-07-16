@@ -8,7 +8,7 @@ on:
 
 env:
   DATABASE_URL: mysql://app:devpassword@localhost:3306/fieldserviceit-test
-  JWT_SECRET: ci-secret-key-for-testing-only
+  JWT_SECRET: ci-secret-key-for-testing-only-at-least-32-characters
   JWT_EXPIRES_IN: 15m
   SMTP_HOST: localhost
   SMTP_PORT: 1025
