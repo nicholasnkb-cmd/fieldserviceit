@@ -20,7 +20,6 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { TrackedLink } from '../components/marketing/TrackedLink';
-import { Footer } from '../components/layout/Footer';
 import { api } from '../lib/api';
 
 interface LiveOperations {
@@ -154,7 +153,7 @@ export default function LandingPageClient() {
   return (
     <>
     <a href="#main-content" className="sr-only z-[60] rounded bg-white px-4 py-2 text-gray-950 shadow focus:not-sr-only focus:fixed focus:left-4 focus:top-4">Skip to main content</a>
-    <main id="main-content" tabIndex={-1} className="min-h-screen bg-white text-gray-950">
+    <main id="main-content" tabIndex={-1} className="flex-1 bg-white text-gray-950">
       <nav className={`fixed inset-x-0 top-0 z-50 transition ${scrolled ? 'bg-white/[0.92] shadow-sm backdrop-blur' : 'bg-transparent'}`}>
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 sm:px-6">
           <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight text-gray-950">
@@ -510,7 +509,6 @@ export default function LandingPageClient() {
         </div>
       </section>
     </main>
-    <Footer />
     </>
   );
 }
