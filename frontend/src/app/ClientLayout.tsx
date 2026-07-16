@@ -10,6 +10,7 @@ import { TenantTheme } from '../components/layout/TenantTheme';
 import { MobileAppInstallPrompt } from '../components/layout/MobileAppInstallPrompt';
 import { isPublicPath } from '../lib/public-routes';
 import { AppQueryProvider } from '../components/providers/AppQueryProvider';
+import { Footer } from '../components/layout/Footer';
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
   const { user, authChecked, setUser, setCompany, setAuthChecked, logout } = useAuthStore();
@@ -97,13 +98,11 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
   }, []);
 
   const publicPath = isPublicPath(pathname);
-  if (!publicPath && (!authChecked || !user)) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50 text-sm text-gray-600">
-        Verifying your session...
-      </div>
-    );
-  }
+  const content = !publicPath && (!authChecked || !user) ? (
+    <div className="flex flex-1 items-center justify-center bg-gray-50 text-sm text-gray-600">
+      Verifying your session...
+    </div>
+  ) : children;
 
   return (
     <AppQueryProvider>
@@ -111,7 +110,10 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
         <TenantTheme />
         <Analytics />
         <MobileAppInstallPrompt />
-        {children}
+        <div className="flex min-h-screen flex-col">
+          <div className="flex flex-1 flex-col">{content}</div>
+          <Footer compact={!publicPath} />
+        </div>
       </ToastProvider>
     </AppQueryProvider>
   );

@@ -1,6 +1,5 @@
 import { BannerMenu } from './BannerMenu';
 import { SidePanel } from './SidePanel';
-import { Footer } from './Footer';
 import { TenantContextBanner } from './TenantContextBanner';
 import { FeatureAccessGate } from './FeatureAccessGate';
 import { BillingStatusBanner } from './BillingStatusBanner';
@@ -10,7 +9,7 @@ import { OnboardingChecklist } from './OnboardingChecklist';
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen flex-col bg-background text-foreground">
+    <div className="flex flex-1 flex-col bg-background text-foreground">
       <BannerMenu />
       <div className="flex flex-1">
         <SidePanel />
@@ -25,7 +24,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         </main>
       </div>
-      <Footer />
     </div>
   );
 }

@@ -264,6 +264,7 @@ export default function SystemControlsPage() {
           <div className="mt-4 grid gap-3 md:grid-cols-2">
             {[
               ['Frontend version', readiness.deployment?.frontendVersion || 'unknown'],
+              ['Frontend commit', process.env.NEXT_PUBLIC_APP_COMMIT || 'unknown'],
               ['Backend version', readiness.deployment?.backendVersion || 'unknown'],
               ['Runtime', readiness.deployment?.nodeEnv || readiness.environment],
               ['CORS origin', readiness.deployment?.corsOrigin || 'not set'],

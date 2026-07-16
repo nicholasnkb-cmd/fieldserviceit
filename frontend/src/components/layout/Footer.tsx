@@ -12,14 +12,27 @@ const supportLinks = [
   { href: '/status', label: 'Service Status' },
 ];
 
-export function Footer() {
-  const version = process.env.NEXT_PUBLIC_APP_VERSION || 'unknown';
-  const commit = process.env.NEXT_PUBLIC_APP_COMMIT || 'unknown';
-  const shortCommit = commit === 'unknown' ? commit : commit.slice(0, 7);
+export function Footer({ compact = false }: { compact?: boolean }) {
+  const year = new Date().getFullYear();
+
+  if (compact) {
+    return (
+      <footer className="mt-auto border-t border-gray-700 bg-gray-900 px-6 py-4 text-gray-400">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 text-center text-sm sm:flex-row sm:text-left">
+          <p>&copy; {year} FieldserviceIT. All rights reserved.</p>
+          <nav aria-label="Footer legal links" className="flex flex-wrap justify-center gap-x-4 gap-y-2">
+            <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
+            <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
+            <Link href="/security-overview" className="hover:text-white transition-colors">Security</Link>
+          </nav>
+        </div>
+      </footer>
+    );
+  }
 
   return (
     <footer className="bg-gray-900 text-gray-300 border-t border-gray-700 py-8 px-6 mt-auto">
-      <div className="max-w-7xl mx-auto grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
+      <nav aria-label="Footer navigation" className="max-w-7xl mx-auto grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
         <div>
           <h3 className="text-white font-semibold mb-3">FieldserviceIT</h3>
           <p className="text-sm text-gray-400">Multi-tenant ITSM &amp; MSP platform for field service management.</p>
@@ -55,12 +68,9 @@ export function Footer() {
             <li><a href="mailto:support@fieldserviceit.com" className="hover:text-white transition-colors">Contact Support</a></li>
           </ul>
         </div>
-      </div>
+      </nav>
       <div className="max-w-7xl mx-auto mt-8 pt-6 border-t border-gray-700 text-center text-sm text-gray-500">
-        <p>&copy; 2026 FieldserviceIT. All rights reserved.</p>
-        <p className="mt-2 text-xs" title={`Frontend commit ${commit}`}>
-          Frontend v{version} &middot; {shortCommit}
-        </p>
+        <p>&copy; {year} FieldserviceIT. All rights reserved.</p>
       </div>
     </footer>
   );

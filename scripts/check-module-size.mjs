@@ -11,7 +11,7 @@ const legacyCaps = new Map([
   ['backend/src/modules/cmdb/services/cmdb.service.ts', 1880],
   ['backend/src/modules/admin/services/admin.service.ts', 1820],
   ['backend/src/database/migrations/migrations.service.ts', 1550],
-  ['frontend/src/app/(app)/network/page.tsx', 1600],
+  ['frontend/src/app/(app)/network/NetworkPageClient.tsx', 1600],
   ['frontend/src/app/(app)/admin/permissions/page.tsx', 1500],
 ]);
 
