@@ -42,12 +42,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy, OnApplica
       enableKeepAlive: true,
       keepAliveInitialDelay: 0,
       queueLimit: this.positiveInteger('DB_POOL_QUEUE_LIMIT', 100),
-      typeCast: (field, next) => {
-        if (field.type === 'TINY' && field.length === 1) {
-          return field.string() === '1';
-        }
-        return next();
-      },
+      typeCast: (field, next) => field.type === 'TINY' && field.length === 1 ? field.string() === '1' : next(),
     });
   }
 
