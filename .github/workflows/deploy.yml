@@ -108,6 +108,7 @@ jobs:
           GH_TOKEN: ${{ secrets.DEPLOY_REPOS_TOKEN }}
         run: |
           set -euo pipefail
+          echo "started_at=$(date -u +%FT%TZ)" >> "$GITHUB_OUTPUT"
           test -n "$GH_TOKEN" || { echo "DEPLOY_REPOS_TOKEN is required"; exit 1; }
           branch="deploy/backend-${GITHUB_SHA::12}-${GITHUB_RUN_ATTEMPT}"
           rsync -a application/backend/ deployment/backend/ \
@@ -155,6 +156,18 @@ jobs:
           done
           echo "Backend deployment handoff timed out" >&2
           exit 1
+
+      - name: Wait for Hostinger build and restart backend
+        if: steps.backend-sync.outputs.branch != ''
+        timeout-minutes: 20
+        env:
+          HOSTINGER_API_TOKEN: ${{ secrets.HOSTINGER_API_TOKEN }}
+          HOSTINGER_DOMAIN: api.fieldserviceit.com
+          HOSTINGER_RESTART: 'true'
+          HOSTINGER_WAIT_FOR_BUILD: 'true'
+          HOSTINGER_BUILD_NOT_BEFORE: ${{ steps.backend-sync.outputs.started_at }}
+          HOSTINGER_EXPECTED_COMMIT: ${{ github.sha }}
+        run: node application/scripts/hostinger-node-recovery.mjs
 
   deploy-frontend:
     name: Deploy Hostinger Frontend
@@ -252,13 +265,24 @@ jobs:
         run: node scripts/production-verification.mjs
 
       - uses: actions/setup-node@v4
-        if: env.HAS_VERIFICATION_CREDENTIALS == 'true'
         with:
           node-version: 20
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Run authenticated desktop and mobile visual verification
+      - name: Install production browser test dependencies
+        working-directory: frontend
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Compare public pages with visual baselines
+        working-directory: frontend
+        env:
+          E2E_BASE_URL: ${{ vars.VERIFICATION_WEB_URL || 'https://fieldserviceit.com' }}
+        run: npm run test:e2e:visual
+
+      - name: Run authenticated desktop and mobile workflow verification
         if: env.HAS_VERIFICATION_CREDENTIALS == 'true'
         working-directory: frontend
         env:
@@ -266,13 +290,91 @@ jobs:
           E2E_EMAIL: ${{ secrets.VERIFICATION_EMAIL }}
           E2E_PASSWORD: ${{ secrets.VERIFICATION_PASSWORD }}
         run: |
-          npm ci
-          npx playwright install --with-deps chromium
-          npm run test:e2e:prod
+          npx playwright test -c playwright.prod.config.ts authenticated-workflows.spec.ts
 
       - uses: actions/upload-artifact@v4
-        if: always() && env.HAS_VERIFICATION_CREDENTIALS == 'true'
+        if: always()
         with:
-          name: authenticated-production-visuals
+          name: production-visual-verification
           path: frontend/test-results
           retention-days: 14
+
+  deployment-observability:
+    name: Record Deployment Outcome
+    needs: [build-backend, build-frontend, hostinger-preflight, deploy-backend, deploy-frontend, verify-production]
+    if: ${{ always() && !cancelled() }}
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      actions: read
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Calculate outcome and duration
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESULTS: ${{ toJSON(needs) }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          created=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" --jq .created_at)
+          started_epoch=$(date -d "$created" +%s)
+          now=$(date -u +%FT%TZ)
+          duration_ms=$(( ($(date +%s) - started_epoch) * 1000 ))
+          if jq -e 'to_entries | all(.value.result == "success" or .value.result == "skipped")' <<< "$RESULTS" >/dev/null; then
+            status=SUCCEEDED
+          else
+            status=FAILED
+          fi
+          echo "DEPLOYMENT_STATUS=$status" >> "$GITHUB_ENV"
+          echo "DEPLOYMENT_DURATION_MS=$duration_ms" >> "$GITHUB_ENV"
+          echo "DEPLOYMENT_STARTED_AT=$created" >> "$GITHUB_ENV"
+          echo "DEPLOYMENT_COMPLETED_AT=$now" >> "$GITHUB_ENV"
+          echo "DEPLOYMENT_DETAIL=$(jq -c 'with_entries(.value = .value.result)' <<< "$RESULTS")" >> "$GITHUB_ENV"
+
+      - name: Record deployment history
+        continue-on-error: true
+        env:
+          MONITORING_API_KEY: ${{ secrets.MONITORING_API_KEY }}
+          DEPLOYMENT_API_URL: ${{ vars.VERIFICATION_API_URL || 'https://api.fieldserviceit.com' }}
+          DEPLOYMENT_RELEASE: ${{ github.sha }}
+          DEPLOYMENT_COMPONENT: release
+          DEPLOYMENT_RUN_ID: ${{ github.run_id }}
+          DEPLOYMENT_WORKFLOW_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: node scripts/deployment-event.mjs
+
+      - name: Send operations webhook on failure
+        if: env.DEPLOYMENT_STATUS == 'FAILED'
+        continue-on-error: true
+        env:
+          OPERATIONS_ALERT_WEBHOOK_URL: ${{ secrets.OPERATIONS_ALERT_WEBHOOK_URL }}
+          ALERT_TITLE: FieldserviceIT production deployment failed
+          ALERT_MESSAGE: Release ${{ github.sha }} did not pass every build, deployment, and production verification gate.
+          ALERT_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: node scripts/operations-webhook-alert.mjs
+
+      - name: Open or resolve deployment incident
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = 'Production deployment failure';
+            const { owner, repo } = context.repo;
+            const issues = await github.paginate(github.rest.issues.listForRepo, { owner, repo, state: 'all', labels: 'deployment-alert', per_page: 100 });
+            const existing = issues.find((issue) => issue.title === title);
+            const openIncident = existing?.state === 'open' ? existing : undefined;
+            const failed = process.env.DEPLOYMENT_STATUS === 'FAILED';
+            const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+            if (failed && !openIncident) {
+              await github.rest.issues.createLabel({ owner, repo, name: 'deployment-alert', color: 'B60205', description: 'Automated production deployment incident' }).catch((error) => { if (error.status !== 422) throw error; });
+              if (existing) {
+                await github.rest.issues.createComment({ owner, repo, issue_number: existing.number, body: `A production deployment failed again. [Open workflow run](${runUrl})` });
+                await github.rest.issues.update({ owner, repo, issue_number: existing.number, state: 'open' });
+              } else {
+                await github.rest.issues.create({ owner, repo, title, labels: ['deployment-alert'], assignees: [owner], body: `A production deployment failed.\n\n[Open workflow run](${runUrl})` });
+              }
+            } else if (!failed && openIncident) {
+              await github.rest.issues.createComment({ owner, repo, issue_number: openIncident.number, body: `Production deployments recovered. [Open workflow run](${runUrl})` });
+              await github.rest.issues.update({ owner, repo, issue_number: openIncident.number, state: 'closed', state_reason: 'completed' });
+            }

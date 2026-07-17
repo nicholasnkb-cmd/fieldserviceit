@@ -74,3 +74,31 @@ for (const [name, url] of targets) {
 }
 
 if (failed) process.exitCode = 1;
+
+const monitoringKey = process.env.MONITORING_API_KEY;
+if (!monitoringKey) {
+  console.warn('SKIP migration health: MONITORING_API_KEY is not configured.');
+} else {
+  const apiBase = (process.env.UPTIME_API_URL || 'https://api.fieldserviceit.com').replace(/\/+$/, '');
+  try {
+    const response = await fetch(`${apiBase}/v1/monitoring/deployments/migrations`, {
+      headers: {
+        'User-Agent': 'FieldserviceIT-Uptime-Monitor/1.0',
+        'x-monitoring-key': monitoringKey,
+      },
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const payload = await response.json();
+    const status = payload.data || payload;
+    const failedMigrations = Array.isArray(status.failed) ? status.failed : [];
+    const pendingMigrations = Array.isArray(status.pending) ? status.pending : [];
+    if (failedMigrations.length || pendingMigrations.length) {
+      throw new Error(`${failedMigrations.length} failed and ${pendingMigrations.length} pending migrations`);
+    }
+    console.log(`PASS migration health: ${status.applied || 0} migrations applied.`);
+  } catch (error) {
+    console.error(`FAIL migration health: ${errorMessage(error)}`);
+    process.exitCode = 1;
+  }
+}

@@ -1,6 +1,9 @@
 const token = process.env.HOSTINGER_API_TOKEN;
 const domain = (process.env.HOSTINGER_DOMAIN || 'api.fieldserviceit.com').trim().toLowerCase();
 const restart = String(process.env.HOSTINGER_RESTART || 'false').toLowerCase() === 'true';
+const waitForBuild = String(process.env.HOSTINGER_WAIT_FOR_BUILD || 'false').toLowerCase() === 'true';
+const buildNotBefore = Date.parse(process.env.HOSTINGER_BUILD_NOT_BEFORE || '') || 0;
+const expectedCommit = String(process.env.HOSTINGER_EXPECTED_COMMIT || '').trim();
 const healthUrl = (process.env.HOSTINGER_HEALTH_URL || `https://${domain}/v1/health/live`).trim();
 
 if (!token) {
@@ -45,18 +48,36 @@ if (!website?.username) {
 const username = encodeURIComponent(website.username);
 const encodedDomain = encodeURIComponent(domain);
 const basePath = `/api/hosting/v1/accounts/${username}/websites/${encodedDomain}/nodejs`;
-const builds = await hostinger(`${basePath}/builds?per_page=5`);
-const recent = (builds.data || []).map(({ uuid, state, created_at, updated_at }) => ({
-  uuid,
-  state,
-  created_at,
-  updated_at,
-})).sort((left, right) => Date.parse(right.created_at || 0) - Date.parse(left.created_at || 0));
+async function recentBuilds() {
+  const builds = await hostinger(`${basePath}/builds?per_page=10`);
+  return (builds.data || []).map(({ uuid, state, created_at, updated_at }) => ({
+    uuid, state, created_at, updated_at,
+  })).sort((left, right) => Date.parse(right.created_at || 0) - Date.parse(left.created_at || 0));
+}
+
+let recent = await recentBuilds();
 
 console.log(`Hostinger Node.js website: ${domain}`);
 console.log(`Recent builds: ${JSON.stringify(recent)}`);
 
-const latest = recent[0];
+let latest = recent[0];
+if (waitForBuild) {
+  const terminalStates = new Set(['completed', 'complete', 'success', 'succeeded', 'failed', 'cancelled', 'canceled']);
+  for (let attempt = 1; attempt <= 90; attempt += 1) {
+    recent = await recentBuilds();
+    latest = recent.find((build) => Date.parse(build.created_at || 0) >= buildNotBefore) || null;
+    if (latest && terminalStates.has(String(latest.state).toLowerCase())) break;
+    console.log(`Waiting for a Hostinger build created after ${new Date(buildNotBefore).toISOString()} (attempt ${attempt}/90).`);
+    await new Promise((resolve) => setTimeout(resolve, 10_000));
+  }
+  if (!latest || Date.parse(latest.created_at || 0) < buildNotBefore) {
+    throw new Error('Hostinger did not create the expected Node.js build before the timeout.');
+  }
+  if (!terminalStates.has(String(latest.state).toLowerCase())) {
+    throw new Error(`Hostinger build ${latest.uuid} did not finish before the timeout (state: ${latest.state}).`);
+  }
+  console.log(`Hostinger build ${latest.uuid} finished with state ${latest.state}.`);
+}
 if (latest?.state === 'failed') {
   const logs = await hostinger(`${basePath}/builds/${encodeURIComponent(latest.uuid)}/logs`);
   console.error('Latest failed build log tail:');
@@ -75,6 +96,15 @@ if (restart) {
         signal: AbortSignal.timeout(20_000),
       });
       if (response.ok) {
+        if (expectedCommit) {
+          const contentType = response.headers.get('content-type') || '';
+          const body = contentType.includes('json') ? await response.json() : {};
+          const actualCommit = body?.commit || body?.data?.commit;
+          if (actualCommit !== expectedCommit) {
+            console.warn(`Health attempt ${attempt} is serving ${actualCommit || 'an unknown release'}, expected ${expectedCommit}.`);
+            continue;
+          }
+        }
         console.log(`PASS production health recovered on attempt ${attempt}.`);
         process.exit(0);
       }

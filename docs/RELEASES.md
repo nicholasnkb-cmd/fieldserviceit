@@ -11,13 +11,15 @@ Required production secrets:
 - `DEPLOY_REPOS_TOKEN`: fine-grained `Contents: write` and `Pull requests: write` permission on both deployment repositories so each application can publish independently.
 - `HOSTINGER_API_TOKEN`: Hostinger API preflight access.
 - `MONITORING_API_KEY`: matches the backend monitoring key.
-- `VERIFICATION_EMAIL` and `VERIFICATION_PASSWORD`: dedicated non-mutating administrator account used to verify login, profile hydration, network inventory, retired inventory, and the operations dashboard.
+- `VERIFICATION_EMAIL` and `VERIFICATION_PASSWORD`: dedicated least-privilege production account used to verify login and profile hydration. Permission-scoped tenant reads also run when that account is deliberately assigned an administrator role.
+- `OPERATIONS_ALERT_WEBHOOK_URL` (recommended): Slack-compatible or Microsoft Teams incoming webhook used for deployment, availability, rollback, and restore-drill alerts. GitHub incidents and configured SMTP administrator alerts remain active without it.
 
 Required or recommended production variables:
 
 - `HOSTINGER_EXPECTED_DOMAINS`
 - `VERIFICATION_WEB_URL`
 - `VERIFICATION_API_URL`
+- `REQUIRE_AUTHENTICATED_VERIFICATION=true`
 
 ## Staging
 
@@ -49,6 +51,9 @@ Every release retains:
 - check results and environment approval;
 - Hostinger preflight output;
 - production verification output.
+- a database-backed deployment event with release SHA, workflow URL, duration, component results, and rollback state, visible at `/admin/system#deployment-history`.
+
+After Hostinger completes a backend build, the workflow explicitly restarts the Node.js service and waits until `/v1/health/live` reports the exact expected commit. Failed verification uses an auditable `git revert` on `master`; protected deployment repositories are never force-pushed.
 
 ## Observability checks
 

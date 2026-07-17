@@ -6,6 +6,7 @@ export default defineConfig({
   expect: { timeout: 15_000 },
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['github'], ['list']] : [['list']],
+  snapshotPathTemplate: '{testDir}/__screenshots__/{testFilePath}/{arg}{ext}',
   use: {
     baseURL: process.env.E2E_BASE_URL || 'https://fieldserviceit.com',
     trace: 'retain-on-failure',
@@ -19,6 +20,7 @@ export default defineConfig({
     {
       name: 'mobile-chrome',
       use: { ...devices['Pixel 7'] },
+      testIgnore: /visual-regression\.spec\.ts/,
     },
   ],
 });

@@ -1,23 +1,37 @@
-import * as Sentry from '@sentry/nextjs';
+function reportClientError(message: string, stack?: string, metadata?: Record<string, unknown>) {
+  try {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+    const payload = JSON.stringify({
+      source: 'frontend',
+      message,
+      stack,
+      path: window.location.pathname,
+      metadata: {
+        ...metadata,
+        release: process.env.NEXT_PUBLIC_APP_COMMIT || 'unknown',
+        viewport: `${window.innerWidth}x${window.innerHeight}`,
+      },
+    });
+    navigator.sendBeacon?.(`${apiUrl}/v1/error-reports`, new Blob([payload], { type: 'application/json' }));
+  } catch {}
+}
 
-const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
-
-Sentry.init({
-  dsn,
-  enabled: Boolean(dsn),
-  environment: process.env.NODE_ENV,
-  release: process.env.NEXT_PUBLIC_APP_COMMIT,
-  tracesSampleRate: Number(process.env.NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE || 0),
-  sendDefaultPii: false,
-  beforeSend(event) {
-    delete event.user;
-    if (event.request) {
-      delete event.request.cookies;
-      delete event.request.data;
-      delete event.request.headers;
-    }
-    return event;
-  },
+window.addEventListener('error', (event) => {
+  reportClientError(event.message, event.error?.stack, { filename: event.filename, lineno: event.lineno, colno: event.colno });
 });
 
-export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;
+window.addEventListener('unhandledrejection', (event) => {
+  reportClientError(String(event.reason?.message || event.reason || 'Unhandled promise rejection'), event.reason?.stack);
+});
+
+window.addEventListener('fieldserviceit:api-error', (event) => {
+  const detail = (event as CustomEvent).detail || {};
+  reportClientError(detail.message || 'API request failed', undefined, {
+    kind: 'api', status: detail.status, method: detail.method, endpoint: detail.endpoint,
+    online: navigator.onLine,
+  });
+});
+
+export function onRouterTransitionStart(href: string, navigationType: string) {
+  performance.mark(`route:${navigationType}:${href}`);
+}

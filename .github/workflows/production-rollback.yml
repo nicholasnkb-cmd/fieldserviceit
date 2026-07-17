@@ -2,12 +2,13 @@ name: Automated Production Rollback
 
 on:
   workflow_run:
-    workflows: ["Production Validation"]
+    workflows: ['Production Validation']
     types: [completed]
 
 permissions:
   actions: read
-  contents: read
+  contents: write
+  issues: write
 
 jobs:
   inspect:
@@ -20,26 +21,34 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RUN_ID: ${{ github.event.workflow_run.id }}
         run: |
+          set -euo pipefail
           jobs=$(gh api "repos/${{ github.repository }}/actions/runs/$RUN_ID/jobs" --paginate)
-          deploy=$(echo "$jobs" | jq -r '.jobs[] | select(.name == "Deploy Hostinger Applications") | .conclusion' | tail -1)
-          verify=$(echo "$jobs" | jq -r '.jobs[] | select(.name == "Verify Production") | .conclusion' | tail -1)
-          if [ "$deploy" = "success" ] && [ "$verify" = "failure" ]; then
-            echo "should_rollback=true" >> "$GITHUB_OUTPUT"
+          backend=$(jq -r '.jobs[] | select(.name == "Deploy Hostinger Backend") | .conclusion' <<< "$jobs" | tail -1)
+          frontend=$(jq -r '.jobs[] | select(.name == "Deploy Hostinger Frontend") | .conclusion' <<< "$jobs" | tail -1)
+          verify=$(jq -r '.jobs[] | select(.name == "Verify Production") | .conclusion' <<< "$jobs" | tail -1)
+          if { [ "$backend" = success ] || [ "$frontend" = success ]; } && [ "$verify" = failure ]; then
+            echo 'should_rollback=true' >> "$GITHUB_OUTPUT"
           else
-            echo "should_rollback=false" >> "$GITHUB_OUTPUT"
+            echo 'should_rollback=false' >> "$GITHUB_OUTPUT"
           fi
 
   rollback:
     needs: inspect
-    if: ${{ needs.inspect.outputs.should_rollback == 'true' }}
+    if: needs.inspect.outputs.should_rollback == 'true'
     runs-on: ubuntu-latest
     environment: production
+    concurrency:
+      group: production-rollback
+      cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
-          fetch-depth: 2
-          persist-credentials: false
+          ref: master
+          fetch-depth: 20
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
       - name: Recheck production after Hostinger warm-up
         id: recheck
@@ -47,33 +56,54 @@ jobs:
         env:
           VERIFICATION_WEB_URL: ${{ vars.VERIFICATION_WEB_URL || 'https://fieldserviceit.com' }}
           VERIFICATION_API_URL: ${{ vars.VERIFICATION_API_URL || 'https://api.fieldserviceit.com' }}
+          EXPECTED_RELEASE: ${{ github.event.workflow_run.head_sha }}
         run: |
-          sleep 180
+          sleep 120
           node scripts/production-verification.mjs
 
-      - name: Restore previous deployment repositories
+      - name: Revert failed release on master
+        id: revert
         if: steps.recheck.outcome == 'failure'
         env:
-          DEPLOY_REPOS_TOKEN: ${{ secrets.DEPLOY_REPOS_TOKEN }}
+          FAILED_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
-          test -n "$DEPLOY_REPOS_TOKEN" || { echo "DEPLOY_REPOS_TOKEN is required"; exit 1; }
-          previous=$(git rev-parse HEAD^)
-          backend_commit=$(git subtree split --prefix=backend "$previous")
-          frontend_commit=$(git subtree split --prefix=frontend "$previous")
-          backend_remote=$(git ls-remote https://github.com/nicholasnkb-cmd/fieldserviceit-backend.git refs/heads/master | cut -f1)
-          frontend_remote=$(git ls-remote https://github.com/nicholasnkb-cmd/fieldserviceit-frontend.git refs/heads/master | cut -f1)
-          git push "--force-with-lease=refs/heads/master:$backend_remote" "https://x-access-token:$DEPLOY_REPOS_TOKEN@github.com/nicholasnkb-cmd/fieldserviceit-backend.git" "$backend_commit:refs/heads/master"
-          git push "--force-with-lease=refs/heads/master:$frontend_remote" "https://x-access-token:$DEPLOY_REPOS_TOKEN@github.com/nicholasnkb-cmd/fieldserviceit-frontend.git" "$frontend_commit:refs/heads/master"
+          set -euo pipefail
+          git config user.name 'FieldServiceIT Rollback Bot'
+          git config user.email 'rollback-bot@fieldserviceit.com'
+          current=$(git rev-parse HEAD)
+          if [ "$current" != "$FAILED_SHA" ]; then
+            echo "Master advanced from $FAILED_SHA to $current; refusing an automatic stale rollback." >&2
+            exit 1
+          fi
+          parents=$(git rev-list --parents -n 1 "$FAILED_SHA" | awk '{print NF-1}')
+          if [ "$parents" -gt 1 ]; then
+            git revert -m 1 --no-edit "$FAILED_SHA"
+          else
+            git revert --no-edit "$FAILED_SHA"
+          fi
+          git push origin HEAD:master
+          echo "revert_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/setup-node@v6
-        if: steps.recheck.outcome == 'failure'
-        with:
-          node-version: 24
-      - name: Verify rollback recovery
-        if: steps.recheck.outcome == 'failure'
+      - name: Record rollback event
+        if: steps.revert.outcome == 'success'
+        continue-on-error: true
         env:
-          VERIFICATION_WEB_URL: ${{ vars.VERIFICATION_WEB_URL || 'https://fieldserviceit.com' }}
-          VERIFICATION_API_URL: ${{ vars.VERIFICATION_API_URL || 'https://api.fieldserviceit.com' }}
-        run: |
-          sleep 90
-          node scripts/production-verification.mjs
+          MONITORING_API_KEY: ${{ secrets.MONITORING_API_KEY }}
+          DEPLOYMENT_API_URL: ${{ vars.VERIFICATION_API_URL || 'https://api.fieldserviceit.com' }}
+          DEPLOYMENT_RELEASE: ${{ github.event.workflow_run.head_sha }}
+          DEPLOYMENT_COMPONENT: rollback
+          DEPLOYMENT_STATUS: ROLLED_BACK
+          DEPLOYMENT_RUN_ID: rollback-${{ github.run_id }}
+          DEPLOYMENT_WORKFLOW_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          DEPLOYMENT_DETAIL: '{"strategy":"auditable-git-revert"}'
+        run: node scripts/deployment-event.mjs
+
+      - name: Send rollback webhook
+        if: steps.revert.outcome == 'success'
+        continue-on-error: true
+        env:
+          OPERATIONS_ALERT_WEBHOOK_URL: ${{ secrets.OPERATIONS_ALERT_WEBHOOK_URL }}
+          ALERT_TITLE: FieldserviceIT production rollback started
+          ALERT_MESSAGE: Failed release ${{ github.event.workflow_run.head_sha }} was reverted on master. The normal protected deployment workflow will publish the recovery release.
+          ALERT_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: node scripts/operations-webhook-alert.mjs

@@ -17,6 +17,7 @@ jobs:
   check:
     name: Website and API
     runs-on: ubuntu-latest
+    environment: production
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
@@ -27,6 +28,7 @@ jobs:
         env:
           UPTIME_WEB_URL: ${{ vars.UPTIME_WEB_URL || 'https://fieldserviceit.com' }}
           UPTIME_API_URL: ${{ vars.UPTIME_API_URL || 'https://api.fieldserviceit.com' }}
+          MONITORING_API_KEY: ${{ secrets.MONITORING_API_KEY }}
         run: node scripts/uptime-check.mjs
 
   notify:
@@ -34,7 +36,22 @@ jobs:
     needs: check
     if: ${{ always() }}
     runs-on: ubuntu-latest
+    environment: production
     steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Send operations webhook on failure
+        if: needs.check.result != 'success'
+        continue-on-error: true
+        env:
+          OPERATIONS_ALERT_WEBHOOK_URL: ${{ secrets.OPERATIONS_ALERT_WEBHOOK_URL }}
+          ALERT_TITLE: FieldserviceIT production health alert
+          ALERT_MESSAGE: Website, API, readiness, or database migration health checks failed.
+          ALERT_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: node scripts/operations-webhook-alert.mjs
+
       - name: Open or resolve uptime incident
         uses: actions/github-script@v9
         with:
