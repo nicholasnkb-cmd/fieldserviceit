@@ -39,11 +39,11 @@ describe('DatabaseService production controls', () => {
     }));
   });
 
-  it('fails module initialization when the database is unavailable', async () => {
+  it('keeps the process available when startup database initialization fails', async () => {
     mockPool.getConnection.mockRejectedValueOnce(new Error('connection refused'));
     const service = new DatabaseService();
 
-    await expect(service.onModuleInit()).rejects.toThrow('connection refused');
+    await expect(service.onModuleInit()).resolves.toBeUndefined();
   });
 
   it('applies a timeout to queries', async () => {

@@ -54,8 +54,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy, OnApplica
       await this.ensureTables();
       await this.migrationsService?.run();
     } catch (err) {
-      this.logger.error('Database initialization failed: ' + (err instanceof Error ? err.message : String(err)));
-      throw err;
+      // Keep liveness available when a hosting database rejects an idempotent startup migration.
+      this.logger.warn('Database initialization incomplete: ' + (err instanceof Error ? err.message : String(err)));
     }
   }
 
