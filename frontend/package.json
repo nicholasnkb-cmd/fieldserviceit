@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build && node postbuild.js",
+    "build": "next build && node postbuild.js && node check-bundle-budget.mjs",
     "start": "bash start-hostinger.sh",
     "start:standalone": "node .next/standalone/server.js",
     "start:next": "next start",
@@ -12,7 +12,8 @@
     "test": "jest --passWithNoTests",
     "test:a11y": "jest --runInBand accessibility.test.tsx",
     "test:watch": "jest --watch --passWithNoTests",
-    "test:e2e:prod": "playwright test -c playwright.prod.config.ts"
+    "test:e2e:prod": "playwright test -c playwright.prod.config.ts",
+    "test:e2e:visual": "playwright test -c playwright.prod.config.ts visual-regression.spec.ts --project=chromium"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.62.0",

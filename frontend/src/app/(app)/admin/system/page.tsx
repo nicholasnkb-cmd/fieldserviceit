@@ -68,6 +68,18 @@ interface BillingPrice {
   component: string;
   externalPriceId: string;
 }
+interface DeploymentEvent {
+  id: string;
+  releaseCommit: string;
+  component: string;
+  status: string;
+  workflowUrl?: string | null;
+  durationMs?: number | null;
+  detail?: Record<string, unknown>;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  createdAt: string;
+}
 
 const featureLabels: Record<string, string> = {
   tickets: 'Tickets',
@@ -106,6 +118,7 @@ export default function SystemControlsPage() {
   const [billingProviders, setBillingProviders] = useState<BillingProvider[]>([]);
   const [billingEvents, setBillingEvents] = useState<BillingEvent[]>([]);
   const [billingPrices, setBillingPrices] = useState<BillingPrice[]>([]);
+  const [deployments, setDeployments] = useState<DeploymentEvent[]>([]);
   const [testingProvider, setTestingProvider] = useState('');
   const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
   const { user } = useAuthStore();
@@ -126,9 +139,10 @@ export default function SystemControlsPage() {
       api.get('/admin/billing/providers').catch(() => []),
       api.get('/admin/billing/events?limit=12').catch(() => []),
       api.get('/admin/billing/prices').catch(() => []),
+      api.get('/admin/deployments?limit=30').catch(() => []),
       fetch('/release.json', { cache: 'no-store' }).then((response) => response.ok ? response.json() : null).catch(() => null),
     ])
-      .then(([data, readinessData, companyData, userData, functionData, providerData, eventData, priceData, releaseData]) => {
+      .then(([data, readinessData, companyData, userData, functionData, providerData, eventData, priceData, deploymentData, releaseData]) => {
         if (readinessData) setReadiness(readinessData);
         if (releaseData?.commit || releaseData?.release) setFrontendCommit(releaseData.commit || releaseData.release);
         setCompanies(getListData<CompanyOption>(companyData));
@@ -136,6 +150,7 @@ export default function SystemControlsPage() {
         setFunctions(getListData<FunctionControl>(functionData));
         setBillingProviders(getListData<BillingProvider>(providerData));
         setBillingEvents(getListData<BillingEvent>(eventData));
+        setDeployments(getListData<DeploymentEvent>(deploymentData));
         const prices = getListData<BillingPrice>(priceData);
         setBillingPrices(prices);
         setPriceDrafts(Object.fromEntries(prices.map((price) => [`${price.planId}:${price.provider}:${price.billingInterval}:${price.component}`, price.externalPriceId])));
@@ -296,6 +311,39 @@ export default function SystemControlsPage() {
           </div>
         </section>
       )}
+
+      <section id="deployment-history" className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-2 border-b border-gray-100 pb-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-950">Deployment history</h2>
+            <p className="text-sm text-gray-500">Recent production releases, verification outcomes, durations, and rollback events.</p>
+          </div>
+          <span className="w-fit rounded border border-gray-200 bg-gray-50 px-3 py-1 text-sm text-gray-700">{deployments.length} events</span>
+        </div>
+        {deployments.length ? (
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full min-w-[760px] text-sm">
+              <thead>
+                <tr className="border-b border-gray-200 text-left text-xs uppercase text-gray-500">
+                  <th className="pb-2">Completed</th><th className="pb-2">Release</th><th className="pb-2">Component</th><th className="pb-2">Duration</th><th className="pb-2">Result</th><th className="pb-2 text-right">Details</th>
+                </tr>
+              </thead>
+              <tbody>
+                {deployments.map((event) => (
+                  <tr key={event.id} className="border-b border-gray-100">
+                    <td className="py-3 pr-3 text-gray-600">{new Date(event.completedAt || event.createdAt).toLocaleString()}</td>
+                    <td className="py-3 pr-3 font-mono text-xs text-gray-800" title={event.releaseCommit}>{event.releaseCommit.slice(0, 12)}</td>
+                    <td className="py-3 pr-3 capitalize text-gray-700">{event.component}</td>
+                    <td className="py-3 pr-3 text-gray-600">{event.durationMs == null ? '—' : `${Math.max(1, Math.round(event.durationMs / 1000))}s`}</td>
+                    <td className="py-3 pr-3"><span className={`rounded border px-2 py-0.5 text-xs font-semibold ${event.status === 'SUCCEEDED' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : event.status === 'STARTED' ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-red-200 bg-red-50 text-red-700'}`}>{event.status.replaceAll('_', ' ')}</span></td>
+                    <td className="py-3 text-right">{event.workflowUrl ? <a href={event.workflowUrl} target="_blank" rel="noreferrer" className="font-medium text-primary hover:underline">Workflow</a> : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : <p className="mt-4 text-sm text-gray-500">Deployment events will appear after the next production workflow completes.</p>}
+      </section>
 
       <section className="border border-gray-200 bg-white p-5">
         <div className="border-b border-gray-100 pb-4">

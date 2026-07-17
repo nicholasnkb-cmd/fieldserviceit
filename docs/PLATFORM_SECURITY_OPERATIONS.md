@@ -14,7 +14,8 @@
 
 - Manual and weekly scheduled backups export application tables to a gzip-compressed, AES-256-GCM encrypted artifact outside the public upload path.
 - Backup history exposes checksums and metrics but never server filesystem paths.
-- Integrity tests verify the artifact checksum, decrypt it, decompress it, and validate the backup manifest without modifying production data.
+- Restore tests verify the artifact checksum, decrypt and decompress it, recreate every table in connection-scoped MySQL temporary tables, reload every backed-up row, verify per-table counts, and drop the isolated session without modifying production tables.
+- `.github/workflows/disaster-recovery-drill.yml` runs the latest-backup restore drill weekly and retains evidence for 90 days. Failures create administrator, GitHub, SMTP, and optional operations-webhook alerts.
 - Retention cleanup covers expired sessions, audit logs, client errors, email tracking, network snapshots, and syslog events.
 - Local encrypted artifacts are not an off-site disaster recovery copy. Configure infrastructure-level or provider-managed off-site backups separately.
 

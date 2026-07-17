@@ -10,6 +10,10 @@ const requireAuthenticated = process.env.REQUIRE_AUTHENTICATED_VERIFICATION === 
 const expectedRelease = process.env.EXPECTED_RELEASE;
 const attempts = 5;
 
+function unwrap(body) {
+  return body && typeof body === 'object' && 'success' in body && 'data' in body ? body.data : body;
+}
+
 const checks = [
   ["website", `${webUrl}/`],
   ["login page", `${webUrl}/login`],
@@ -80,17 +84,19 @@ if (email && password) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   });
-  const login = await loginResponse.json();
+  const login = unwrap(await loginResponse.json());
   if (!login.accessToken) throw new Error("administrator login did not return an access token; check MFA and verification-account configuration");
   const authHeaders = { Authorization: `Bearer ${login.accessToken}` };
   const meResponse = await request("authenticated profile", `${apiUrl}/v1/users/me`, { headers: authHeaders });
-  const me = await meResponse.json();
+  const me = unwrap(await meResponse.json());
   if (!me?.id || !me?.email) throw new Error("authenticated profile response is incomplete");
 
-  if (me.companyId) {
+  if (me.companyId && ['SUPER_ADMIN', 'TENANT_ADMIN'].includes(me.role)) {
     await request("authenticated network inventory", `${apiUrl}/v1/assets?deviceCategory=NETWORK_DEVICE&limit=1`, { headers: authHeaders });
     await request("authenticated retired inventory", `${apiUrl}/v1/assets/retired?deviceCategory=NETWORK_DEVICE`, { headers: authHeaders });
     await request("authenticated operations dashboard", `${apiUrl}/v1/reports/operations`, { headers: authHeaders });
+  } else if (me.companyId) {
+    console.log(`SKIP permission-scoped tenant checks: verification account role ${me.role || 'unknown'} is intentionally least-privileged.`);
   } else {
     console.log("SKIP tenant-scoped checks: verification account has no company context.");
   }
