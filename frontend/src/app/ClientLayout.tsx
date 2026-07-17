@@ -2,15 +2,17 @@
 
 import { useEffect, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { useAuthStore } from '../stores/authStore';
 import { api } from '../lib/api';
 import { ToastProvider } from '../components/ui/Toast';
-import { Analytics } from '../components/marketing/Analytics';
 import { TenantTheme } from '../components/layout/TenantTheme';
-import { MobileAppInstallPrompt } from '../components/layout/MobileAppInstallPrompt';
 import { isPublicPath } from '../lib/public-routes';
 import { AppQueryProvider } from '../components/providers/AppQueryProvider';
 import { Footer } from '../components/layout/Footer';
+
+const Analytics = dynamic(() => import('../components/marketing/Analytics').then((module) => module.Analytics), { ssr: false });
+const MobileAppInstallPrompt = dynamic(() => import('../components/layout/MobileAppInstallPrompt').then((module) => module.MobileAppInstallPrompt), { ssr: false });
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
   const { user, authChecked, setUser, setCompany, setAuthChecked, logout } = useAuthStore();

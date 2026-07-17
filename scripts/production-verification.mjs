@@ -6,6 +6,8 @@ const webUrl = (process.env.VERIFICATION_WEB_URL || "https://fieldserviceit.com"
 const apiUrl = (process.env.VERIFICATION_API_URL || "https://api.fieldserviceit.com").replace(/\/+$/, "");
 const email = process.env.VERIFICATION_EMAIL;
 const password = process.env.VERIFICATION_PASSWORD;
+const requireAuthenticated = process.env.REQUIRE_AUTHENTICATED_VERIFICATION === "true";
+const expectedRelease = process.env.EXPECTED_RELEASE;
 const attempts = 5;
 
 const checks = [
@@ -61,6 +63,17 @@ for (const [name, url] of checks) {
     : undefined);
 }
 
+const frontendReleaseResponse = await request("frontend release metadata", `${webUrl}/release.json`);
+const frontendRelease = await frontendReleaseResponse.json();
+if (!frontendRelease?.commit) throw new Error("frontend release metadata does not contain a commit");
+
+const backendReleaseResponse = await request("backend release metadata", `${apiUrl}/v1/health/live`);
+const backendRelease = await backendReleaseResponse.json();
+if (!backendRelease?.commit) throw new Error("backend health metadata does not contain a commit");
+if (expectedRelease && (frontendRelease.commit !== expectedRelease || backendRelease.commit !== expectedRelease)) {
+  throw new Error(`release mismatch: expected ${expectedRelease}, frontend=${frontendRelease.commit}, backend=${backendRelease.commit}`);
+}
+
 if (email && password) {
   const loginResponse = await request("administrator login", `${apiUrl}/v1/auth/login`, {
     method: "POST",
@@ -82,6 +95,9 @@ if (email && password) {
     console.log("SKIP tenant-scoped checks: verification account has no company context.");
   }
 } else {
+  if (requireAuthenticated) {
+    throw new Error("Authenticated production verification is required, but VERIFICATION_EMAIL and VERIFICATION_PASSWORD are not configured.");
+  }
   console.log("SKIP authenticated checks: VERIFICATION_EMAIL and VERIFICATION_PASSWORD are not configured.");
 }
 

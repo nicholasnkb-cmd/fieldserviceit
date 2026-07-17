@@ -29,11 +29,13 @@ interface Readiness {
   deployment?: {
     frontendVersion?: string;
     backendVersion?: string;
+    backendCommit?: string;
     nodeEnv?: string;
     corsOrigin?: string | null;
     lastNetworkPoll?: { source?: string; status?: string; createdAt?: string } | null;
     lastRmmSync?: { provider?: string; status?: string; completedAt?: string; assetsCreated?: number; assetsUpdated?: number; assetsSkipped?: number; errorMessage?: string | null } | null;
   };
+  migrations?: { applied: number; pending: string[]; failed: { name: string; error: string; attempts: number; lastAttemptAt: string }[] } | null;
 }
 
 interface CompanyOption { id: string; name: string }
@@ -93,6 +95,7 @@ export default function SystemControlsPage() {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [message, setMessage] = useState('');
   const [readiness, setReadiness] = useState<Readiness | null>(null);
+  const [frontendCommit, setFrontendCommit] = useState(process.env.NEXT_PUBLIC_APP_COMMIT || 'unknown');
   const [companies, setCompanies] = useState<CompanyOption[]>([]);
   const [users, setUsers] = useState<UserOption[]>([]);
   const [functions, setFunctions] = useState<FunctionControl[]>([]);
@@ -123,9 +126,11 @@ export default function SystemControlsPage() {
       api.get('/admin/billing/providers').catch(() => []),
       api.get('/admin/billing/events?limit=12').catch(() => []),
       api.get('/admin/billing/prices').catch(() => []),
+      fetch('/release.json', { cache: 'no-store' }).then((response) => response.ok ? response.json() : null).catch(() => null),
     ])
-      .then(([data, readinessData, companyData, userData, functionData, providerData, eventData, priceData]) => {
+      .then(([data, readinessData, companyData, userData, functionData, providerData, eventData, priceData, releaseData]) => {
         if (readinessData) setReadiness(readinessData);
+        if (releaseData?.commit || releaseData?.release) setFrontendCommit(releaseData.commit || releaseData.release);
         setCompanies(getListData<CompanyOption>(companyData));
         setUsers(getListData<UserOption>(userData));
         setFunctions(getListData<FunctionControl>(functionData));
@@ -264,8 +269,11 @@ export default function SystemControlsPage() {
           <div className="mt-4 grid gap-3 md:grid-cols-2">
             {[
               ['Frontend version', readiness.deployment?.frontendVersion || 'unknown'],
-              ['Frontend commit', process.env.NEXT_PUBLIC_APP_COMMIT || 'unknown'],
+              ['Frontend commit', frontendCommit],
               ['Backend version', readiness.deployment?.backendVersion || 'unknown'],
+              ['Backend commit', readiness.deployment?.backendCommit || 'unknown'],
+              ['Migrations applied', String(readiness.migrations?.applied ?? 'unknown')],
+              ['Migrations pending / failed', readiness.migrations ? `${readiness.migrations.pending.length} / ${readiness.migrations.failed.length}` : 'unknown'],
               ['Runtime', readiness.deployment?.nodeEnv || readiness.environment],
               ['CORS origin', readiness.deployment?.corsOrigin || 'not set'],
               ['Last monitoring poll', readiness.deployment?.lastNetworkPoll ? `${readiness.deployment.lastNetworkPoll.source || 'poll'} ${readiness.deployment.lastNetworkPoll.status || ''}` : 'No poll recorded'],
