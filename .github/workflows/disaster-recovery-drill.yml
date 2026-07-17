@@ -28,10 +28,13 @@ jobs:
         run: |
           set -euo pipefail
           test -n "$MONITORING_API_KEY" || { echo 'MONITORING_API_KEY is required'; exit 1; }
-          curl --fail-with-body --silent --show-error --max-time 2400 \
+          http_status=$(curl --silent --show-error --max-time 2400 \
             -X POST -H "x-monitoring-key: $MONITORING_API_KEY" \
             -H 'Content-Type: application/json' \
-            "$VERIFICATION_API_URL/v1/monitoring/backups/restore-drill" | tee restore-drill-result.json
+            --output restore-drill-result.json --write-out '%{http_code}' \
+            "$VERIFICATION_API_URL/v1/monitoring/backups/restore-drill")
+          cat restore-drill-result.json
+          [[ "$http_status" =~ ^2 ]] || { echo "Restore drill returned HTTP $http_status"; exit 1; }
 
       - uses: actions/upload-artifact@v6
         if: always()

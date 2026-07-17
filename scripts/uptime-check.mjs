@@ -94,7 +94,15 @@ if (!monitoringKey) {
     const failedMigrations = Array.isArray(status.failed) ? status.failed : [];
     const pendingMigrations = Array.isArray(status.pending) ? status.pending : [];
     if (failedMigrations.length || pendingMigrations.length) {
-      throw new Error(`${failedMigrations.length} failed and ${pendingMigrations.length} pending migrations`);
+      const failedSummary = failedMigrations
+        .map((migration) => `${migration.name}: ${migration.error || 'unknown error'}`)
+        .join(' | ');
+      const pendingSummary = pendingMigrations.join(', ');
+      throw new Error([
+        `${failedMigrations.length} failed and ${pendingMigrations.length} pending migrations`,
+        failedSummary && `failed: ${failedSummary}`,
+        pendingSummary && `pending: ${pendingSummary}`,
+      ].filter(Boolean).join('; '));
     }
     console.log(`PASS migration health: ${status.applied || 0} migrations applied.`);
   } catch (error) {
