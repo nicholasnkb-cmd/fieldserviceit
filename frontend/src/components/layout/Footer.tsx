@@ -30,11 +30,11 @@ export function Footer({ compact = false }: { compact?: boolean }) {
   const year = new Date().getFullYear();
 
   return (
-    <footer className={`mt-auto border-t border-gray-700 bg-gray-900 px-6 text-gray-300 ${compact ? 'py-6' : 'py-8'}`}>
+    <footer className={`global-footer mt-auto border-t border-gray-700 bg-gray-900 px-6 ${compact ? 'py-6' : 'py-8'}`}>
       <nav aria-label="Footer navigation" className={`mx-auto grid max-w-7xl grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 ${compact ? 'gap-5' : 'gap-8'}`}>
         <div>
           <h3 className="text-white font-semibold mb-3">FieldserviceIT</h3>
-          <p className="text-sm text-gray-400">Multi-tenant ITSM &amp; MSP platform for field service management.</p>
+          <p className="global-footer-muted text-sm">Multi-tenant ITSM &amp; MSP platform for field service management.</p>
         </div>
         <div>
           <h3 className="text-white font-semibold mb-3">Platform</h3>
@@ -64,7 +64,7 @@ export function Footer({ compact = false }: { compact?: boolean }) {
           </ul>
         </div>
       </nav>
-      <div className={`mx-auto max-w-7xl border-t border-gray-700 text-center text-sm text-gray-400 ${compact ? 'mt-5 pt-4' : 'mt-8 pt-6'}`}>
+      <div className={`global-footer-muted mx-auto max-w-7xl border-t border-gray-700 text-center text-sm ${compact ? 'mt-5 pt-4' : 'mt-8 pt-6'}`}>
         <p aria-label={`Copyright ${year} FieldserviceIT`}>&copy; {year} FieldserviceIT. All rights reserved.</p>
       </div>
     </footer>
