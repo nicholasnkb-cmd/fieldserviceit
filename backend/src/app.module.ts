@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { ThrottlerModule, ThrottlerStorage } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import * as Joi from 'joi';
@@ -42,7 +42,6 @@ import { TopologyModule } from './modules/topology/topology.module';
 import { CatalogRequestsModule } from './modules/catalog-requests/catalog-requests.module';
 import { PlatformSecurityModule } from './modules/platform-security/platform-security.module';
 import { EndpointOperationsModule } from './modules/endpoint-operations/endpoint-operations.module';
-import { DatabaseThrottlerStorage } from './common/services/database-throttler-storage.service';
 import { AppController } from './app.controller';
 
 @Module({
@@ -151,7 +150,6 @@ import { AppController } from './app.controller';
   ],
   controllers: [AppController],
   providers: [
-    { provide: ThrottlerStorage, useClass: DatabaseThrottlerStorage },
     { provide: APP_GUARD, useClass: RateLimitGuard },
     { provide: APP_INTERCEPTOR, useClass: AuditLogInterceptor },
     { provide: APP_INTERCEPTOR, useClass: RequestMetricsInterceptor },
