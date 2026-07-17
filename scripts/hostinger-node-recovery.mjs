@@ -5,6 +5,7 @@ const waitForBuild = String(process.env.HOSTINGER_WAIT_FOR_BUILD || 'false').toL
 const buildNotBefore = Date.parse(process.env.HOSTINGER_BUILD_NOT_BEFORE || '') || 0;
 const expectedCommit = String(process.env.HOSTINGER_EXPECTED_COMMIT || '').trim();
 const healthUrl = (process.env.HOSTINGER_HEALTH_URL || `https://${domain}/v1/health/live`).trim();
+const healthAttempts = Math.min(30, Math.max(10, Number.parseInt(process.env.HOSTINGER_HEALTH_ATTEMPTS || '18', 10) || 18));
 
 if (!token) {
   console.error('HOSTINGER_API_TOKEN is required.');
@@ -88,7 +89,7 @@ if (restart) {
   await hostinger(`${basePath}/server/restart`, { method: 'POST' });
   console.log(`Restart requested for ${domain}.`);
 
-  for (let attempt = 1; attempt <= 10; attempt += 1) {
+  for (let attempt = 1; attempt <= healthAttempts; attempt += 1) {
     await new Promise((resolve) => setTimeout(resolve, attempt === 1 ? 5_000 : 10_000));
     try {
       const response = await fetch(healthUrl, {
@@ -114,7 +115,7 @@ if (restart) {
     }
   }
 
-  throw new Error(`${domain} did not become healthy after the Hostinger restart.`);
+  throw new Error(`${domain} did not become healthy after ${healthAttempts} Hostinger restart checks.`);
 }
 
 if (latest?.state === 'failed') process.exitCode = 1;
