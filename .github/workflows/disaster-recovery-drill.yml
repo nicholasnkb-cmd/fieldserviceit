@@ -35,6 +35,8 @@ jobs:
             "$VERIFICATION_API_URL/v1/monitoring/backups/restore-drill")
           cat restore-drill-result.json
           [[ "$http_status" =~ ^2 ]] || { echo "Restore drill returned HTTP $http_status"; exit 1; }
+          drill_status=$(jq -r '.data.status // .status // empty' restore-drill-result.json)
+          [[ "$drill_status" == 'PASS' ]] || { echo "Restore drill reported ${drill_status:-an invalid outcome}"; exit 1; }
 
       - uses: actions/upload-artifact@v6
         if: always()
