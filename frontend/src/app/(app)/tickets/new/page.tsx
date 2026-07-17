@@ -75,7 +75,7 @@ export default function NewTicketPage() {
   return (
     <div className="p-6 max-w-2xl mx-auto">
       <h1 className="text-2xl font-bold mb-6">Create Ticket</h1>
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} noValidate className="space-y-5">
         {templates.length > 0 && (
           <div>
             <label className="block text-sm font-medium text-gray-700">Template</label>
