@@ -143,7 +143,7 @@ jobs:
                 echo "Backend deployment handoff failed: $conclusion" >&2
                 exit 1
               fi
-              deployed=$(gh api 'repos/nicholasnkb-cmd/fieldserviceit-backend/contents/release.json?ref=master' --jq .content | base64 -d | jq -r .commit
+              deployed=$(gh api 'repos/nicholasnkb-cmd/fieldserviceit-backend/contents/release.json?ref=master' --jq .content | base64 -d | jq -r .commit)
               if [ "$deployed" = "$GITHUB_SHA" ]; then
                 exit 0
               fi
@@ -214,7 +214,7 @@ jobs:
                 echo "Frontend deployment handoff failed: $conclusion" >&2
                 exit 1
               fi
-              deployed=$(gh api 'repos/nicholasnkb-cmd/fieldserviceit-frontend/contents/public/release.json?ref=master' --jq .content | base64 -d | jq -r .commit
+              deployed=$(gh api 'repos/nicholasnkb-cmd/fieldserviceit-frontend/contents/public/release.json?ref=master' --jq .content | base64 -d | jq -r .commit)
               if [ "$deployed" = "$GITHUB_SHA" ]; then
                 exit 0
               fi
