@@ -1,4 +1,6 @@
 import { deployedCommit } from './release-metadata';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 
 describe('deployedCommit', () => {
   const original = {
@@ -23,6 +25,7 @@ describe('deployedCommit', () => {
     delete process.env.BACKEND_COMMIT;
     delete process.env.GITHUB_SHA;
     delete process.env.GIT_COMMIT;
-    expect(deployedCommit()).toBe('development');
+    const release = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'release.json'), 'utf8'));
+    expect(deployedCommit()).toBe(release.commit);
   });
 });

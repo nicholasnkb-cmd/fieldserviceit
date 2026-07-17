@@ -139,9 +139,14 @@ jobs:
             status=$(jq -r '.status // ""' <<< "$run")
             conclusion=$(jq -r '.conclusion // ""' <<< "$run")
             if [ "$status" = "completed" ]; then
-              [ "$conclusion" = "success" ] || { echo "Backend deployment handoff failed: $conclusion" >&2; exit 1; }
+              if [ "$conclusion" != "success" ]; then
+                echo "Backend deployment handoff failed: $conclusion" >&2
+                exit 1
+              fi
               deployed=$(gh api 'repos/nicholasnkb-cmd/fieldserviceit-backend/contents/release.json?ref=master' --jq .content | base64 -d | jq -r .commit
-              [ "$deployed" = "$GITHUB_SHA" ] && exit 0
+              if [ "$deployed" = "$GITHUB_SHA" ]; then
+                exit 0
+              fi
               echo "Backend handoff completed without publishing $GITHUB_SHA" >&2
               exit 1
             fi
@@ -205,9 +210,14 @@ jobs:
             status=$(jq -r '.status // ""' <<< "$run")
             conclusion=$(jq -r '.conclusion // ""' <<< "$run")
             if [ "$status" = "completed" ]; then
-              [ "$conclusion" = "success" ] || { echo "Frontend deployment handoff failed: $conclusion" >&2; exit 1; }
+              if [ "$conclusion" != "success" ]; then
+                echo "Frontend deployment handoff failed: $conclusion" >&2
+                exit 1
+              fi
               deployed=$(gh api 'repos/nicholasnkb-cmd/fieldserviceit-frontend/contents/public/release.json?ref=master' --jq .content | base64 -d | jq -r .commit
-              [ "$deployed" = "$GITHUB_SHA" ] && exit 0
+              if [ "$deployed" = "$GITHUB_SHA" ]; then
+                exit 0
+              fi
               echo "Frontend handoff completed without publishing $GITHUB_SHA" >&2
               exit 1
             fi
