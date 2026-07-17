@@ -91,6 +91,14 @@
 }
 
 @layer components {
+  .global-footer {
+    color: rgb(209 213 219) !important;
+  }
+
+  .global-footer .global-footer-muted {
+    color: rgb(156 163 175) !important;
+  }
+
   .input {
     @apply w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-primary focus:ring-1 focus:ring-primary;
   }
