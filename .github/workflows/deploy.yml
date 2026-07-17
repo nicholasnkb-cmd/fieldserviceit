@@ -115,6 +115,7 @@ jobs:
             --exclude '.env*'
           cd deployment/backend
           printf '{\n  "commit": "%s",\n  "deployedAt": "%s"\n}\n' "$GITHUB_SHA" "$(date -u +%FT%TZ)" > release.json
+          printf "export const GENERATED_RELEASE_COMMIT = '%s';\n" "$GITHUB_SHA" > src/common/generated-release.ts
           git config user.name "FieldServiceIT Deploy Bot"
           git config user.email "deploy-bot@fieldserviceit.com"
           git checkout -b "$branch"
