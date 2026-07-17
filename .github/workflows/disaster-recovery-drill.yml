@@ -31,6 +31,7 @@ jobs:
           http_status=$(curl --silent --show-error --max-time 2400 \
             -X POST -H "x-monitoring-key: $MONITORING_API_KEY" \
             -H 'Content-Type: application/json' \
+            --data '{}' \
             --output restore-drill-result.json --write-out '%{http_code}' \
             "$VERIFICATION_API_URL/v1/monitoring/backups/restore-drill")
           cat restore-drill-result.json
