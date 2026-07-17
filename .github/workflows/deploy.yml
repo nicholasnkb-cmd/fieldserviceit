@@ -114,6 +114,7 @@ jobs:
             --exclude .git --exclude .github --exclude node_modules --exclude dist --exclude coverage \
             --exclude '.env*'
           cd deployment/backend
+          printf '{\n  "commit": "%s",\n  "deployedAt": "%s"\n}\n' "$GITHUB_SHA" "$(date -u +%FT%TZ)" > release.json
           git config user.name "FieldServiceIT Deploy Bot"
           git config user.email "deploy-bot@fieldserviceit.com"
           git checkout -b "$branch"
@@ -127,28 +128,27 @@ jobs:
           git push --set-upstream origin "$branch"
           echo "branch=$branch" >> "$GITHUB_OUTPUT"
 
-      - name: Publish backend through a protected-branch pull request
+      - name: Wait for backend deployment handoff
         if: steps.backend-sync.outputs.branch != ''
         env:
           GH_TOKEN: ${{ secrets.DEPLOY_REPOS_TOKEN }}
           DEPLOY_BRANCH: ${{ steps.backend-sync.outputs.branch }}
         run: |
-          set -euo pipefail
-          pr_url=$(gh pr create --repo nicholasnkb-cmd/fieldserviceit-backend --base master --head "$DEPLOY_BRANCH" \
-            --title "Deploy backend ${GITHUB_SHA::12}" \
-            --body "Automated, history-preserving deployment from monorepo commit $GITHUB_SHA.")
-          pr_number="${pr_url##*/}"
-          sleep 10
-          check_count=$(gh pr checks "$pr_number" --repo nicholasnkb-cmd/fieldserviceit-backend --json state --jq 'length' 2>/dev/null || echo 0)
-          if [ "$check_count" -gt 0 ]; then
-            gh pr checks "$pr_number" --repo nicholasnkb-cmd/fieldserviceit-backend --watch --fail-fast
-          fi
-          gh pr merge "$pr_number" --repo nicholasnkb-cmd/fieldserviceit-backend --squash --delete-branch
-          echo "Backend deployment PR: $pr_url" >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Allow Hostinger backend deployment to start
-        if: steps.backend-sync.outputs.branch != ''
-        run: sleep 30
+          for attempt in {1..120}; do
+            run=$(gh run list --repo nicholasnkb-cmd/fieldserviceit-backend --workflow deployment-handoff.yml --branch "$DEPLOY_BRANCH" --limit 1 --json status,conclusion --jq '.[0] // {}' 2>/dev/null || echo '{}')
+            status=$(jq -r '.status // ""' <<< "$run")
+            conclusion=$(jq -r '.conclusion // ""' <<< "$run")
+            if [ "$status" = "completed" ]; then
+              [ "$conclusion" = "success" ] || { echo "Backend deployment handoff failed: $conclusion" >&2; exit 1; }
+              deployed=$(gh api 'repos/nicholasnkb-cmd/fieldserviceit-backend/contents/release.json?ref=master' --jq .content | base64 -d | jq -r .commit
+              [ "$deployed" = "$GITHUB_SHA" ] && exit 0
+              echo "Backend handoff completed without publishing $GITHUB_SHA" >&2
+              exit 1
+            fi
+            sleep 10
+          done
+          echo "Backend deployment handoff timed out" >&2
+          exit 1
 
   deploy-frontend:
     name: Deploy Hostinger Frontend
@@ -179,6 +179,8 @@ jobs:
             --exclude .git --exclude .github --exclude node_modules --exclude .next --exclude coverage \
             --exclude '.env*'
           cd deployment/frontend
+          mkdir -p public
+          printf '{\n  "commit": "%s",\n  "deployedAt": "%s"\n}\n' "$GITHUB_SHA" "$(date -u +%FT%TZ)" > public/release.json
           git config user.name "FieldServiceIT Deploy Bot"
           git config user.email "deploy-bot@fieldserviceit.com"
           git checkout -b "$branch"
@@ -192,28 +194,27 @@ jobs:
           git push --set-upstream origin "$branch"
           echo "branch=$branch" >> "$GITHUB_OUTPUT"
 
-      - name: Publish frontend through a protected-branch pull request
+      - name: Wait for frontend deployment handoff
         if: steps.frontend-sync.outputs.branch != ''
         env:
           GH_TOKEN: ${{ secrets.DEPLOY_REPOS_TOKEN }}
           DEPLOY_BRANCH: ${{ steps.frontend-sync.outputs.branch }}
         run: |
-          set -euo pipefail
-          pr_url=$(gh pr create --repo nicholasnkb-cmd/fieldserviceit-frontend --base master --head "$DEPLOY_BRANCH" \
-            --title "Deploy frontend ${GITHUB_SHA::12}" \
-            --body "Automated, history-preserving deployment from monorepo commit $GITHUB_SHA.")
-          pr_number="${pr_url##*/}"
-          sleep 10
-          check_count=$(gh pr checks "$pr_number" --repo nicholasnkb-cmd/fieldserviceit-frontend --json state --jq 'length' 2>/dev/null || echo 0)
-          if [ "$check_count" -gt 0 ]; then
-            gh pr checks "$pr_number" --repo nicholasnkb-cmd/fieldserviceit-frontend --watch --fail-fast
-          fi
-          gh pr merge "$pr_number" --repo nicholasnkb-cmd/fieldserviceit-frontend --squash --delete-branch
-          echo "Frontend deployment PR: $pr_url" >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Allow Hostinger frontend deployment to start
-        if: steps.frontend-sync.outputs.branch != ''
-        run: sleep 30
+          for attempt in {1..150}; do
+            run=$(gh run list --repo nicholasnkb-cmd/fieldserviceit-frontend --workflow deployment-handoff.yml --branch "$DEPLOY_BRANCH" --limit 1 --json status,conclusion --jq '.[0] // {}' 2>/dev/null || echo '{}')
+            status=$(jq -r '.status // ""' <<< "$run")
+            conclusion=$(jq -r '.conclusion // ""' <<< "$run")
+            if [ "$status" = "completed" ]; then
+              [ "$conclusion" = "success" ] || { echo "Frontend deployment handoff failed: $conclusion" >&2; exit 1; }
+              deployed=$(gh api 'repos/nicholasnkb-cmd/fieldserviceit-frontend/contents/public/release.json?ref=master' --jq .content | base64 -d | jq -r .commit
+              [ "$deployed" = "$GITHUB_SHA" ] && exit 0
+              echo "Frontend handoff completed without publishing $GITHUB_SHA" >&2
+              exit 1
+            fi
+            sleep 10
+          done
+          echo "Frontend deployment handoff timed out" >&2
+          exit 1
 
   verify-production:
     name: Verify Production
@@ -221,7 +222,9 @@ jobs:
     if: ${{ always() && !cancelled() && (needs.deploy-backend.result == 'success' || needs.deploy-frontend.result == 'success') }}
     runs-on: ubuntu-latest
     environment: production
-    timeout-minutes: 8
+    timeout-minutes: 15
+    env:
+      HAS_VERIFICATION_CREDENTIALS: ${{ secrets.VERIFICATION_EMAIL != '' && secrets.VERIFICATION_PASSWORD != '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -233,4 +236,32 @@ jobs:
           VERIFICATION_API_URL: ${{ vars.VERIFICATION_API_URL || 'https://api.fieldserviceit.com' }}
           VERIFICATION_EMAIL: ${{ secrets.VERIFICATION_EMAIL }}
           VERIFICATION_PASSWORD: ${{ secrets.VERIFICATION_PASSWORD }}
+          REQUIRE_AUTHENTICATED_VERIFICATION: ${{ vars.REQUIRE_AUTHENTICATED_VERIFICATION || 'false' }}
+          EXPECTED_RELEASE: ${{ github.sha }}
         run: node scripts/production-verification.mjs
+
+      - uses: actions/setup-node@v4
+        if: env.HAS_VERIFICATION_CREDENTIALS == 'true'
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Run authenticated desktop and mobile visual verification
+        if: env.HAS_VERIFICATION_CREDENTIALS == 'true'
+        working-directory: frontend
+        env:
+          E2E_BASE_URL: ${{ vars.VERIFICATION_WEB_URL || 'https://fieldserviceit.com' }}
+          E2E_EMAIL: ${{ secrets.VERIFICATION_EMAIL }}
+          E2E_PASSWORD: ${{ secrets.VERIFICATION_PASSWORD }}
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          npm run test:e2e:prod
+
+      - uses: actions/upload-artifact@v4
+        if: always() && env.HAS_VERIFICATION_CREDENTIALS == 'true'
+        with:
+          name: authenticated-production-visuals
+          path: frontend/test-results
+          retention-days: 14
