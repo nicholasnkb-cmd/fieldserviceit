@@ -20,7 +20,7 @@ jobs:
     environment: production
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Run isolated restore drill
         env:
           MONITORING_API_KEY: ${{ secrets.MONITORING_API_KEY }}
@@ -33,7 +33,7 @@ jobs:
             -H 'Content-Type: application/json' \
             "$VERIFICATION_API_URL/v1/monitoring/backups/restore-drill" | tee restore-drill-result.json
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: always()
         with:
           name: disaster-recovery-drill-result
@@ -47,8 +47,8 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
         with:
           node-version: 20
       - name: Record failed drill for administrator alerting
@@ -74,7 +74,7 @@ jobs:
           ALERT_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: node scripts/operations-webhook-alert.mjs
       - name: Open or resolve restore drill incident
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const title = 'Disaster recovery restore drill failure';
