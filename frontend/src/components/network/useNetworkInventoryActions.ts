@@ -98,6 +98,17 @@ export function useNetworkInventoryActions({ devices, setDevices, selected, setS
     }
   };
 
+  const purge = async (device: NetworkDevice) => {
+    if (busy || !confirm(`Permanently delete ${device.name}? This cannot be undone.`)) return;
+    setBusy(true);
+    try {
+      await api.delete(`/assets/retired/${device.id}`);
+      queryClient.setQueryData<NetworkDevice[]>(retiredNetworkDevicesKey(user?.companyId, activeCompanyContext?.id), (current = []) => current.filter((item) => item.id !== device.id));
+      toast('success', `${device.name} permanently deleted.`);
+    } catch (error: any) { toast('error', error.message || 'Device is still within its recovery period'); }
+    finally { setBusy(false); }
+  };
+
   const toggleSelection = (deviceId: string) => setSelectedIds((current) => {
     const next = new Set(current);
     if (next.has(deviceId)) next.delete(deviceId); else next.add(deviceId);
@@ -117,5 +128,6 @@ export function useNetworkInventoryActions({ devices, setDevices, selected, setS
     bulkRetireOpen,
     setBulkRetireOpen,
     bulkRetire,
+    purge,
   };
 }

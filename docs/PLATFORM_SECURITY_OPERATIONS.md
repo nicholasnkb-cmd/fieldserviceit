@@ -17,7 +17,8 @@
 - Restore tests verify the artifact checksum, decrypt and decompress it, recreate every table in connection-scoped MySQL temporary tables, reload every backed-up row, verify per-table counts, and drop the isolated session without modifying production tables.
 - `.github/workflows/disaster-recovery-drill.yml` runs the latest-backup restore drill weekly and retains evidence for 90 days. Failures create administrator, GitHub, SMTP, and optional operations-webhook alerts.
 - Retention cleanup covers expired sessions, audit logs, client errors, email tracking, network snapshots, and syslog events.
-- Local encrypted artifacts are not an off-site disaster recovery copy. Configure infrastructure-level or provider-managed off-site backups separately.
+- Backups fail closed unless an encrypted artifact is also uploaded to configured S3-compatible off-site storage. Configure `BACKUP_S3_ENDPOINT`, `BACKUP_S3_REGION`, `BACKUP_S3_BUCKET`, `BACKUP_S3_ACCESS_KEY_ID`, and `BACKUP_S3_SECRET_ACCESS_KEY`, then run a backup and isolated restore drill from Security Operations.
+- Enable bucket versioning, retention/lifecycle protection, access logging, and object lock where the storage provider supports them. The application readiness score remains blocked until all required connection values are present.
 
 ## Upload scanning
 
@@ -37,5 +38,6 @@
 
 - Add each identity provider's issuer, client ID, client secret, allowed domains, and callback URL in Security Operations.
 - Place ClamAV on a private network and set the scanner environment variables.
-- Store backup artifacts on durable encrypted storage or add provider-managed off-site backups.
+- Provision S3-compatible storage in a separate failure domain and enter the five `BACKUP_S3_*` values in the backend production environment.
+- Add Slack or Microsoft Teams from Permissions → Operations and security alerts, send a test message, and also store the same incoming webhook as the GitHub production secret `OPERATIONS_ALERT_WEBHOOK_URL` for deployment and uptime workflow alerts.
 - Rotate exposed hosting, database, and mailbox credentials in their provider consoles.

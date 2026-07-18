@@ -118,6 +118,20 @@ Confirm Production readiness shows:
 - Frontend URL: ok
 - CORS origin: ok
 - JWT secret: ok
+- Off-site backup storage: ok
+- Operations alerts: ok
+
+Configure the backend production environment with S3-compatible storage kept outside the web-hosting failure domain:
+
+```env
+BACKUP_S3_ENDPOINT=https://<provider-endpoint>
+BACKUP_S3_REGION=<provider-region>
+BACKUP_S3_BUCKET=<private-backup-bucket>
+BACKUP_S3_ACCESS_KEY_ID=<write-and-read backup key>
+BACKUP_S3_SECRET_ACCESS_KEY=<secret key>
+```
+
+After deployment, run an encrypted backup and its isolated restore test in Security Operations. Keep bucket access private and enable versioning, retention, logging, and object lock when available.
 
 ## 6. Production Deployment Automation
 

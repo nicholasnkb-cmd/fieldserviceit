@@ -17,12 +17,15 @@ import {
   ShieldCheck,
   Smartphone,
   Tablet,
+  Trash2,
+  Undo2,
   Wifi,
 } from 'lucide-react';
 import { api, getListData } from '../../../lib/api';
 import { formatDate } from '../../../lib/utils';
 import { RequireCompanyContext } from '../../../components/layout/RequireCompanyContext';
 import { useAuthStore } from '../../../stores/authStore';
+import { SavedViews } from '../../../components/ui/SavedViews';
 
 interface Device {
   id: string;
@@ -60,6 +63,7 @@ interface Device {
   policyProfile?: string;
   notes?: string;
   createdAt: string;
+  deletedAt?: string;
   tickets?: { id: string; ticketNumber: string; title: string; status: string }[];
 }
 
@@ -144,6 +148,9 @@ export default function AssetsPage() {
   const [enrollmentToken, setEnrollmentToken] = useState('');
   const [tokenLoading, setTokenLoading] = useState(false);
   const [commands, setCommands] = useState<MdmCommand[]>([]);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [retired, setRetired] = useState<Device[]>([]);
+  const [showRecycleBin, setShowRecycleBin] = useState(false);
 
   useEffect(() => {
     const handle = window.setTimeout(() => setDebouncedSearch(search.trim()), 350);
@@ -270,6 +277,27 @@ export default function AssetsPage() {
     setMessage('Enrollment token copied');
   };
 
+  const loadRecycleBin = async () => {
+    const data = await api.get('/assets/retired');
+    setRetired(getListData<Device>(data));
+  };
+
+  const retireSelected = async () => {
+    if (!selectedIds.size || !confirm(`Move ${selectedIds.size} device(s) to the recycle bin?`)) return;
+    await api.post('/assets/bulk/retire', { ids: [...selectedIds] });
+    setSelectedIds(new Set()); setSelected(null); setMessage('Devices moved to the recycle bin'); fetchDevices(); loadRecycleBin();
+  };
+
+  const restoreRetired = async (id: string) => {
+    await api.post(`/assets/retired/${id}/restore`, {}); setMessage('Device restored'); loadRecycleBin(); fetchDevices();
+  };
+
+  const purgeRetired = async (id: string) => {
+    if (!confirm('Permanently delete this device? This is only available after the 30-day recovery period.')) return;
+    try { await api.delete(`/assets/retired/${id}`); setMessage('Device permanently deleted'); loadRecycleBin(); }
+    catch (error: any) { setMessage(error.message || 'Device is still within its recovery period'); }
+  };
+
   const statItems = [
     { label: 'Devices', value: summary?.total ?? devices.length, icon: Laptop },
     { label: 'Enrolled', value: summary?.enrolled ?? 0, icon: CheckCircle2 },
@@ -280,6 +308,7 @@ export default function AssetsPage() {
   return (
     <RequireCompanyContext area="Assets">
     <div className="p-6">
+      <div className="mb-4"><SavedViews resource="assets" filters={{ search, ...filters }} onApply={(view) => { setSearch(view.search || ''); setFilters({ deviceCategory: view.deviceCategory || '', enrollmentStatus: view.enrollmentStatus || '', complianceStatus: view.complianceStatus || '', ownership: view.ownership || '' }); }} /></div>
       <div className="flex flex-col gap-4 border-b border-gray-200 pb-5 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-sm font-medium text-emerald-700">Device management</p>
@@ -429,13 +458,19 @@ export default function AssetsPage() {
             {(options as string[]).map((option) => <option key={option} value={option}>{option.replaceAll('_', ' ')}</option>)}
           </select>
         ))}
+        <button type="button" onClick={() => { setShowRecycleBin((value) => !value); if (!showRecycleBin) loadRecycleBin(); }} className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">{showRecycleBin ? 'Hide recycle bin' : `Recycle bin${retired.length ? ` (${retired.length})` : ''}`}</button>
       </div>
+
+      {selectedIds.size > 0 && <div className="mt-3 flex items-center justify-between rounded border border-blue-200 bg-blue-50 p-3 text-sm"><span><strong>{selectedIds.size}</strong> device(s) selected</span><button onClick={retireSelected} className="inline-flex items-center gap-2 rounded border border-red-200 bg-white px-3 py-2 font-medium text-red-700"><Trash2 className="h-4 w-4"/>Move to recycle bin</button></div>}
+
+      {showRecycleBin && <section className="mt-4 rounded border border-amber-200 bg-amber-50 p-4" aria-labelledby="asset-recycle-title"><h2 id="asset-recycle-title" className="font-semibold text-gray-950">Device recycle bin</h2><p className="mt-1 text-sm text-gray-600">Devices can be restored for 30 days. Expired entries without ticket history are removed automatically.</p><div className="mt-3 divide-y divide-amber-200 rounded border border-amber-200 bg-white">{retired.map((device) => { const eligible = Boolean(device.deletedAt && Date.now() - new Date(device.deletedAt).getTime() >= 30 * 86400000); return <div key={device.id} className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between"><span><strong className="text-sm">{device.name}</strong><br/><span className="text-xs text-gray-500">Retired {device.deletedAt ? formatDate(device.deletedAt) : 'recently'} · {eligible ? 'retention complete' : 'recoverable'}</span></span><span className="flex gap-2"><button onClick={() => restoreRetired(device.id)} className="inline-flex items-center gap-1 rounded border border-emerald-200 px-3 py-2 text-sm text-emerald-700"><Undo2 className="h-4 w-4"/>Restore</button><button disabled={!eligible} onClick={() => purgeRetired(device.id)} className="rounded border border-red-200 px-3 py-2 text-sm text-red-700 disabled:cursor-not-allowed disabled:opacity-40">Delete forever</button></span></div>; })}{retired.length === 0 && <p className="p-4 text-sm text-gray-500">The recycle bin is empty.</p>}</div></section>}
 
       <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
         <div className="overflow-hidden rounded border border-gray-200 bg-white">
           <table className="w-full table-fixed">
             <thead className="bg-gray-50">
               <tr>
+                <th className="w-10 px-3 py-3"><input type="checkbox" checked={sortedDevices.length > 0 && selectedIds.size === sortedDevices.length} onChange={(event) => setSelectedIds(event.target.checked ? new Set(sortedDevices.map((item) => item.id)) : new Set())} aria-label="Select all devices" /></th>
                 <th className="w-[28%] px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Device</th>
                 <th className="w-[16%] px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Owner</th>
                 <th className="w-[16%] px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Enrollment</th>
@@ -447,6 +482,7 @@ export default function AssetsPage() {
             <tbody className="divide-y divide-gray-200">
               {sortedDevices.map((device) => (
                 <tr key={device.id} onClick={() => viewDevice(device.id)} className="cursor-pointer hover:bg-blue-50">
+                  <td className="px-3 py-3"><input type="checkbox" checked={selectedIds.has(device.id)} onClick={(event) => event.stopPropagation()} onChange={(event) => setSelectedIds((current) => { const next = new Set(current); event.target.checked ? next.add(device.id) : next.delete(device.id); return next; })} aria-label={`Select ${device.name}`} /></td>
                   <td className="px-4 py-3">
                     <div className="flex min-w-0 items-center gap-3">
                       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-gray-200 bg-gray-50 text-gray-600">
@@ -473,7 +509,7 @@ export default function AssetsPage() {
                 </tr>
               ))}
               {!loading && sortedDevices.length === 0 && (
-                <tr><td colSpan={6} className="px-4 py-10 text-center text-sm text-gray-500">No devices found</td></tr>
+                <tr><td colSpan={7} className="px-4 py-10 text-center text-sm text-gray-500">No devices found</td></tr>
               )}
             </tbody>
           </table>

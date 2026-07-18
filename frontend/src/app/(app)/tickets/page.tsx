@@ -13,6 +13,7 @@ import { Pagination } from '../../../components/ui/Pagination';
 import { connectSocket, disconnectSocket, onSocketEvent } from '../../../lib/socket';
 import { useToast } from '../../../components/ui/Toast';
 import { RequireCompanyContext } from '../../../components/layout/RequireCompanyContext';
+import { SavedViews } from '../../../components/ui/SavedViews';
 
 const statusFilters = ['', 'OPEN', 'ASSIGNED', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'];
 const bulkStatuses = ['ASSIGNED', 'IN_PROGRESS', 'ON_HOLD', 'RESOLVED', 'CLOSED'];
@@ -128,6 +129,7 @@ export default function TicketsPage() {
   return (
     <RequireCompanyContext area="Tickets" allowGlobal>
     <div className="space-y-6 p-6 lg:p-8">
+      <SavedViews resource="tickets" filters={{ status: filter, search }} onApply={(view) => { setFilter(view.status || ''); setSearch(view.search || ''); setPage(1); }} />
       <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0">

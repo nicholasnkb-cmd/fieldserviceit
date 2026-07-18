@@ -1023,12 +1023,18 @@ export default function AdminPermissionsPage() {
                       {(governance.advanced?.scimTokens || []).slice(0, 5).map((item) => <div key={item.id} className="flex justify-between border border-gray-200 p-2 text-xs"><span><strong>{item.name}</strong><br />Last used {item.lastUsedAt ? new Date(item.lastUsedAt).toLocaleString() : 'never'}</span>{item.isActive && <button type="button" onClick={async () => { await api.delete(`/admin/permissions/scim-tokens/${item.id}`); await loadGovernance(); }} className="font-semibold text-red-700">Revoke</button>}</div>)}
                     </GovernanceBlock>
 
-                    <GovernanceBlock icon={TriangleAlert} title="Security event streaming" description="Send signed permission and privileged-access events to a webhook or SIEM collector.">
+                    <GovernanceBlock icon={TriangleAlert} title="Operations and security alerts" description="Send native Slack or Teams messages, or signed events to a webhook or SIEM collector.">
                       <input value={destinationDraft.name} onChange={(event) => setDestinationDraft((current) => ({ ...current, name: event.target.value }))} placeholder="Destination name" className="h-10 w-full border border-gray-300 px-3 text-sm" />
+                      <select value={destinationDraft.destinationType} onChange={(event) => setDestinationDraft((current) => ({ ...current, destinationType: event.target.value }))} className="h-10 w-full border border-gray-300 bg-white px-3 text-sm">
+                        <option value="SLACK">Slack incoming webhook</option>
+                        <option value="TEAMS">Microsoft Teams workflow webhook</option>
+                        <option value="WEBHOOK">Signed generic webhook</option>
+                        <option value="SIEM">SIEM collector</option>
+                      </select>
                       <input value={destinationDraft.endpointUrl} onChange={(event) => setDestinationDraft((current) => ({ ...current, endpointUrl: event.target.value }))} placeholder="https://collector.example/events" className="h-10 w-full border border-gray-300 px-3 text-sm" />
                       <input type="password" value={destinationDraft.secret} onChange={(event) => setDestinationDraft((current) => ({ ...current, secret: event.target.value }))} placeholder="Signing secret" className="h-10 w-full border border-gray-300 px-3 text-sm" />
                       <button type="button" disabled={!destinationDraft.name || !destinationDraft.endpointUrl} onClick={createDestination} className="h-9 bg-gray-950 px-3 text-sm font-semibold text-white disabled:bg-gray-300">Add destination</button>
-                      {(governance.advanced?.securityDestinations || []).map((item) => <div key={item.id} className="flex justify-between gap-3 border border-gray-200 p-2 text-xs"><span><strong>{item.name}</strong><br />{item.lastDeliveryStatus || 'Not tested'}</span><button type="button" onClick={async () => { const result = await api.post(`/admin/permissions/security-destinations/${item.id}/test`, {}); toast(result.status === 'DELIVERED' ? 'success' : 'error', `Delivery ${result.status.toLowerCase()}`); await loadGovernance(); }} className="font-semibold text-gray-700">Test</button></div>)}
+                      {(governance.advanced?.securityDestinations || []).map((item) => <div key={item.id} className="flex justify-between gap-3 border border-gray-200 p-2 text-xs"><span><strong>{item.name}</strong> · {item.destinationType}<br />{item.lastDeliveryStatus || 'Not tested'}</span><button type="button" onClick={async () => { const result = await api.post(`/admin/permissions/security-destinations/${item.id}/test`, {}); toast(result.status === 'DELIVERED' ? 'success' : 'error', `Delivery ${result.status.toLowerCase()}`); await loadGovernance(); }} className="font-semibold text-gray-700">Test</button></div>)}
                     </GovernanceBlock>
 
                     <GovernanceBlock icon={TriangleAlert} title="Privilege analytics" description="Find dormant administrators, privilege accumulation, unused permissions, and expiring service identities.">

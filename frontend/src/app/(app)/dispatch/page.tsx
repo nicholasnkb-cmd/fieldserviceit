@@ -1,12 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useState, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { api, getListData, unwrapResponseBody } from '../../../lib/api';
 import { formatDate, getStatusColor } from '../../../lib/utils';
 import { useAuthStore } from '../../../stores/authStore';
 import { connectSocket, disconnectSocket, onSocketEvent } from '../../../lib/socket';
+import { SavedViews } from '../../../components/ui/SavedViews';
 
 interface DispatchItem {
   id: string;
@@ -35,6 +36,9 @@ export default function DispatchPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const sigRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const { user } = useAuthStore();
   const router = useRouter();
 
@@ -161,11 +165,21 @@ export default function DispatchPage() {
   };
 
   const statusFlow = ['DISPATCHED', 'EN_ROUTE', 'ON_SITE', 'COMPLETED'];
+  const visibleDispatches = useMemo(() => dispatches.filter((item) => {
+    const text = `${item.ticket.ticketNumber} ${item.ticket.title} ${item.technician.firstName} ${item.technician.lastName}`.toLowerCase();
+    return (!statusFilter || item.status === statusFilter) && (!search || text.includes(search.toLowerCase()));
+  }), [dispatches, search, statusFilter]);
+
+  const bulkStatus = async (status: string) => {
+    await api.post('/dispatch/bulk/status', { ids: [...selectedIds], status });
+    setSelectedIds(new Set()); setMessage(`${status.replaceAll('_', ' ')} applied to selected dispatches`); fetchData();
+  };
 
   if (loading) return <div className="p-8"><div className="text-gray-500">Loading...</div></div>;
 
   return (
     <div className="p-8">
+      <SavedViews resource="dispatch" filters={{ search, status: statusFilter }} onApply={(view) => { setSearch(view.search || ''); setStatusFilter(view.status || ''); }} />
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Field Service</h1>
         <div className="flex flex-wrap items-center gap-2">
@@ -204,14 +218,16 @@ export default function DispatchPage() {
         </div>
       )}
 
+      <div className="mb-4 flex flex-col gap-3 rounded border border-gray-200 bg-white p-3 sm:flex-row"><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search ticket or technician" className="flex-1 rounded border border-gray-300 px-3 py-2 text-sm"/><select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="rounded border border-gray-300 px-3 py-2 text-sm"><option value="">All statuses</option>{[...statusFlow, 'CANCELLED'].map((status) => <option key={status}>{status}</option>)}</select>{selectedIds.size > 0 && <select defaultValue="" onChange={(event) => { if (event.target.value) bulkStatus(event.target.value); event.target.value = ''; }} className="rounded border border-blue-300 px-3 py-2 text-sm"><option value="">Update {selectedIds.size} selected...</option>{statusFlow.map((status) => <option key={status}>{status}</option>)}</select>}</div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-3">
-          {dispatches.map((d) => (
+          {visibleDispatches.map((d) => (
             <div key={d.id}
               onClick={() => { setSelected(d); setNotes(''); }}
               className={`bg-white rounded-lg shadow p-4 cursor-pointer transition-colors hover:bg-blue-50 ${selected?.id === d.id ? 'ring-2 ring-primary' : ''}`}>
               <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3"><input type="checkbox" checked={selectedIds.has(d.id)} onClick={(event) => event.stopPropagation()} onChange={(event) => setSelectedIds((current) => { const next = new Set(current); event.target.checked ? next.add(d.id) : next.delete(d.id); return next; })} aria-label={`Select dispatch ${d.ticket.ticketNumber}`} />
                   <span className="text-sm font-medium text-gray-900">{d.ticket.ticketNumber}</span>
                   <span className={`px-2 py-0.5 rounded text-xs font-medium ${getStatusColor(d.status)}`}>{d.status}</span>
                 </div>
@@ -224,7 +240,7 @@ export default function DispatchPage() {
               </div>
             </div>
           ))}
-          {dispatches.length === 0 && <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">No dispatches</div>}
+          {visibleDispatches.length === 0 && <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">No dispatches</div>}
         </div>
 
         {selected && (

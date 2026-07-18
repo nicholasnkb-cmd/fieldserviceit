@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Activity,
   AlertTriangle,
   BarChart3,
   Bot,
@@ -197,6 +198,7 @@ const navGroups = {
         { label: 'Users', href: '/admin/users', icon: Users },
         { label: 'Companies', href: '/admin/companies', icon: Building2 },
         { label: 'System Controls', href: '/admin/system', icon: Settings },
+        { label: 'Operations Console', href: '/admin/operations', icon: Activity },
         { label: 'Email Operations', href: '/admin/email-operations', icon: Mail },
         { label: 'Security Operations', href: '/admin/security-operations', icon: ShieldCheck },
         { label: 'Audit Logs', href: '/admin/audit-logs', icon: ClipboardList, feature: 'auditLogs' },
