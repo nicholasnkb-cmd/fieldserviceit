@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { api, getListData } from '../../../../lib/api';
 import { useAuthStore } from '../../../../stores/authStore';
+import { SavedViews } from '../../../../components/ui/SavedViews';
 
 interface AdminUser {
   id: string;
@@ -35,6 +36,7 @@ export default function AdminUsersPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState({ email: '', password: '', firstName: '', lastName: '', role: 'CLIENT', companyId: '' });
   const [message, setMessage] = useState('');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const { user, authChecked } = useAuthStore();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -138,10 +140,18 @@ export default function AdminUsersPage() {
     catch (err: any) { setMessage(err.message); }
   };
 
+  const bulkStatus = async (isActive: boolean) => {
+    await api.post('/admin/users/bulk/status', { ids: [...selectedIds], isActive });
+    setMessage(`${selectedIds.size} user(s) ${isActive ? 'activated' : 'deactivated'}`);
+    setSelectedIds(new Set());
+    fetchUsers();
+  };
+
   if (loading) return <div className="p-8">Loading...</div>;
 
   return (
     <div className="p-8">
+      <div className="mb-4"><SavedViews resource="users" filters={{ search, userType: searchParams.get('userType') || '', companyId: searchParams.get('companyId') || '' }} onApply={(view) => { setSearch(view.search || ''); const params = new URLSearchParams(); if (view.userType) params.set('userType', view.userType); if (view.companyId) params.set('companyId', view.companyId); router.push(`/admin/users${params.toString() ? `?${params}` : ''}`); }} /></div>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold">User Management</h1>
@@ -203,10 +213,13 @@ export default function AdminUsersPage() {
           className="w-full max-w-md rounded border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
       </div>
 
+      {selectedIds.size > 0 && <div className="mb-4 flex items-center justify-between rounded border border-blue-200 bg-blue-50 p-3 text-sm"><strong>{selectedIds.size} user(s) selected</strong><span className="flex gap-2"><button onClick={() => bulkStatus(true)} className="rounded border border-emerald-200 bg-white px-3 py-2 text-emerald-700">Activate</button><button onClick={() => confirm('Deactivate selected users and revoke their access?') && bulkStatus(false)} className="rounded border border-red-200 bg-white px-3 py-2 text-red-700">Deactivate</button></span></div>}
+
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr>
+              <th className="w-10 px-3 py-3"><input type="checkbox" checked={users.length > 0 && selectedIds.size === users.length} onChange={(event) => setSelectedIds(event.target.checked ? new Set(users.map((item) => item.id)) : new Set())} aria-label="Select all users" /></th>
               <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Name</th>
               <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Email</th>
               <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Type</th>
@@ -219,6 +232,7 @@ export default function AdminUsersPage() {
           <tbody className="divide-y divide-gray-200">
             {users.map((u) => (
               <tr key={u.id} className="hover:bg-gray-50">
+                <td className="px-3 py-3"><input type="checkbox" checked={selectedIds.has(u.id)} onChange={(event) => setSelectedIds((current) => { const next = new Set(current); event.target.checked ? next.add(u.id) : next.delete(u.id); return next; })} aria-label={`Select ${u.firstName} ${u.lastName}`} /></td>
                 <td className="px-4 py-3 text-sm font-medium text-gray-900">{u.firstName} {u.lastName}</td>
                 <td className="px-4 py-3 text-sm text-gray-600">{u.email}</td>
                 <td className="px-4 py-3">

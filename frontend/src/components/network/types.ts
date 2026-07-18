@@ -15,4 +15,5 @@ export interface NetworkDevice {
   purchaseDate?: string;
   warrantyExpiresAt?: string;
   createdAt: string;
+  deletedAt?: string;
 }

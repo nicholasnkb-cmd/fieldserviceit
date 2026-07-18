@@ -26,6 +26,7 @@ import { api } from '../../../lib/api';
 import { formatDate } from '../../../lib/utils';
 import { RequireCompanyContext } from '../../../components/layout/RequireCompanyContext';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
+import { SavedViews } from '../../../components/ui/SavedViews';
 import { useToast } from '../../../components/ui/Toast';
 import { NetworkDeviceList } from '../../../components/network/NetworkDeviceList';
 import { NetworkDeviceHeader } from '../../../components/network/NetworkDeviceHeader';
@@ -908,11 +909,12 @@ export default function NetworkPage() {
           )}
         </div>
       </div>
+      <div className="mt-4"><SavedViews resource="network" filters={{ search, tab }} onApply={(view) => { setSearch(view.search || ''); if (view.tab) setTab(view.tab as NetworkTab); }} /></div>
 
       {message && <div className="mt-4 rounded border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">{message}</div>}
 
       {showRetired && canDeleteNetwork && (
-        <RetiredNetworkDevices devices={retiredDevices} busy={deleting || retiredQuery.isFetching} onRefresh={() => void retiredQuery.refetch()} onRestore={restoreDevice} />
+        <RetiredNetworkDevices devices={retiredDevices} busy={deleting || inventoryActions.busy || retiredQuery.isFetching} onRefresh={() => void retiredQuery.refetch()} onRestore={restoreDevice} onPurge={inventoryActions.purge} />
       )}
 
       <div className="mt-5 grid gap-3 md:grid-cols-4">
