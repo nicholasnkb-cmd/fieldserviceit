@@ -61,6 +61,6 @@ Audit logs are **append-only** (no DELETE, no UPDATE). Immutable.
 
 ## Compliance Readiness
 
-- **HIPAA:** BAA-ready, PHI field encryption, access logs, 6-year audit retention
-- **SOC 2:** Access reviews, change management, incident response
-- **GDPR:** Data export, right to erasure, consent tracking
+- **HIPAA readiness:** configurable safeguards and six-year retention for compliance evidence; a signed BAA, formal risk analysis, provider agreements, and operating evidence are required before any HIPAA compliance claim.
+- **SOC 2 readiness:** access reviews, change management, incident response, and evidence exports support a future independent examination.
+- **Privacy readiness:** consent tracking, retention controls, and a deadline-tracked data-subject request workflow exist; legal review, identity-verification procedures, and jurisdiction-specific obligations remain operational responsibilities.

@@ -205,7 +205,7 @@ export default function ProfilePage() {
           <div><label className="block text-sm font-medium text-gray-700">Current Password</label>
             <input type="password" required value={pw.oldPassword} onChange={(e) => setPw({...pw, oldPassword: e.target.value})} className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm" /></div>
           <div><label className="block text-sm font-medium text-gray-700">New Password</label>
-            <input type="password" required minLength={6} value={pw.newPassword} onChange={(e) => setPw({...pw, newPassword: e.target.value})} className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm" /></div>
+            <input type="password" required minLength={15} maxLength={128} value={pw.newPassword} onChange={(e) => setPw({...pw, newPassword: e.target.value})} className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm" /></div>
           <button type="submit" disabled={pwSaving} className="px-4 py-2 bg-primary text-white text-sm rounded-md hover:bg-primary/90 disabled:opacity-50">{pwSaving ? 'Changing...' : 'Change Password'}</button>
         </form>
       </div>

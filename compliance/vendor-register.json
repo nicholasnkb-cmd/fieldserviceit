@@ -1,0 +1,13 @@
+{
+  "reviewedAt": "2026-07-18",
+  "vendors": [
+    { "service": "Hostinger", "purpose": "Application and database hosting", "data": "Customer workspace and operational data", "criticality": "critical", "contractReview": "required", "securityReview": "required", "exitPlan": "Encrypted export, DNS cutover, restore to replacement MySQL and Node hosting" },
+    { "service": "PayPal", "purpose": "Subscription billing", "data": "Account, subscription, and payment-provider identifiers", "criticality": "high", "contractReview": "required", "securityReview": "required", "exitPlan": "Disable billing integration and migrate subscription references" },
+    { "service": "Configured SMTP provider", "purpose": "Transactional email", "data": "Recipient addresses and message content", "criticality": "high", "contractReview": "required", "securityReview": "required", "exitPlan": "Rotate credentials and update SMTP configuration" },
+    { "service": "Amazon S3-compatible provider", "purpose": "Optional encrypted off-site backups", "data": "Encrypted database backup archives", "criticality": "critical", "contractReview": "required when enabled", "securityReview": "required when enabled", "exitPlan": "Verify replacement restore, copy retained backups, revoke old keys" },
+    { "service": "Sentry", "purpose": "Optional application error monitoring", "data": "Error telemetry with configured scrubbing", "criticality": "medium", "contractReview": "required when enabled", "securityReview": "required when enabled", "exitPlan": "Disable DSN and retain required evidence export" },
+    { "service": "Google Analytics", "purpose": "Consent-gated website analytics", "data": "Browser and usage telemetry after consent", "criticality": "low", "contractReview": "required when enabled", "securityReview": "required when enabled", "exitPlan": "Remove measurement identifier and analytics loader" },
+    { "service": "Configured AI model provider", "purpose": "Optional AI-assisted features", "data": "Prompts and authorized workspace context", "criticality": "high", "contractReview": "required before enablement", "securityReview": "required before enablement", "exitPlan": "Disable model configuration and revoke provider key" },
+    { "service": "Configured RMM and remote-access providers", "purpose": "Optional device operations", "data": "Asset identifiers, device telemetry, and scoped credentials", "criticality": "critical", "contractReview": "required before enablement", "securityReview": "required before enablement", "exitPlan": "Disable integration, revoke credentials, verify jobs stopped" }
+  ]
+}

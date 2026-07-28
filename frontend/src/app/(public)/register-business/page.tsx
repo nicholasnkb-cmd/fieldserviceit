@@ -4,8 +4,9 @@ import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '../../../stores/authStore';
-import { setSessionTokens, unwrapResponseBody } from '../../../lib/api';
+import { clearSessionTokens, unwrapResponseBody } from '../../../lib/api';
 import { PRIVACY_VERSION, TERMS_VERSION } from '../../../lib/legal';
+import { PRODUCT_CATALOG } from '../../../config/product-catalog.generated';
 
 interface PlanOption { id: string; name: string; monthlyPrice: number }
 const apiBase = () =>
@@ -13,11 +14,11 @@ const apiBase = () =>
     ? ''
     : process.env.NEXT_PUBLIC_API_URL || '';
 
-const fallbackPlans: PlanOption[] = [
-  { id: 'free', name: 'Free', monthlyPrice: 0 },
-  { id: 'starter', name: 'Starter', monthlyPrice: 29 },
-  { id: 'business', name: 'Business', monthlyPrice: 79 },
-];
+const fallbackPlans: PlanOption[] = PRODUCT_CATALOG.plans.map((plan) => ({
+  id: plan.id,
+  name: plan.name,
+  monthlyPrice: plan.monthlyPrice,
+}));
 
 function RegisterBusinessForm() {
   const [firstName, setFirstName] = useState('');
@@ -140,9 +141,7 @@ function RegisterBusinessForm() {
       }
 
       const data = unwrapResponseBody(await res.json());
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      setSessionTokens(data);
+      clearSessionTokens();
       setUser(data.user);
 
       await startCheckout(apiUrl, selectedPlan);
@@ -266,7 +265,7 @@ function RegisterBusinessForm() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700">Password</label>
-            <input type="password" required minLength={8} maxLength={128} value={password} onChange={(e) => setPassword(e.target.value)}
+            <input type="password" required minLength={15} maxLength={128} value={password} onChange={(e) => setPassword(e.target.value)}
               className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
           </div>
 

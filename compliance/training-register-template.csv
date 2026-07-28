@@ -1,0 +1,2 @@
+person_id,role,course,assigned_date,completed_date,expires_date,evidence_reference,verified_by
+example-user,Administrator,Annual security and privacy awareness,2026-01-01,2026-01-02,2027-01-02,replace-with-lms-or-certificate-reference,security-owner

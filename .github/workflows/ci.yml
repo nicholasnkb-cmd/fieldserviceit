@@ -40,6 +40,9 @@ jobs:
       - run: npm run check:permissions
       - run: npm run check:tenant-sql
       - run: node ../scripts/check-module-size.mjs
+      - run: node ../scripts/validate-control-register.mjs
+      - run: node ../scripts/sync-product-catalog.mjs
+      - run: node ../scripts/validate-public-claims.mjs
 
   backend-unit:
     name: Backend Unit Tests
@@ -164,8 +167,8 @@ jobs:
           cache-dependency-path: backend/package-lock.json
 
       - run: npm ci
-      - run: npm audit --production --audit-level=high
+      - run: npm audit --omit=dev --audit-level=moderate
       - run: npm ci
         working-directory: frontend
-      - run: npm audit --production --audit-level=high
+      - run: npm audit --omit=dev --audit-level=moderate
         working-directory: frontend

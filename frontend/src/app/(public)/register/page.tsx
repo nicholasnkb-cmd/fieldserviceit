@@ -4,15 +4,16 @@ import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '../../../stores/authStore';
-import { setSessionTokens, unwrapResponseBody } from '../../../lib/api';
+import { clearSessionTokens, unwrapResponseBody } from '../../../lib/api';
 import { PRIVACY_VERSION, TERMS_VERSION } from '../../../lib/legal';
+import { PRODUCT_CATALOG } from '../../../config/product-catalog.generated';
 
 interface PlanOption { id: string; name: string; monthlyPrice: number }
-const fallbackPlans: PlanOption[] = [
-  { id: 'free', name: 'Free', monthlyPrice: 0 },
-  { id: 'starter', name: 'Starter', monthlyPrice: 29 },
-  { id: 'business', name: 'Business', monthlyPrice: 79 },
-];
+const fallbackPlans: PlanOption[] = PRODUCT_CATALOG.plans.map((plan) => ({
+  id: plan.id,
+  name: plan.name,
+  monthlyPrice: plan.monthlyPrice,
+}));
 
 function RegisterForm() {
   const [firstName, setFirstName] = useState('');
@@ -83,9 +84,7 @@ function RegisterForm() {
       }
 
       const data = unwrapResponseBody(await res.json());
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      setSessionTokens(data);
+      clearSessionTokens();
       setUser(data.user);
 
       router.push('/submit-ticket');
@@ -246,7 +245,7 @@ function RegisterForm() {
               id="password"
               type="password"
               required
-              minLength={8}
+              minLength={15}
               maxLength={128}
               value={password}
               onChange={(e) => setPassword(e.target.value)}

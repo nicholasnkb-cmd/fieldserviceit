@@ -21,6 +21,7 @@ import {
 import { useAuthStore } from '../stores/authStore';
 import { TrackedLink } from '../components/marketing/TrackedLink';
 import { api } from '../lib/api';
+import { PRODUCT_CATALOG } from '../config/product-catalog.generated';
 
 interface LiveOperations {
   openTickets: number;
@@ -29,33 +30,34 @@ interface LiveOperations {
   activities: Array<{ label: string; occurredAt: string }>;
 }
 
-const plans = [
-  {
-    name: 'Free',
-    price: 0,
+const planPresentation = {
+  Free: {
     summary: 'For individuals submitting and tracking their own service requests.',
     users: '1 individual',
     tickets: '50 tickets per month',
     features: ['Ticket intake', 'Email notifications', 'Signed-in request form'],
   },
-  {
-    name: 'Starter',
-    price: 29,
+  Starter: {
     summary: 'For individuals who need higher-volume support tracking and priority workflows.',
     users: '1 individual',
     tickets: 'Unlimited tickets',
     features: ['Unlimited requests', 'Priority support tracking', 'CSV exports', 'Personal service history'],
     featured: true,
   },
-  {
-    name: 'Business',
-    price: 79,
-    summary: 'The only company plan, built for MSPs and business service operations.',
-    users: 'Unlimited users',
+  Business: {
+    summary: 'The company plan for MSPs and business service operations.',
+    users: '$12 per additional user/month',
     tickets: 'Unlimited tickets',
     features: ['SLA workflows', 'RMM integrations', 'Audit logs', 'Custom branding'],
   },
-];
+} as const;
+
+const plans = PRODUCT_CATALOG.plans.map((plan) => ({
+  ...planPresentation[plan.name],
+  name: plan.name,
+  price: plan.monthlyPrice,
+  featured: plan.name === 'Starter',
+}));
 
 const capabilities = [
   { title: 'Ticket operations', body: 'Capture, triage, assign, resolve, and audit requests from one queue.', icon: ClipboardList },
@@ -210,34 +212,34 @@ export default function LandingPageClient() {
           <div className="max-w-2xl">
             <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-gray-300 bg-white/80 px-3 py-1 text-sm font-medium text-gray-700 backdrop-blur">
               <span className="h-2 w-2 rounded-full bg-emerald-500" />
-              ITSM, dispatch, assets, and billing in one SQL-backed platform
+              Service operations around the RMM you already trust
             </p>
             <h1 className="text-5xl font-bold tracking-tight text-gray-950 sm:text-6xl">
-              FieldserviceIT
+              Connect every request to the people and systems that resolve it.
             </h1>
             <p className="mt-4 max-w-xl text-lg font-medium leading-8 text-gray-800">
-              A practical service desk for MSPs and field teams that need tickets, technician dispatch, asset context,
-              reporting, and customer-facing intake without stitching five tools together.
+              FieldserviceIT connects tickets, assets, dispatch, client updates, and governed RMM actions in one
+              tenant-aware workspace for small MSP teams.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <TrackedLink
-                href={isAuthenticated ? '/billing' : '/register'}
-                eventName="pricing_click"
-                eventLabel="get_started"
+                href={isAuthenticated ? '/billing' : '/contact'}
+                eventName="cta_click"
+                eventLabel="book_workflow_review"
                 eventLocation="hero"
                 className="inline-flex items-center justify-center gap-2 rounded bg-gray-950 px-6 py-3 text-sm font-semibold text-white hover:bg-gray-800"
               >
-                Get started
+                Book a workflow review
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </TrackedLink>
               <TrackedLink
-                href="/submit-ticket"
+                href="#features"
                 eventName="cta_click"
-                eventLabel="open_customer_portal"
+                eventLabel="see_product_workflows"
                 eventLocation="hero"
                 className="inline-flex items-center justify-center rounded border border-gray-300 bg-white/80 px-6 py-3 text-sm font-semibold text-gray-900 backdrop-blur hover:bg-white"
               >
-                Open customer portal
+                See how it works
               </TrackedLink>
             </div>
           </div>

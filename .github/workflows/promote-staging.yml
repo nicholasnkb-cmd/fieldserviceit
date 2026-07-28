@@ -1,0 +1,50 @@
+name: Promote Validated Staging Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_sha:
+        description: Exact develop commit that passed staging validation
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+  pull-requests: write
+
+jobs:
+  verify-and-promote:
+    runs-on: ubuntu-latest
+    environment: staging-promotion
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify exact develop release and successful staging gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ inputs.release_sha }}
+        run: |
+          set -euo pipefail
+          git fetch origin develop master
+          test "$(git rev-parse origin/develop)" = "$RELEASE_SHA" || { echo 'Release SHA is not the current develop head.'; exit 1; }
+          run=$(gh run list --workflow staging-validation.yml --branch develop --commit "$RELEASE_SHA" --limit 1 --json databaseId,conclusion,status,url --jq '.[0] // {}')
+          test "$(jq -r .status <<< "$run")" = completed || { echo 'Staging validation is not complete.'; exit 1; }
+          test "$(jq -r .conclusion <<< "$run")" = success || { echo 'Staging validation did not pass.'; exit 1; }
+          echo "Validated staging run: $(jq -r .url <<< "$run")" >> "$GITHUB_STEP_SUMMARY"
+      - name: Open production promotion pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ inputs.release_sha }}
+        run: |
+          set -euo pipefail
+          existing=$(gh pr list --base master --head develop --state open --json url --jq '.[0].url // empty')
+          if [ -n "$existing" ]; then
+            echo "Promotion PR already open: $existing" >> "$GITHUB_STEP_SUMMARY"
+          else
+            url=$(gh pr create --base master --head develop \
+              --title "Promote validated staging release ${RELEASE_SHA:0:12}" \
+              --body "Promotes exact staging-validated commit \`$RELEASE_SHA\`. Production environment approval, immutable deployment verification, and automatic rollback remain required.")
+            echo "Created promotion PR: $url" >> "$GITHUB_STEP_SUMMARY"
+          fi

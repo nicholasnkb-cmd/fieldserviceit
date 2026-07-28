@@ -108,7 +108,7 @@ export default function TenantAdminPage() {
               <input type="email" required value={createForm.email} onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
                 className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm" /></div>
             <div><label className="block text-sm font-medium text-gray-700">Password *</label>
-              <input type="password" required minLength={6} value={createForm.password} onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
+              <input type="password" required minLength={15} maxLength={128} value={createForm.password} onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
                 className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm" /></div>
             <div><label className="block text-sm font-medium text-gray-700">Role</label>
               <select value={createForm.role} onChange={(e) => setCreateForm({ ...createForm, role: e.target.value })}

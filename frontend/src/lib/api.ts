@@ -5,8 +5,6 @@ const API_BASE =
     : CONFIGURED_API_BASE;
 const DEFAULT_TIMEOUT = 30000;
 const COMPANY_CONTEXT_KEY = 'superAdminCompanyContext';
-const SESSION_ACCESS_TOKEN_KEY = 'fsit.accessToken';
-const SESSION_REFRESH_TOKEN_KEY = 'fsit.refreshToken';
 const IMPERSONATION_SESSION_KEY = 'fsit.impersonationSession';
 
 export function unwrapResponseBody(body: any): any {
@@ -46,36 +44,29 @@ interface FetchOptions extends RequestInit {
   timeout?: number;
 }
 
-let refreshPromise: Promise<string | null> | null = null;
+let refreshPromise: Promise<boolean> | null = null;
 
-async function performTokenRefresh(): Promise<string | null> {
+async function performTokenRefresh(): Promise<boolean> {
   try {
-    const refreshToken = getSessionRefreshToken();
     const res = await fetch(`${API_BASE}/v1/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify(refreshToken ? { refreshToken } : {}),
+      body: '{}',
     });
 
     if (!res.ok) {
       clearSessionTokens();
-      return null;
+      return false;
     }
-
-    const body = await res.json();
-    const data = unwrapResponseBody(body);
-    if (data.accessToken || data.refreshToken) {
-      setSessionTokens(data);
-    }
-    return data.accessToken || getSessionAccessToken() || 'cookie';
+    return true;
   } catch {
     clearSessionTokens();
-    return null;
+    return false;
   }
 }
 
-function refreshAccessToken(): Promise<string | null> {
+function refreshAccessToken(): Promise<boolean> {
   if (!refreshPromise) {
     refreshPromise = performTokenRefresh().finally(() => {
       refreshPromise = null;
@@ -96,8 +87,6 @@ export async function apiClient<T = any>(endpoint: string, options: FetchOptions
   if (!skipAuth) {
     const companyContext = getCompanyContextId();
     if (companyContext) headers['X-Company-Context'] = companyContext;
-    const token = getSessionAccessToken();
-    if (token) headers['Authorization'] = `Bearer ${token}`;
     const impersonationId = getImpersonationSessionId();
     if (impersonationId) headers['X-Impersonation-Session'] = impersonationId;
   }
@@ -116,9 +105,8 @@ export async function apiClient<T = any>(endpoint: string, options: FetchOptions
       clearTimeout(timeoutId);
 
       if (res.status === 401 && !skipAuth) {
-        const newToken = await refreshAccessToken();
-        if (newToken) {
-          headers['Authorization'] = `Bearer ${newToken}`;
+        const refreshed = await refreshAccessToken();
+        if (refreshed) {
           const retryRes = await fetch(`${API_BASE}/v1${endpoint}`, {
             ...fetchOptions,
             headers,
@@ -195,35 +183,11 @@ function getCompanyContextId(): string | null {
   }
 }
 
-function getSessionAccessToken(): string | null {
-  try {
-    return typeof window !== 'undefined' ? sessionStorage.getItem(SESSION_ACCESS_TOKEN_KEY) : null;
-  } catch {
-    return null;
-  }
-}
-
-function getSessionRefreshToken(): string | null {
-  try {
-    return typeof window !== 'undefined' ? sessionStorage.getItem(SESSION_REFRESH_TOKEN_KEY) : null;
-  } catch {
-    return null;
-  }
-}
-
-export function setSessionTokens(data: any) {
-  if (typeof window === 'undefined') return;
-  try {
-    if (data?.accessToken) sessionStorage.setItem(SESSION_ACCESS_TOKEN_KEY, data.accessToken);
-    if (data?.refreshToken) sessionStorage.setItem(SESSION_REFRESH_TOKEN_KEY, data.refreshToken);
-  } catch {}
-}
-
 export function clearSessionTokens() {
   if (typeof window === 'undefined') return;
   try {
-    sessionStorage.removeItem(SESSION_ACCESS_TOKEN_KEY);
-    sessionStorage.removeItem(SESSION_REFRESH_TOKEN_KEY);
+    sessionStorage.removeItem('fsit.accessToken');
+    sessionStorage.removeItem('fsit.refreshToken');
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
   } catch {}

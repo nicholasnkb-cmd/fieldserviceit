@@ -103,3 +103,9 @@ marketing-video/*.mp4
 /tmp/
 /package.json
 /package-lock.json
+
+# Track the marketing governance entrypoints while keeping historical/generated material local.
+!/marketing/
+/marketing/*
+!/marketing/00_INDEX.md
+!/marketing/PRODUCT_CLAIMS.md

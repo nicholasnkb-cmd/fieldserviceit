@@ -4,8 +4,9 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { KeyRound, Loader2, ShieldCheck } from 'lucide-react';
+import { browserSupportsWebAuthn, startAuthentication } from '@simplewebauthn/browser';
 import { useAuthStore } from '../../../stores/authStore';
-import { setSessionTokens, unwrapResponseBody } from '../../../lib/api';
+import { clearSessionTokens, unwrapResponseBody } from '../../../lib/api';
 import { MfaSetupCard } from '../../../components/security/MfaSetupCard';
 
 type LoginMode = 'password' | 'mfa' | 'enroll' | 'recovery';
@@ -72,9 +73,7 @@ export default function LoginPage() {
   };
 
   const completeLogin = (data: any) => {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    setSessionTokens(data);
+    clearSessionTokens();
     setUser(data.user);
   };
 
@@ -145,6 +144,23 @@ export default function LoginPage() {
     }
   };
 
+  const signInWithPasskey = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      if (!browserSupportsWebAuthn()) throw new Error('This browser does not support passkeys');
+      const ceremony = await request('/auth/passkeys/authentication-options', {});
+      const response = await startAuthentication({ optionsJSON: ceremony.options });
+      const result = await request('/auth/passkeys/authenticate', { challengeId: ceremony.challengeId, response });
+      completeLogin(result);
+      router.push(currentReturnTo());
+    } catch (passkeyError: any) {
+      setError(passkeyError?.message || 'Passkey sign-in was canceled or failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (mode === 'recovery') {
     return (
       <div className="flex min-h-[80vh] items-center justify-center bg-gray-50 py-12">
@@ -195,7 +211,7 @@ export default function LoginPage() {
             <>
               <label className="block text-sm font-medium text-gray-700">
                 Email
-                <input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} onBlur={() => loadSsoProviders(email)}
+                <input type="email" required value={email} autoComplete="username webauthn" onChange={(event) => setEmail(event.target.value)} onBlur={() => loadSsoProviders(email)}
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
               </label>
               <label className="block text-sm font-medium text-gray-700">
@@ -236,6 +252,12 @@ export default function LoginPage() {
 
         {mode === 'password' && (
           <>
+            <div className="border-t border-gray-200 pt-5">
+              <button type="button" onClick={signInWithPasskey} disabled={loading}
+                className="flex w-full items-center justify-center gap-2 rounded-md border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+                <KeyRound size={16} /> Sign in with a passkey
+              </button>
+            </div>
             {ssoProviders.length > 0 && (
               <div className="space-y-2 border-t border-gray-200 pt-5">
                 {ssoProviders.map((provider) => (
@@ -250,6 +272,7 @@ export default function LoginPage() {
             <div className="space-y-2 border-t border-gray-200 pt-5 text-center text-sm">
               <Link href="/register" className="block text-primary hover:underline">Create a public account</Link>
               <Link href="/forgot-password" className="block text-primary hover:underline">Forgot password?</Link>
+              <Link href="/mfa-recovery" className="block text-primary hover:underline">Can’t access your MFA device?</Link>
               <Link href="/track" className="block text-primary hover:underline">Track a ticket</Link>
               <Link href="/register-business" className="block text-primary hover:underline">Register your company</Link>
             </div>

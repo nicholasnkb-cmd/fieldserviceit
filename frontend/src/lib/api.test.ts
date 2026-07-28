@@ -65,4 +65,16 @@ describe('unwrapResponseBody', () => {
     expect(listener).not.toHaveBeenCalled();
     window.removeEventListener('fieldserviceit:api-error', listener);
   });
+
+  it('uses HttpOnly cookies without reading legacy browser token storage', async () => {
+    sessionStorage.setItem('fsit.accessToken', 'browser-readable-token');
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ ok: true }) }) as any;
+
+    await apiClient('/users/me');
+
+    expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('/v1/users/me'), expect.objectContaining({
+      credentials: 'include',
+      headers: expect.not.objectContaining({ Authorization: expect.any(String) }),
+    }));
+  });
 });

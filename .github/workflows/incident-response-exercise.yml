@@ -1,0 +1,43 @@
+name: Incident Response Tabletop Exercise
+
+on:
+  workflow_dispatch:
+    inputs:
+      scenario:
+        description: Exercise scenario
+        required: false
+        default: Compromised administrator account and suspected tenant-data access
+  schedule:
+    - cron: '15 14 15 1,4,7,10 *'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  open-exercise:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v9
+        env:
+          SCENARIO: ${{ inputs.scenario || 'Compromised administrator account and suspected tenant-data access' }}
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const date = new Date().toISOString().slice(0, 10);
+            await github.rest.issues.createLabel({ owner, repo, name: 'incident-exercise', color: 'FBCA04', description: 'Quarterly incident-response exercise evidence' }).catch((error) => { if (error.status !== 422) throw error; });
+            const body = [
+              `Scenario: **${process.env.SCENARIO}**`,
+              '',
+              '- [ ] Name incident commander, communications lead, operations lead, privacy/legal contact',
+              '- [ ] Record detection source, initial severity, scope, affected tenants, and timeline',
+              '- [ ] Revoke sessions/credentials and preserve immutable logs',
+              '- [ ] Test customer, regulator, insurer, and vendor notification decision paths',
+              '- [ ] Validate backup availability and recovery-time assumptions',
+              '- [ ] Record containment/recovery timestamps against objectives',
+              '- [ ] Document gaps, owners, deadlines, and follow-up verification',
+              '',
+              `Workflow evidence: ${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`,
+            ].join('\n');
+            const issue = await github.rest.issues.create({ owner, repo, title: `Incident response exercise ${date}`, labels: ['incident-exercise'], assignees: [owner], body });
+            core.summary.addLink('Open exercise record', issue.data.html_url).write();

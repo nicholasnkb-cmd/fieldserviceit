@@ -1,6 +1,6 @@
 # FieldserviceIT
 
-Project guidance: [Product roadmap](docs/PRODUCT_ROADMAP.md) | [Quality gates](docs/QUALITY_GATES.md) | [Mobile app QA](docs/MOBILE_APP_QA.md) | [Tenant customization](docs/TENANT_CUSTOMIZATION.md)
+Project guidance: [Product roadmap](docs/PRODUCT_ROADMAP.md) | [Quality gates](docs/QUALITY_GATES.md) | [Product claims](docs/PRODUCT_CLAIMS.md) | [Remediation status](docs/REMEDIATION_STATUS_2026-07-27.md) | [Mobile app QA](docs/MOBILE_APP_QA.md) | [Tenant customization](docs/TENANT_CUSTOMIZATION.md)
 
 Multi-tenant enterprise workflow + IT operations platform (ITSM/MSP).
 

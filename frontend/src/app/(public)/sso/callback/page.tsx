@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2, ShieldCheck } from 'lucide-react';
-import { setSessionTokens, unwrapResponseBody } from '../../../../lib/api';
+import { clearSessionTokens, unwrapResponseBody } from '../../../../lib/api';
 import { useAuthStore } from '../../../../stores/authStore';
 
 function SsoCallbackContent() {
@@ -32,7 +32,7 @@ function SsoCallbackContent() {
         return unwrapResponseBody(body);
       })
       .then((data) => {
-        setSessionTokens(data);
+        clearSessionTokens();
         setUser(data.user);
         router.replace(returnTo.startsWith('/') && !returnTo.startsWith('//') ? returnTo : '/dashboard');
       })

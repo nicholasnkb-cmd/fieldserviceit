@@ -29,8 +29,6 @@ describe('LoginPage', () => {
           ok: true,
           json: async () => ({
             user: { id: 'user-1', email: 'nick@example.com', firstName: 'Nick', lastName: 'B' },
-            accessToken: 'access',
-            refreshToken: 'refresh',
           }),
         } as Response;
       }
@@ -50,7 +48,7 @@ describe('LoginPage', () => {
     expect(screen.getByRole('heading', { name: /fieldserviceit/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^sign in$/i })).toBeInTheDocument();
   });
 
   it('renders links for register, forgot password, ticket tracking', () => {
@@ -68,7 +66,7 @@ describe('LoginPage', () => {
 
     await userEvent.type(screen.getByLabelText(/email/i), 'nick@example.com');
     await userEvent.type(screen.getByLabelText(/password/i), 'secret-password');
-    await userEvent.click(screen.getByRole('button', { name: /sign in/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^sign in$/i }));
 
     expect(setUser).toHaveBeenCalledWith(expect.objectContaining({ id: 'user-1' }));
     expect(push).toHaveBeenCalledWith('/dashboard');
@@ -82,7 +80,7 @@ describe('LoginPage', () => {
 
     await userEvent.type(screen.getByLabelText(/email/i), 'nick@example.com');
     await userEvent.type(screen.getByLabelText(/password/i), 'secret-password');
-    await userEvent.click(screen.getByRole('button', { name: /sign in/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^sign in$/i }));
 
     expect(push).toHaveBeenCalledWith('/dashboard');
   });

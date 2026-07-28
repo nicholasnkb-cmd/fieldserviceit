@@ -32,6 +32,28 @@ function describe(error) {
   return error.message;
 }
 
+function assertFrontendSecurityHeaders(response) {
+  const csp = response.headers.get('content-security-policy') || '';
+  for (const directive of ["default-src 'self'", "base-uri 'self'", "object-src 'none'", "frame-ancestors 'none'"]) {
+    if (!csp.includes(directive)) throw new Error(`Content-Security-Policy is missing ${directive}`);
+  }
+  if (!response.headers.get('strict-transport-security')) throw new Error('Strict-Transport-Security is missing');
+  if (response.headers.get('x-content-type-options') !== 'nosniff') throw new Error('X-Content-Type-Options is not nosniff');
+}
+
+function authCookieHeader(response) {
+  const values = typeof response.headers.getSetCookie === 'function'
+    ? response.headers.getSetCookie()
+    : [response.headers.get('set-cookie') || ''];
+  const cookies = [];
+  for (const value of values) {
+    for (const match of value.matchAll(/(?:^|,\s*)(fsit_(?:access|refresh))=([^;]+)/g)) {
+      cookies.push(`${match[1]}=${match[2]}`);
+    }
+  }
+  return [...new Set(cookies)].join('; ');
+}
+
 async function request(name, url, init = {}, validate) {
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     const started = Date.now();
@@ -56,6 +78,7 @@ async function request(name, url, init = {}, validate) {
 for (const [name, url] of checks) {
   await request(name, url, {}, name === "website" || name === "login page"
     ? async (response) => {
+        assertFrontendSecurityHeaders(response);
         const html = await response.text();
         if (!html.includes("/terms") || !html.includes("/privacy") || !html.includes("FieldserviceIT")) {
           throw new Error("global footer navigation is missing from the rendered HTML");
@@ -85,8 +108,12 @@ if (email && password) {
     body: JSON.stringify({ email, password }),
   });
   const login = unwrap(await loginResponse.json());
-  if (!login.accessToken) throw new Error("administrator login did not return an access token; check MFA and verification-account configuration");
-  const authHeaders = { Authorization: `Bearer ${login.accessToken}` };
+  if (login.accessToken || login.refreshToken) throw new Error("administrator login exposed session tokens in the response body");
+  const cookie = authCookieHeader(loginResponse);
+  if (!cookie.includes('fsit_access=') || !cookie.includes('fsit_refresh=')) {
+    throw new Error("administrator login did not establish secure authentication cookies; check MFA and verification-account configuration");
+  }
+  const authHeaders = { Cookie: cookie };
   const meResponse = await request("authenticated profile", `${apiUrl}/v1/users/me`, { headers: authHeaders });
   const me = unwrap(await meResponse.json());
   if (!me?.id || !me?.email) throw new Error("authenticated profile response is incomplete");

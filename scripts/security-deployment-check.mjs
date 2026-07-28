@@ -5,6 +5,10 @@ import process from 'node:process';
 const failures = [];
 const productionRequired = [
   'JWT_SECRET',
+  'JWT_REFRESH_SECRET',
+  'CREDENTIAL_ENCRYPTION_KEY',
+  'FRONTEND_URL',
+  'CORS_ORIGIN',
 ];
 if (process.env.NODE_ENV === 'production') {
   for (const name of productionRequired) {
@@ -12,6 +16,9 @@ if (process.env.NODE_ENV === 'production') {
   }
   if (process.env.CREDENTIAL_ENCRYPTION_KEY && process.env.JWT_SECRET === process.env.CREDENTIAL_ENCRYPTION_KEY) {
     failures.push('CREDENTIAL_ENCRYPTION_KEY must be different from JWT_SECRET');
+  }
+  if (process.env.JWT_REFRESH_SECRET === process.env.JWT_SECRET) {
+    failures.push('JWT_REFRESH_SECRET must be different from JWT_SECRET');
   }
   if (process.env.CLAMAV_REQUIRED === 'true' && !process.env.CLAMAV_HOST) {
     failures.push('CLAMAV_HOST must be set when CLAMAV_REQUIRED=true');
@@ -34,8 +41,17 @@ for (const migration of [
   'backend/src/database/migrations/038_offsite_backup.sql',
   'backend/src/database/migrations/039_shared_rate_limit.sql',
   'backend/src/database/migrations/040_backup_retention.sql',
+  'backend/src/database/migrations/044_compliance_baseline.sql',
+  'backend/src/database/migrations/045_privacy_requests.sql',
+  'backend/src/database/migrations/046_passkeys_and_identity_recovery.sql',
+  'backend/src/database/migrations/047_privacy_fulfillment.sql',
+  'backend/src/database/migrations/048_slo_evidence.sql',
 ]) {
   if (!fs.existsSync(path.resolve(migration))) failures.push(`Missing required migration: ${migration}`);
+}
+
+if (process.env.SIEM_INGEST_URL && !process.env.SIEM_INGEST_SECRET) {
+  failures.push('SIEM_INGEST_SECRET must be configured when SIEM_INGEST_URL is enabled');
 }
 
 if (failures.length) {

@@ -31,6 +31,23 @@ test.describe('critical authenticated workflows', () => {
     await expect(page.getByRole('button', { name: 'Dispatch', exact: true })).toBeVisible();
   });
 
+  test('authentication credentials remain in secure HttpOnly cookies', async ({ page, context }) => {
+    const browserTokens = await page.evaluate(() => ({
+      access: sessionStorage.getItem('fsit.accessToken') || localStorage.getItem('accessToken'),
+      refresh: sessionStorage.getItem('fsit.refreshToken') || localStorage.getItem('refreshToken'),
+    }));
+    expect(browserTokens).toEqual({ access: null, refresh: null });
+
+    const cookies = await context.cookies();
+    for (const name of ['fsit_access', 'fsit_refresh']) {
+      const cookie = cookies.find((item) => item.name === name);
+      expect(cookie, `${name} must exist`).toBeDefined();
+      expect(cookie?.httpOnly).toBe(true);
+      expect(cookie?.secure).toBe(true);
+      expect(cookie?.sameSite).toBe('Lax');
+    }
+  });
+
   for (const route of ['/dashboard', '/tickets', '/assets', '/network']) {
     test(`${route} is responsive, branded, and retains the global footer`, async ({ page }, testInfo) => {
       await page.setViewportSize(testInfo.project.name.includes('mobile')

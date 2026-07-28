@@ -5,6 +5,7 @@ import { KeyRound, Laptop, Loader2, LogOut, RefreshCw, ShieldCheck, Smartphone }
 import { api, getListData } from '../../lib/api';
 import { formatDate } from '../../lib/utils';
 import { MfaSetupCard } from '../security/MfaSetupCard';
+import { PasskeyManager } from './PasskeyManager';
 
 type Session = {
   id: string;
@@ -129,10 +130,30 @@ export function ProfileSecuritySection() {
     }
   };
 
+  const rotateRecoveryCodes = async () => {
+    setBusy('recovery');
+    setError('');
+    setMessage('');
+    try {
+      const result = await api.post('/auth/mfa/recovery-codes', { code, password });
+      setRecoveryCodes(result.recoveryCodes || []);
+      setCode('');
+      setPassword('');
+      setMessage('Previous recovery codes were revoked and replaced.');
+      await load();
+    } catch (err: any) {
+      setError(err.message || 'Recovery codes could not be rotated.');
+    } finally {
+      setBusy('');
+    }
+  };
+
   return (
     <div className="space-y-6">
       {error && <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
       {message && <div className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{message}</div>}
+
+      <PasskeyManager />
 
       <section className="rounded-lg bg-white p-6 shadow">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -187,6 +208,10 @@ export function ProfileSecuritySection() {
             <button onClick={disableMfa} disabled={!code || !password || busy === 'disable'}
               className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 disabled:opacity-50 sm:col-span-2">
               Disable MFA
+            </button>
+            <button onClick={rotateRecoveryCodes} disabled={!code || !password || busy === 'recovery'}
+              className="rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-700 disabled:opacity-50 sm:col-span-2">
+              Generate new recovery codes
             </button>
           </div>
         )}

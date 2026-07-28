@@ -13,6 +13,29 @@ jobs:
   build-and-test:
     name: Build and Test
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: mysql://app:devpassword@127.0.0.1:3306/fieldserviceit-test
+      JWT_SECRET: staging-validation-secret-at-least-32-characters
+      FRONTEND_URL: http://localhost:3000
+      CORS_ORIGIN: http://localhost:3000
+      NODE_ENV: test
+      SMTP_HOST: localhost
+      SMTP_PORT: 1025
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: rootpassword
+          MYSQL_DATABASE: fieldserviceit-test
+          MYSQL_USER: app
+          MYSQL_PASSWORD: devpassword
+        options: >-
+          --health-cmd "mysqladmin ping -h localhost -u root -prootpassword"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 15
+        ports:
+          - 3306:3306
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -30,8 +53,12 @@ jobs:
           npm run check:permissions
           npm run check:tenant-sql
           node ../scripts/check-module-size.mjs
+          node ../scripts/validate-control-register.mjs
           npm run build
           npm test -- --runInBand
+          npm run seed
+          npm run seed
+          npm run test:e2e:ci -- --runInBand
       - name: Frontend validation
         working-directory: frontend
         run: |
@@ -40,6 +67,19 @@ jobs:
           npm run test:a11y
           npm run lint
           npm run build
+
+      - name: Preserve staging gate evidence
+        if: always()
+        run: |
+          mkdir -p evidence
+          printf '{"release":"%s","run":"%s","validatedAt":"%s","database":"mysql-8","migrationIdempotency":true,"e2e":true}\n' \
+            "$GITHUB_SHA" "$GITHUB_RUN_ID" "$(date -u +%FT%TZ)" > evidence/staging-gate.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: staging-gate-${{ github.sha }}
+          path: evidence/staging-gate.json
+          retention-days: 180
 
   verify-staging:
     name: Verify Staging
@@ -59,4 +99,36 @@ jobs:
           VERIFICATION_API_URL: ${{ vars.STAGING_API_URL }}
           VERIFICATION_EMAIL: ${{ secrets.STAGING_VERIFICATION_EMAIL }}
           VERIFICATION_PASSWORD: ${{ secrets.STAGING_VERIFICATION_PASSWORD }}
+          REQUIRE_AUTHENTICATED_VERIFICATION: 'true'
+          EXPECTED_RELEASE: ${{ github.sha }}
         run: node scripts/production-verification.mjs
+      - name: Authenticated WCAG 2.2 and workflow checks
+        working-directory: frontend
+        env:
+          E2E_BASE_URL: ${{ vars.STAGING_WEB_URL }}
+          E2E_EMAIL: ${{ secrets.STAGING_VERIFICATION_EMAIL }}
+          E2E_PASSWORD: ${{ secrets.STAGING_VERIFICATION_PASSWORD }}
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          npx playwright test -c playwright.prod.config.ts --project=chromium accessibility-authenticated.spec.ts authenticated-workflows.spec.ts public-accessibility.spec.ts
+
+  staging-dast:
+    name: Staging DAST Baseline
+    needs: [verify-staging]
+    if: ${{ vars.STAGING_WEB_URL != '' }}
+    runs-on: ubuntu-latest
+    environment: staging
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: zaproxy/action-baseline@v0.15.0
+        with:
+          target: ${{ vars.STAGING_WEB_URL }}
+          fail_action: true
+          allow_issue_writing: true
+          issue_title: Staging DAST baseline findings
+          artifact_name: staging-zap-${{ github.sha }}
+          cmd_options: '-a -j -T 5'

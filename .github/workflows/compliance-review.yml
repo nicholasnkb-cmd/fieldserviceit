@@ -1,0 +1,30 @@
+name: Quarterly Compliance Evidence Review
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '45 14 5 1,4,7,10 *'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  validate-and-open-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node scripts/validate-control-register.mjs
+      - uses: actions/github-script@v9
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const quarter = `Q${Math.floor(new Date().getUTCMonth() / 3) + 1} ${new Date().getUTCFullYear()}`;
+            await github.rest.issues.createLabel({ owner, repo, name: 'compliance-evidence', color: '1D76DB', description: 'Quarterly governance and compliance evidence review' }).catch((error) => { if (error.status !== 422) throw error; });
+            await github.rest.issues.create({
+              owner, repo, assignees: [owner], labels: ['compliance-evidence'], title: `Compliance evidence review ${quarter}`,
+              body: ['- [ ] Review the NIST CSF control and risk registers', '- [ ] Complete privileged and tenant access reviews', '- [ ] Review vendors, subprocessors, contracts, security reports, and exit plans', '- [ ] Verify annual training status and overdue personnel evidence', '- [ ] Review privacy request deadlines, legal holds, exports, and deletion jobs', '- [ ] Review SLOs, incidents, exercises, restore drills, vulnerabilities, and exceptions', '- [ ] Record decisions, corrective-action owners, and due dates'].join('\n'),
+            });

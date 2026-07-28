@@ -75,7 +75,9 @@ Includes:
 - `backend-deployment.yaml` — NestJS app pods
 - `frontend-deployment.yaml` — Next.js app pods
 - `configmap.yaml` — App configuration
-- `secrets.yaml` — Encrypted secrets (SOPS)
+- `secrets.example.yaml` — Non-deployable shape reference only. Provision the `app-secrets`
+  Secret outside source control with the hosting platform, an external secret manager, or a
+  SOPS-encrypted manifest that is never committed in plaintext.
 - `ingress.yaml` — Nginx Ingress + TLS
 - `hpa.yaml` — Horizontal Pod Autoscaler
 - `pdb.yaml` — Pod Disruption Budget

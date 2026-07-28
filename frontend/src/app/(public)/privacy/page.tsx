@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { AnalyticsPreferencesButton } from '../../../components/marketing/AnalyticsPreferencesButton';
+import { PrivacyRequestForm } from '../../../components/privacy/PrivacyRequestForm';
 import { PRIVACY_VERSION } from '../../../lib/legal';
 
 export const metadata: Metadata = {
@@ -54,7 +55,8 @@ export default function PrivacyPage() {
 
         <section>
           <h2 className="text-xl font-semibold text-gray-950">Privacy requests</h2>
-          <p className="mt-2">Depending on applicable law, you may have rights to request access, correction, deletion, or a copy of personal information, or to object to or limit certain processing. We may verify your identity and authority before responding. If a customer controls the relevant workspace, we may refer the request to that customer. Submit requests or appeals to <a className="font-semibold text-primary hover:underline" href="mailto:privacy@fieldserviceit.com">privacy@fieldserviceit.com</a>.</p>
+          <p className="mt-2">Depending on applicable law, you may have rights to request access, correction, deletion, or a copy of personal information, or to object to or limit certain processing. We may verify your identity and authority before responding. If a customer controls the relevant workspace, we may refer the request to that customer. You may use the form below or email <a className="font-semibold text-primary hover:underline" href="mailto:privacy@fieldserviceit.com">privacy@fieldserviceit.com</a>.</p>
+          <PrivacyRequestForm />
         </section>
 
         <section>

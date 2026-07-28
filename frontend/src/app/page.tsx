@@ -1,17 +1,18 @@
 import type { Metadata } from 'next';
 import LandingPageClient from './LandingPageClient';
+import { PRODUCT_CATALOG } from '../config/product-catalog.generated';
 
 export const metadata: Metadata = {
-  title: 'IT Service Management and Field Service Software | FieldserviceIT',
+  title: 'MSP Service Operations Around Your RMM | FieldserviceIT',
   description:
-    'Run ticketing, technician dispatch, asset management, customer intake, reporting, and billing in one field service IT platform for MSPs and internal IT teams.',
+    'Connect service requests, assets, technicians, field work, and RMM context in one tenant-aware operations workspace for small MSP teams.',
   alternates: {
     canonical: '/',
   },
   openGraph: {
-    title: 'FieldserviceIT | ITSM and Field Service Software',
+    title: 'FieldserviceIT | MSP Service Operations Around Your RMM',
     description:
-      'One operational workspace for service tickets, field dispatch, assets, customers, reporting, and billing.',
+      'Keep the RMM you prefer and connect tickets, assets, dispatch, client updates, and governed actions.',
     url: '/',
     type: 'website',
     images: [
@@ -38,7 +39,7 @@ const structuredData = {
       name: 'FieldserviceIT',
       url: 'https://fieldserviceit.com',
       email: 'sales@fieldserviceit.com',
-      description: 'IT service management and field service operations software for MSPs and internal IT teams.',
+      description: 'Service operations software for small managed service providers.',
     },
     {
       '@type': 'SoftwareApplication',
@@ -50,26 +51,12 @@ const structuredData = {
       url: 'https://fieldserviceit.com',
       description:
         'A multi-tenant ITSM and field service platform for ticketing, dispatch, asset management, customer portals, reporting, and billing.',
-      offers: [
-        {
-          '@type': 'Offer',
-          name: 'Free',
-          price: '0',
-          priceCurrency: 'USD',
-        },
-        {
-          '@type': 'Offer',
-          name: 'Starter',
-          price: '29',
-          priceCurrency: 'USD',
-        },
-        {
-          '@type': 'Offer',
-          name: 'Business',
-          price: '79',
-          priceCurrency: 'USD',
-        },
-      ],
+      offers: PRODUCT_CATALOG.plans.map((plan) => ({
+        '@type': 'Offer',
+        name: plan.name,
+        price: String(plan.monthlyPrice),
+        priceCurrency: PRODUCT_CATALOG.currency,
+      })),
       publisher: {
         '@id': 'https://fieldserviceit.com/#organization',
       },
