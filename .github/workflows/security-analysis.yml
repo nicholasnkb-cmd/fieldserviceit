@@ -62,7 +62,7 @@ jobs:
         run: |
           npm sbom --omit=dev --sbom-format=cyclonedx --prefix backend > backend-sbom.cdx.json
           npm sbom --omit=dev --sbom-format=cyclonedx --prefix frontend > frontend-sbom.cdx.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: software-bill-of-materials
           path: '*-sbom.cdx.json'

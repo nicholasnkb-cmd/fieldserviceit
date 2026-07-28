@@ -39,7 +39,7 @@ jobs:
           drill_status=$(jq -r '.data.status // .status // empty' restore-drill-result.json)
           [[ "$drill_status" == 'PASS' ]] || { echo "Restore drill reported ${drill_status:-an invalid outcome}"; exit 1; }
 
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: disaster-recovery-drill-result

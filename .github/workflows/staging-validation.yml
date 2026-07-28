@@ -74,7 +74,7 @@ jobs:
           mkdir -p evidence
           printf '{"release":"%s","run":"%s","validatedAt":"%s","database":"mysql-8","migrationIdempotency":true,"e2e":true}\n' \
             "$GITHUB_SHA" "$GITHUB_RUN_ID" "$(date -u +%FT%TZ)" > evidence/staging-gate.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: staging-gate-${{ github.sha }}
