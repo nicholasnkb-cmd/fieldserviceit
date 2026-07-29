@@ -46,23 +46,25 @@ export default function TechnicianMobilePage() {
   const loadData = useCallback(async () => {
     setLoading(true);
     setError('');
-    try {
-      const [dispatchRes, summaryRes, partsRes] = await Promise.all([
-        api.get('/dispatch'),
-        api.get('/dispatch/mobile/summary'),
-        api.get('/inventory/parts?limit=100').catch(() => []),
-      ]);
-      const nextDispatches = getListData<DispatchItem>(dispatchRes);
+    const [dispatchResult, summaryResult, partsResult] = await Promise.allSettled([
+      api.get('/dispatch'),
+      api.get('/dispatch/mobile/summary'),
+      api.get('/inventory/parts?limit=100'),
+    ]);
+
+    if (dispatchResult.status === 'fulfilled') {
+      const nextDispatches = getListData<DispatchItem>(dispatchResult.value);
       setDispatches(nextDispatches);
-      setSummary(summaryRes || {});
-      setParts(getListData(partsRes));
-      if (!selectedId && nextDispatches[0]) setSelectedId(nextDispatches[0].id);
-    } catch (err: any) {
-      setError(err.message || 'Failed to load mobile workflow');
-    } finally {
-      setLoading(false);
+      setSelectedId((current) => nextDispatches.some((item) => item.id === current) ? current : (nextDispatches[0]?.id || ''));
+    } else {
+      const reason = dispatchResult.reason as any;
+      setError(contextMessage(reason?.message || 'Failed to load assigned jobs'));
     }
-  }, [selectedId]);
+
+    if (summaryResult.status === 'fulfilled') setSummary(summaryResult.value || {});
+    if (partsResult.status === 'fulfilled') setParts(getListData(partsResult.value));
+    setLoading(false);
+  }, []);
 
   useEffect(() => {
     loadData();
