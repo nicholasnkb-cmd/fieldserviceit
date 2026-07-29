@@ -36,9 +36,7 @@ const structuredData = {
     {
       '@type': 'Organization',
       '@id': 'https://fieldserviceit.com/#organization',
-      name: 'Bright Mind and Bytes LLC',
-      legalName: 'Bright Mind and Bytes LLC',
-      alternateName: 'FieldserviceIT',
+      name: 'FieldserviceIT',
       url: 'https://fieldserviceit.com',
       email: 'sales@fieldserviceit.com',
       description: 'Service operations software for small managed service providers.',

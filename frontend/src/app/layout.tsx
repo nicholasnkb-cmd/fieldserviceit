@@ -19,9 +19,9 @@ export const metadata: Metadata = {
     statusBarStyle: 'black-translucent',
     title: 'FieldserviceIT',
   },
-  authors: [{ name: 'Bright Mind and Bytes LLC' }],
-  creator: 'Bright Mind and Bytes LLC',
-  publisher: 'Bright Mind and Bytes LLC',
+  authors: [{ name: 'FieldserviceIT' }],
+  creator: 'FieldserviceIT',
+  publisher: 'FieldserviceIT',
   category: 'business software',
   keywords: [
     'IT service management software',

@@ -9,9 +9,8 @@ describe('Footer', () => {
     expect(screen.getByRole('link', { name: 'About Us' })).toHaveAttribute('href', '/about');
     expect(screen.getByRole('link', { name: 'Track a Ticket' })).toHaveAttribute('href', '/track');
     expect(screen.getByRole('link', { name: 'Terms of Service' })).toHaveAttribute('href', '/terms');
-    const copyright = screen.getByText(new RegExp(`© ${new Date().getFullYear()} Bright Mind and Bytes LLC`));
+    const copyright = screen.getByText(new RegExp(`© ${new Date().getFullYear()} FieldserviceIT`));
     expect(copyright).toBeInTheDocument();
-    expect(copyright).toHaveTextContent('FieldserviceIT is owned and operated by Bright Mind and Bytes LLC.');
     expect(copyright.parentElement).toHaveClass('global-footer-muted');
     expect(copyright.closest('footer')).toHaveClass('global-footer');
   });

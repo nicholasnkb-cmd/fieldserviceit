@@ -4,11 +4,9 @@ import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3
 import * as path from 'path';
 import * as fs from 'fs';
 import * as crypto from 'crypto';
-import type { Sharp } from 'sharp';
+import sharp = require('sharp');
 import { getS3Client, getS3Bucket } from '../../config/s3.config';
 import { MalwareScannerService } from './malware-scanner.service';
-
-const sharp = require('sharp') as (input?: string | Buffer | object, options?: object) => Sharp;
 
 const ALLOWED_EXTENSIONS = new Set([
   '.jpg', '.jpeg', '.png', '.gif', '.webp',
