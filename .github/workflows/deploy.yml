@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 20
           cache: npm
@@ -45,7 +45,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 20
           cache: npm
@@ -70,7 +70,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 20
 
@@ -251,7 +251,7 @@ jobs:
       HAS_VERIFICATION_CREDENTIALS: ${{ secrets.VERIFICATION_EMAIL != '' && secrets.VERIFICATION_PASSWORD != '' }}
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 20
       - name: Verify deployed application without mutations
@@ -264,7 +264,7 @@ jobs:
           EXPECTED_RELEASE: ${{ github.sha }}
         run: node scripts/production-verification.mjs
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 20
           cache: npm
