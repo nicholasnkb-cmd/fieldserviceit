@@ -65,7 +65,7 @@ export function Footer({ compact = false }: { compact?: boolean }) {
         </div>
       </nav>
       <div className={`global-footer-muted mx-auto max-w-7xl border-t border-gray-700 text-center text-sm ${compact ? 'mt-5 pt-4' : 'mt-8 pt-6'}`}>
-        <p aria-label={`Copyright ${year} Bright Mind and Bytes LLC`}>&copy; {year} Bright Mind and Bytes LLC. FieldserviceIT is owned and operated by Bright Mind and Bytes LLC. All rights reserved.</p>
+        <p aria-label={`Copyright ${year} FieldserviceIT`}>&copy; {year} FieldserviceIT. All rights reserved.</p>
       </div>
     </footer>
   );

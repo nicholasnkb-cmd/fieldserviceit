@@ -43,8 +43,7 @@ export default function LegalDisclaimerPage() {
               This disclaimer explains general limitations and user responsibilities when using the FieldserviceIT site,
               applications, monitoring features, integrations, automation, and administrative controls.
             </p>
-            <p className="mt-4 text-sm leading-6 text-gray-500">FieldserviceIT.com is owned and operated by Bright Mind and Bytes LLC.</p>
-            <p className="mt-2 text-sm leading-6 text-gray-500">Last updated: July 29, 2026</p>
+            <p className="mt-4 text-sm leading-6 text-gray-500">Last updated: June 7, 2026</p>
           </div>
         </div>
       </section>

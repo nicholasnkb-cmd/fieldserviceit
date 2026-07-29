@@ -13,8 +13,8 @@ export default function PrivacyPage() {
   return (
     <main className="mx-auto max-w-4xl px-6 py-16 text-gray-700">
       <h1 className="text-4xl font-bold text-gray-950">Privacy Policy</h1>
-      <p className="mt-4 text-sm text-gray-500">Effective and last updated: July 29, 2026 · Version {PRIVACY_VERSION}</p>
-      <p className="mt-6 leading-7">This Policy describes how Bright Mind and Bytes LLC, doing business through FieldserviceIT, processes information through its websites, applications, APIs, support channels, and integrations. FieldserviceIT.com is owned and operated by Bright Mind and Bytes LLC. A business customer may separately control information placed in its workspace; requests concerning that information may need to be directed to that customer.</p>
+      <p className="mt-4 text-sm text-gray-500">Effective and last updated: June 21, 2026 · Version {PRIVACY_VERSION}</p>
+      <p className="mt-6 leading-7">This Policy describes how FieldserviceIT processes information through its websites, applications, APIs, support channels, and integrations. A business customer may separately control information placed in its workspace; requests concerning that information may need to be directed to that customer.</p>
 
       <div className="mt-10 space-y-8 text-sm leading-7">
         <section>

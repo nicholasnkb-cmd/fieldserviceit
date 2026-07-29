@@ -7,7 +7,7 @@ const sourceRoots = ['backend/src', 'frontend/src'];
 const warningLimit = 800;
 const hardLimit = 1200;
 const legacyCaps = new Map([
-  ['backend/src/database/database.service.ts', 2950],
+  ['backend/src/database/database.service.ts', 2940],
   ['backend/src/modules/cmdb/services/cmdb.service.ts', 1880],
   ['backend/src/modules/admin/services/admin.service.ts', 1820],
   ['backend/src/database/migrations/migrations.service.ts', 1550],
