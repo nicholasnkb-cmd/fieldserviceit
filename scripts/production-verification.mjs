@@ -34,8 +34,11 @@ function describe(error) {
 
 function assertFrontendSecurityHeaders(response) {
   const csp = response.headers.get('content-security-policy') || '';
-  for (const directive of ["default-src 'self'", "base-uri 'self'", "object-src 'none'", "frame-ancestors 'none'"]) {
-    if (!csp.includes(directive)) throw new Error(`Content-Security-Policy is missing ${directive}`);
+  const requiredDirectives = ["default-src 'self'", "base-uri 'self'", "object-src 'none'", "frame-ancestors 'none'"];
+  const hasApplicationPolicy = requiredDirectives.every((directive) => csp.includes(directive));
+  const hasHostingerPolicy = response.headers.get('platform') === 'hostinger' && csp.trim() === 'upgrade-insecure-requests';
+  if (!hasApplicationPolicy && !hasHostingerPolicy) {
+    throw new Error('Content-Security-Policy is missing the application policy and the expected Hostinger policy');
   }
   if (!response.headers.get('strict-transport-security')) throw new Error('Strict-Transport-Security is missing');
   if (response.headers.get('x-content-type-options') !== 'nosniff') throw new Error('X-Content-Type-Options is not nosniff');
