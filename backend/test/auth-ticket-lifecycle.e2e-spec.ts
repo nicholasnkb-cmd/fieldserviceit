@@ -66,7 +66,7 @@ describe('Auth & Ticket Lifecycle E2E', () => {
     it('POST /v1/auth/login — admin login', async () => {
       const res = await request(app.getHttpServer())
         .post('/v1/auth/login')
-        .send({ email: 'admin@acme.com', password: 'admin123' })
+        .send({ email: 'admin@acme.com', password: 'River-Cobalt-7284!' })
         .expect(200);
 
       expect(res.body.accessToken).toBeUndefined();
@@ -123,7 +123,7 @@ describe('Auth & Ticket Lifecycle E2E', () => {
     it('POST /v1/auth/login — capture refresh token', async () => {
       const res = await request(app.getHttpServer())
         .post('/v1/auth/login')
-        .send({ email: 'admin@acme.com', password: 'admin123' })
+        .send({ email: 'admin@acme.com', password: 'River-Cobalt-7284!' })
         .expect(200);
 
       refreshToken = authCookieValue(res, 'fsit_refresh');

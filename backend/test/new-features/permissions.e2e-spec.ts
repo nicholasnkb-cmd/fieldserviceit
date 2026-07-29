@@ -35,7 +35,7 @@ describe('Permissions & Roles (E2E)', () => {
     it('POST /v1/auth/login - super admin', async () => {
       const res = await request(app.getHttpServer())
         .post('/v1/auth/login')
-        .send({ email: 'super@fieldserviceit.com', password: 'admin123' })
+        .send({ email: 'super@fieldserviceit.com', password: 'River-Cobalt-7284!' })
         .expect(200);
       superToken = authCookieValue(res, 'fsit_access');
     });
@@ -43,7 +43,7 @@ describe('Permissions & Roles (E2E)', () => {
     it('POST /v1/auth/login - tenant admin', async () => {
       const res = await request(app.getHttpServer())
         .post('/v1/auth/login')
-        .send({ email: 'admin@acme.com', password: 'admin123' })
+        .send({ email: 'admin@acme.com', password: 'River-Cobalt-7284!' })
         .expect(200);
       adminToken = authCookieValue(res, 'fsit_access');
     });
