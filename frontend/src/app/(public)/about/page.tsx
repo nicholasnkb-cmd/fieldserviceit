@@ -61,6 +61,9 @@ export default function AboutPage() {
               FieldserviceIT brings ticketing, dispatch, asset tracking, customer intake, network monitoring, integrations,
               and business administration into one workspace for teams that need to move quickly without losing accountability.
             </p>
+            <p className="mt-4 text-sm font-medium text-gray-600">
+              FieldserviceIT.com is owned and operated by Bright Mind and Bytes LLC.
+            </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link
                 href="/register-business"

@@ -29,8 +29,8 @@ export default function TermsPage() {
   return (
     <main className="mx-auto max-w-4xl px-6 py-16 text-gray-700">
       <h1 className="text-4xl font-bold text-gray-950">Terms of Service</h1>
-      <p className="mt-4 text-sm text-gray-500">Effective and last updated: June 21, 2026 · Version {TERMS_VERSION}</p>
-      <p className="mt-6 leading-7">These Terms govern access to and use of the FieldserviceIT websites, applications, APIs, and related services. By creating an account, purchasing a subscription, or using the service, you agree to these Terms and acknowledge the <Link className="font-semibold text-primary hover:underline" href="/privacy">Privacy Policy</Link>.</p>
+      <p className="mt-4 text-sm text-gray-500">Effective and last updated: July 29, 2026 · Version {TERMS_VERSION}</p>
+      <p className="mt-6 leading-7">These Terms are between you and Bright Mind and Bytes LLC, the owner and operator of FieldserviceIT.com, and govern access to and use of the FieldserviceIT websites, applications, APIs, and related services. By creating an account, purchasing a subscription, or using the service, you agree to these Terms and acknowledge the <Link className="font-semibold text-primary hover:underline" href="/privacy">Privacy Policy</Link>.</p>
       <div className="mt-10 space-y-8">
         {sections.map(([title, body]) => (
           <section key={title}>
