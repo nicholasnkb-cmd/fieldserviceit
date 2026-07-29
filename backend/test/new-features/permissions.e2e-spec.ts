@@ -282,7 +282,7 @@ describe('Permissions & Roles (E2E)', () => {
         .post('/v1/auth/register')
         .send({
           email: `verify-e2e-${Date.now()}@test.com`,
-          password: 'Test-password-123!',
+          password: 'River-Cobalt-7284!',
           firstName: 'Verify',
           lastName: 'Test',
           termsAccepted: true,

@@ -61,7 +61,7 @@ describe('FieldserviceIT E2E', () => {
         .post('/v1/auth/register')
         .send({
           email: 'e2e-public@test.com',
-          password: 'Test-password-123!',
+          password: 'River-Cobalt-7284!',
           firstName: 'E2E',
           lastName: 'Public',
           termsAccepted: true,
