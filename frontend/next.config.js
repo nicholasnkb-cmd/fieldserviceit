@@ -21,23 +21,6 @@ const apiProxyTarget =
   process.env.NEXT_PUBLIC_API_URL ||
   (process.env.NODE_ENV === 'production' ? 'https://api.fieldserviceit.com' : 'http://localhost:4000');
 
-const staticContentSecurityPolicy = [
-  "default-src 'self'",
-  "base-uri 'self'",
-  "object-src 'none'",
-  "frame-ancestors 'none'",
-  "form-action 'self'",
-  "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com",
-  "script-src-attr 'none'",
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://*.fieldserviceit.com https://*.amazonaws.com https://www.google-analytics.com",
-  "font-src 'self' data:",
-  "connect-src 'self' https://api.fieldserviceit.com wss://api.fieldserviceit.com https://www.google-analytics.com https://region1.google-analytics.com https://*.ingest.sentry.io",
-  "worker-src 'self' blob:",
-  "manifest-src 'self'",
-  'upgrade-insecure-requests',
-].join('; ');
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   poweredByHeader: false,
@@ -83,10 +66,6 @@ const nextConfig = {
       {
         key: 'Permissions-Policy',
         value: 'camera=(self), microphone=(), geolocation=(self), payment=(), usb=()',
-      },
-      {
-        key: 'Content-Security-Policy',
-        value: staticContentSecurityPolicy,
       },
     ];
 
