@@ -299,20 +299,10 @@ async function printCounts(db: DatabaseService) {
   }
 }
 
-async function configureTestSecurityPolicy(db: DatabaseService) {
-  if (process.env.NODE_ENV !== 'test') return;
-  await db.execute(
-    `UPDATE PlatformSecurityPolicy
-     SET requireMfaSuperAdmin = 0, requireMfaTenantAdmin = 0, requireMfaTechnicians = 0, updatedAt = NOW(3)
-     WHERE id = 'global-security-policy'`,
-  );
-}
-
 async function main() {
   loadEnv();
   const db = new DatabaseService();
   await db.onModuleInit();
-  await configureTestSecurityPolicy(db);
   await ensurePlans(db);
   await ensurePermissionsAndRoles(db);
   const company = await ensureDemoTenant(db);

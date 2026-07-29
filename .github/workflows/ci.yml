@@ -119,6 +119,8 @@ jobs:
       - run: npx prisma generate
       - run: npm run seed
       - run: npm run test:e2e:ci -- --runInBand
+        env:
+          E2E_DISABLE_MFA_REQUIREMENT: 'true'
 
   frontend:
     name: Frontend Build & Lint
