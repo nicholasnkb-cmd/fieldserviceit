@@ -4,6 +4,7 @@ export const PUBLIC_PATHS = [
   '/register', '/register-business', '/reset-password', '/msp-ticketing-software',
   '/field-service-management-software', '/it-asset-management-software',
   '/technician-dispatch-software', '/topology/shared', '/verify-email',
+  '/invitations/accept',
 ] as const;
 
 export function isPublicPath(pathname: string) {
