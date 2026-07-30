@@ -10,12 +10,19 @@ interface CompanyUser {
   id: string; email: string; firstName: string; lastName: string; role: string; isActive: boolean; createdAt: string;
 }
 
+interface CompanyInvitation {
+  id: string; email: string; role: string; expiresAt: string; acceptedAt?: string; createdAt: string; invitedByEmail?: string;
+}
+
 export default function TenantAdminPage() {
   const [users, setUsers] = useState<CompanyUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [showCreate, setShowCreate] = useState(false);
+  const [invitations, setInvitations] = useState<CompanyInvitation[]>([]);
+  const [showInvite, setShowInvite] = useState(false);
+  const [inviteForm, setInviteForm] = useState({ email: '', role: 'CLIENT' });
   const [editing, setEditing] = useState<string | null>(null);
   const [newRole, setNewRole] = useState('');
   const [createForm, setCreateForm] = useState({ email: '', password: '', firstName: '', lastName: '', role: 'CLIENT' });
@@ -38,12 +45,39 @@ export default function TenantAdminPage() {
       .catch(() => {});
   }, [debouncedSearch]);
 
+  const fetchInvitations = useCallback(() => {
+    if (user?.role !== 'TENANT_ADMIN') return;
+    api.get('/admin/company/invitations')
+      .then((data) => setInvitations(getListData<CompanyInvitation>(data)))
+      .catch(() => setInvitations([]));
+  }, [user?.role]);
+
   useEffect(() => {
     if (!user) return;
     if (user.role !== 'TENANT_ADMIN' && user.role !== 'SUPER_ADMIN') { router.push('/dashboard'); return; }
     fetchUsers();
+    fetchInvitations();
     setLoading(false);
-  }, [user, router, fetchUsers]);
+  }, [user, router, fetchUsers, fetchInvitations]);
+
+  const handleInvite = async (event: React.FormEvent) => {
+    event.preventDefault();
+    try {
+      await api.post('/admin/company/invitations', inviteForm);
+      setMessage(`Invitation sent to ${inviteForm.email}`);
+      setInviteForm({ email: '', role: 'CLIENT' });
+      setShowInvite(false);
+      fetchInvitations();
+    } catch (err: any) { setMessage(err.message || 'Invitation could not be sent'); }
+  };
+
+  const revokeInvitation = async (id: string) => {
+    try {
+      await api.delete(`/admin/company/invitations/${id}`);
+      setMessage('Invitation revoked');
+      fetchInvitations();
+    } catch (err: any) { setMessage(err.message || 'Invitation could not be revoked'); }
+  };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,9 +120,14 @@ export default function TenantAdminPage() {
             <Link href="/admin/roles" className="px-4 py-2 bg-primary/10 text-primary text-sm rounded-md hover:bg-primary/20">Roles</Link>
           )}
           <Link href="/settings" className="px-4 py-2 bg-primary/10 text-primary text-sm rounded-md hover:bg-primary/20">Settings</Link>
-          <button onClick={() => setShowCreate(!showCreate)} className="px-4 py-2 bg-primary text-white text-sm rounded-md hover:bg-primary/90">
-            {showCreate ? 'Cancel' : 'Add User'}
+          <button onClick={() => setShowCreate(!showCreate)} className="px-4 py-2 bg-primary/10 text-primary text-sm rounded-md hover:bg-primary/20">
+            {showCreate ? 'Cancel' : 'Create User'}
           </button>
+          {user?.role === 'TENANT_ADMIN' && (
+            <button onClick={() => setShowInvite(!showInvite)} className="px-4 py-2 bg-primary text-white text-sm rounded-md hover:bg-primary/90">
+              {showInvite ? 'Cancel' : 'Invite User'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -122,6 +161,40 @@ export default function TenantAdminPage() {
               <button type="submit" className="px-4 py-2 bg-primary text-white text-sm rounded-md hover:bg-primary/90">Create</button>
             </div>
           </form>
+        </div>
+      )}
+
+      {showInvite && (
+        <div className="mb-6 rounded-lg bg-white p-6 shadow">
+          <h2 className="text-lg font-semibold">Invite a user</h2>
+          <p className="mt-1 text-sm text-gray-600">They will receive a secure link to create their password and join this company.</p>
+          <form onSubmit={handleInvite} className="mt-4 flex max-w-2xl items-end gap-3">
+            <label className="flex-1 text-sm font-medium text-gray-700">Email
+              <input type="email" required maxLength={191} value={inviteForm.email} onChange={(event) => setInviteForm({ ...inviteForm, email: event.target.value })} className="mt-1 block w-full rounded border border-gray-300 px-3 py-2" />
+            </label>
+            <label className="text-sm font-medium text-gray-700">Role
+              <select value={inviteForm.role} onChange={(event) => setInviteForm({ ...inviteForm, role: event.target.value })} className="mt-1 block rounded border border-gray-300 px-3 py-2">
+                <option value="CLIENT">Client</option>
+                <option value="TECHNICIAN">Technician</option>
+                <option value="READ_ONLY">Read only</option>
+              </select>
+            </label>
+            <button className="rounded bg-primary px-4 py-2 text-sm font-semibold text-white">Send invitation</button>
+          </form>
+        </div>
+      )}
+
+      {user?.role === 'TENANT_ADMIN' && invitations.length > 0 && (
+        <div className="mb-6 rounded-lg bg-white p-6 shadow">
+          <h2 className="text-lg font-semibold">Invitations</h2>
+          <div className="mt-3 divide-y divide-gray-100">
+            {invitations.map((invitation) => (
+              <div key={invitation.id} className="flex items-center justify-between py-3 text-sm">
+                <div><strong>{invitation.email}</strong><span className="ml-2 text-gray-500">{invitation.role} · {invitation.acceptedAt ? 'Accepted' : `Expires ${new Date(invitation.expiresAt).toLocaleDateString()}`}</span></div>
+                {!invitation.acceptedAt && <button onClick={() => revokeInvitation(invitation.id)} className="text-red-600 hover:underline">Revoke</button>}
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
