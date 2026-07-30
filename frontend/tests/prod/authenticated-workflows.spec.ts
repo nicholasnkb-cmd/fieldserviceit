@@ -57,7 +57,7 @@ test.describe('critical authenticated workflows', () => {
       await expect(page.locator('body')).toBeVisible();
       await expect(page.getByRole('navigation', { name: 'Footer navigation' })).toBeVisible();
       await expect(page.getByRole('link', { name: 'Privacy' })).toBeVisible();
-      await expect(page.getByText(/© 2026 FieldserviceIT/)).toBeVisible();
+      await expect(page.getByText(new RegExp(`© ${new Date().getFullYear()} Bright Mind and Bytes LLC`))).toBeVisible();
       const dimensions = await page.evaluate(() => ({ viewport: window.innerWidth, document: document.documentElement.scrollWidth }));
       expect(dimensions.document).toBeLessThanOrEqual(dimensions.viewport);
       await testInfo.attach(`${route.slice(1)}-${testInfo.project.name}`, {
